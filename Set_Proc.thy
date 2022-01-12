@@ -1,90 +1,124 @@
-theory Set_Proc
-  imports Main
+theory Set_Proc                
+  imports Main Logic ZFC_in_HOL.ZFC_in_HOL
 begin
 
-type_synonym var = int
+hide_const (open) ZFC_in_HOL.set
 
-datatype 'a set_expr = Intersect 'a 'a | Union 'a 'a | Diff 'a 'a | Var 'a | Empty
+datatype 'a pset_term = 
+  Empty (\<open>\<emptyset>\<close>)| Var 'a |
+  Union "'a pset_term" "'a pset_term" (infixr \<open>\<squnion>\<^sub>s\<close> 50) |
+  Inter "'a pset_term" "'a pset_term" (infixr \<open>\<sqinter>\<^sub>s\<close> 60) |
+  Diff "'a pset_term" "'a pset_term"  (infixl \<open>-\<^sub>s\<close> 70) |
+  Set "'a pset_term" "'a pset_term list"
 
-datatype 'a set_atom = Eq 'a "'a set_expr" | NotEq 'a 'a | SubsetEq 'a 'a
-print_theorems
+datatype 'a pset_atom =
+  Elem "'a pset_term" "'a pset_term" (infix \<open>\<in>\<^sub>s\<close> 45) | 
+  Equal "'a pset_term" "'a pset_term" (infix \<open>\<approx>\<^sub>s\<close> 45) |
+  Subset "'a pset_term" "'a pset_term" (infix \<open>\<sqsubseteq>\<^sub>s\<close> 45)
 
-fun I\<^sub>s\<^sub>e where
-  "I\<^sub>s\<^sub>e v (Intersect x y) = v x \<inter> v y"
-| "I\<^sub>s\<^sub>e v (Union x y) = v x \<union> v y"
-| "I\<^sub>s\<^sub>e v (Diff x y) = v x - v y"
-| "I\<^sub>s\<^sub>e v (Var x) = v x"
-| "I\<^sub>s\<^sub>e _ Empty = {}"
+type_synonym 'a pset_literal = "bool \<times> 'a pset_atom"
 
-fun I\<^sub>s\<^sub>a where
-  "I\<^sub>s\<^sub>a v (Eq x e) \<longleftrightarrow> v x = I\<^sub>s\<^sub>e v e"
-| "I\<^sub>s\<^sub>a v (NotEq x y) \<longleftrightarrow> v x \<noteq> v y"
-| "I\<^sub>s\<^sub>a v (SubsetEq x y) \<longleftrightarrow> v x \<subseteq> v y"
+definition "vdiff s1 s2 \<equiv> ZFC_in_HOL.set (elts s1 - elts s2)"
 
-definition "Is\<^sub>s\<^sub>a v C \<equiv> (\<forall>a \<in> C. I\<^sub>s\<^sub>a v a)"
+fun I\<^sub>s\<^sub>t :: "('a \<Rightarrow> V) \<Rightarrow> 'a pset_term \<Rightarrow> V" where
+  "I\<^sub>s\<^sub>t v \<emptyset> = 0"
+| "I\<^sub>s\<^sub>t v (Var x) = v x"
+| "I\<^sub>s\<^sub>t v (s1 \<squnion>\<^sub>s s2) = I\<^sub>s\<^sub>t v s1 \<squnion> I\<^sub>s\<^sub>t v s2"
+| "I\<^sub>s\<^sub>t v (s1 \<sqinter>\<^sub>s s2) = I\<^sub>s\<^sub>t v s1 \<sqinter> I\<^sub>s\<^sub>t v s2"
+| "I\<^sub>s\<^sub>t v (s1 -\<^sub>s s2) = vdiff (I\<^sub>s\<^sub>t v s1) (I\<^sub>s\<^sub>t v s2)"
+| "I\<^sub>s\<^sub>t v (Set s1 ss) = fold vinsert (map (I\<^sub>s\<^sub>t v) (s1 # ss)) 0"
 
-fun place1 :: "('a \<Rightarrow> bool) \<Rightarrow> 'a set_atom \<Rightarrow> bool" where
-  "place1 p (Eq x (Intersect y z)) \<longleftrightarrow> p x = (p y \<and> p z)"
-| "place1 p (Eq x (Union y z)) \<longleftrightarrow> p x = (p y \<or> p z)"
-| "place1 p (Eq x (Diff y z)) \<longleftrightarrow> p x = (p y \<and> \<not> p z)"
-| "place1 p (Eq x (Var y)) \<longleftrightarrow> p x = p y"
-| "place1 p (Eq x Empty) \<longleftrightarrow> p x = False"
-| "place1 p (SubsetEq x y) \<longleftrightarrow> (p x \<longrightarrow> p y)"
-| "place1 p (NotEq _ _) \<longleftrightarrow> True"
+fun I\<^sub>s\<^sub>a :: "('a \<Rightarrow> V) \<Rightarrow> 'a pset_atom \<Rightarrow> bool" where
+  "I\<^sub>s\<^sub>a v (t1 \<in>\<^sub>s t2) \<longleftrightarrow> I\<^sub>s\<^sub>t v t1 \<in> elts (I\<^sub>s\<^sub>t v t2)"
+| "I\<^sub>s\<^sub>a v (t1 \<approx>\<^sub>s t2) \<longleftrightarrow> I\<^sub>s\<^sub>t v t1 = I\<^sub>s\<^sub>t v t2"
+| "I\<^sub>s\<^sub>a v (t1 \<sqsubseteq>\<^sub>s t2) \<longleftrightarrow> I\<^sub>s\<^sub>t v t1 \<le> I\<^sub>s\<^sub>t v t2"
 
-definition "place C p \<equiv> (\<forall>a \<in> C. place1 p a)"
+definition I\<^sub>s\<^sub>l :: "('a \<Rightarrow> V) \<Rightarrow> 'a pset_literal \<Rightarrow> bool" where
+  "I\<^sub>s\<^sub>l v \<equiv> (\<lambda>(b, a). b \<longleftrightarrow> I\<^sub>s\<^sub>a v a)"
 
-definition "ample C P \<equiv> (\<forall>p \<in> P. place C p) \<and> (\<forall>x y. (NotEq x y \<in> C) \<longrightarrow> (\<exists>p \<in> P. p x \<noteq> p y))"
+type_synonym 'a pset_fm = "'a pset_literal fm"
+type_synonym 'a branch = "'a pset_fm list"
 
-lemma Ex_ample_if_Is\<^sub>s\<^sub>a: "Is\<^sub>s\<^sub>a v C \<Longrightarrow> \<exists>A. ample C A"
-proof -
-  assume "Is\<^sub>s\<^sub>a v C"
-  define U where "U \<equiv> \<Union>c \<in> C. \<Union>(v ` set_set_atom c)"
-  define p where "p \<equiv> (\<lambda>u x. u \<in> v x)"
-  have "place C (p u)" if "u \<in> U" for u
-  proof (unfold place_def, intro ballI)
-    fix a assume "a \<in> C"
-    with \<open>Is\<^sub>s\<^sub>a v C\<close> have "I\<^sub>s\<^sub>a v a"
-      unfolding Is\<^sub>s\<^sub>a_def by blast
-    with \<open>a \<in> C\<close> that show "place1 (p u) a"
-      by (induction "p u" a rule: place1.induct) (auto simp: U_def p_def)
-  qed
-  moreover
-  have subset_U: "NotEq x y \<in> C \<Longrightarrow> v x \<subseteq> U \<and> v y \<subseteq> U" for x y
-    unfolding U_def by auto
-  from \<open>Is\<^sub>s\<^sub>a v C\<close>[unfolded Is\<^sub>s\<^sub>a_def] have "v x \<noteq> v y" if "NotEq x y \<in> C" for x y
-    using that by auto
-  with subset_U have "\<exists>u \<in> U. p u x \<noteq> p u y" if "NotEq x y \<in> C" for x y
-    using that unfolding p_def by (metis psubsetE psubsetI subset_iff)
-  ultimately show ?thesis
-    unfolding ample_def by (metis mem_Collect_eq)
-qed
+definition vars :: "'a branch \<Rightarrow> 'a set" where
+  "vars b \<equiv> \<Union>((\<lambda>(b, a). set_pset_atom a) ` \<Union>(atoms ` set b))"
 
-lemma Is\<^sub>s\<^sub>a_if_Ex_ample: "ample C A \<Longrightarrow> \<exists>v::'a \<Rightarrow> ('a \<Rightarrow> bool) set. Is\<^sub>s\<^sub>a v C"
-proof -
-  assume "ample C A"
-  define v where "v \<equiv> (\<lambda>x. {p \<in> A. p x})"
-  have "Is\<^sub>s\<^sub>a v C"
-  proof(unfold Is\<^sub>s\<^sub>a_def, intro ballI)
-    fix a assume "a \<in> C"
-    show "I\<^sub>s\<^sub>a v a"
-    proof(cases a)
-      case (Eq x e)
-      with \<open>a \<in> C\<close> \<open>ample C A\<close> show ?thesis
-        unfolding ample_def by (cases e) (fastforce simp: v_def place_def)+
-    next
-      case (NotEq x y)
-      with \<open>a \<in> C\<close> \<open>ample C A\<close> show ?thesis
-        unfolding ample_def by (auto simp: v_def)
-    next
-      case (SubsetEq x y)
-      with \<open>a \<in> C\<close> \<open>ample C A\<close> show ?thesis
-        unfolding ample_def by (fastforce simp: v_def place_def)
-    qed
-  qed
-  then show ?thesis
-    by blast
-qed
-    
- 
+fun member_seq :: "'a pset_term \<Rightarrow> 'a pset_literal list \<Rightarrow> 'a pset_term \<Rightarrow> bool" where
+  "member_seq s [] t \<longleftrightarrow> s = t"
+| "member_seq s ((True, s' \<sqsubseteq>\<^sub>s u) # cs) t \<longleftrightarrow> s = s' \<and> member_seq u cs t"
+| "member_seq _ _ _ \<longleftrightarrow> False"
+
+fun member_cycle :: "'a pset_literal list \<Rightarrow> bool" where
+  "member_cycle ((True, s \<sqsubseteq>\<^sub>s t) # cs) = member_seq s ((True, s \<sqsubseteq>\<^sub>s t) # cs) s"
+| "member_cycle _ = False"
+
+abbreviation "AT a \<equiv> Atom (True, a)"
+abbreviation "AF a \<equiv> Atom (False, a)"
+
+fun tlvl_terms_term :: "'a pset_term \<Rightarrow> 'a pset_term set" where
+  "tlvl_terms_term (Set t0 ts) = insert t0 (set ts)"
+| "tlvl_terms_term x = {x}"
+
+fun tlvl_terms_atom :: "'a pset_atom \<Rightarrow> 'a pset_term set" where
+  "tlvl_terms_atom (s \<in>\<^sub>s t) = tlvl_terms_term s \<union> tlvl_terms_term t"
+| "tlvl_terms_atom (s \<approx>\<^sub>s t) = tlvl_terms_term s \<union> tlvl_terms_term t"
+| "tlvl_terms_atom (s \<sqsubseteq>\<^sub>s t) = tlvl_terms_term s \<union> tlvl_terms_term t"
+
+fun tlvl_terms_lit :: "'a pset_literal \<Rightarrow> 'a pset_term set" where
+  "tlvl_terms_lit (_, a) = tlvl_terms_atom a"
+
+definition tlvl_terms :: "'a branch \<Rightarrow> 'a pset_term set" where
+  "tlvl_terms b \<equiv> \<Union>(tlvl_terms_lit ` Atoms (set b))"
+
+inductive closeable :: "'a branch \<Rightarrow> bool" where
+  Or: "\<lbrakk> Or \<phi>\<^sub>1 \<phi>\<^sub>2 \<in> set branch; closeable (\<phi>\<^sub>1 # branch); closeable (\<phi>\<^sub>2 # branch) \<rbrakk>
+    \<Longrightarrow> closeable branch"
+| And: "\<lbrakk> And \<phi>\<^sub>1 \<phi>\<^sub>2 \<in> set branch; closeable (\<phi>\<^sub>1 # \<phi>\<^sub>2 # branch) \<rbrakk>
+    \<Longrightarrow> closeable branch"
+
+| Close: "\<lbrakk> \<phi> \<in> set branch; Neg \<phi> \<in> set branch \<rbrakk> \<Longrightarrow> closeable branch"
+| CloseElemEmpty: "AT (t \<sqsubseteq>\<^sub>s \<emptyset>) \<in> set branch \<Longrightarrow> closeable branch"
+| CloseNegEqual: "AF (t \<approx>\<^sub>s t) \<in> set branch \<Longrightarrow> closeable branch"
+| CloseMemberCycle: "\<lbrakk> member_cycle cs; set cs \<subseteq> Atoms (set branch) \<rbrakk> \<Longrightarrow> closeable branch"
+
+| "\<lbrakk> AT (s \<sqsubseteq>\<^sub>s t) \<in> set branch; closeable (AT (s \<approx>\<^sub>s s \<sqinter>\<^sub>s t) # branch) \<rbrakk>
+    \<Longrightarrow> closeable branch"
+| "\<lbrakk> AF (s \<sqsubseteq>\<^sub>s t) \<in> set branch; closeable (AF (s \<approx>\<^sub>s s \<sqinter>\<^sub>s t) # branch) \<rbrakk>
+    \<Longrightarrow> closeable branch"
+| "\<lbrakk> AT (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) \<in> set branch; closeable (AT (s \<in>\<^sub>s t1) # AT (s \<in>\<^sub>s t2) # branch) \<rbrakk>
+    \<Longrightarrow> closeable branch"
+| "\<lbrakk> AT (s \<in>\<^sub>s t1 -\<^sub>s t2) \<in> set branch; closeable (AT (s \<in>\<^sub>s t1) # AF (s \<in>\<^sub>s t2) # branch) \<rbrakk>
+    \<Longrightarrow> closeable branch"
+| "\<lbrakk> AF (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set branch; closeable (AF (s \<in>\<^sub>s t1) # AF (s \<in>\<^sub>s t2) # branch) \<rbrakk>
+    \<Longrightarrow> closeable branch"
+| "\<lbrakk> AF (s \<in>\<^sub>s Set t0 ts) \<in> set branch; closeable (map (\<lambda>t. AF (s \<approx>\<^sub>s t)) (t0 # ts) @ branch) \<rbrakk>
+    \<Longrightarrow> closeable branch"
+
+| "\<lbrakk> AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set branch;
+     closeable (AT (s \<in>\<^sub>s t1) # branch); closeable (AT (s \<in>\<^sub>s t2) # branch) \<rbrakk>
+    \<Longrightarrow> closeable branch"
+| "\<lbrakk> AF (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) \<in> set branch;
+     closeable (AF (s \<in>\<^sub>s t1) # branch); closeable (AF (s \<in>\<^sub>s t2) # branch) \<rbrakk>
+    \<Longrightarrow> closeable branch"
+| "\<lbrakk> AF (s \<in>\<^sub>s t1 -\<^sub>s t2) \<in> set branch;
+     closeable (AF (s \<in>\<^sub>s t1) # branch); closeable (AT (s \<in>\<^sub>s t2) # branch) \<rbrakk>
+    \<Longrightarrow> closeable branch"
+| "\<lbrakk> AT (s \<in>\<^sub>s Set t0 ts) \<in> set branch;
+     \<forall>l \<in> (\<lambda>t. AT (s \<approx>\<^sub>s t)) ` set (t0 # ts). closeable (l # branch) \<rbrakk>
+    \<Longrightarrow> closeable branch"
+
+| "\<lbrakk> AT (t1 \<approx>\<^sub>s t2) \<in> set branch; AT (s \<in>\<^sub>s t1) \<in> set branch; closeable (AT (s \<in>\<^sub>s t2) # branch) \<rbrakk>
+    \<Longrightarrow> closeable branch"
+| "\<lbrakk> AT (t1 \<approx>\<^sub>s t2) \<in> set branch; AT (s \<in>\<^sub>s t2) \<in> set branch; closeable (AT (s \<in>\<^sub>s t1) # branch) \<rbrakk>
+    \<Longrightarrow> closeable branch"
+| "\<lbrakk> AF (t1 \<approx>\<^sub>s t2) \<in> set branch; c \<notin> vars branch;
+     closeable (AT (Var c \<in>\<^sub>s t1) # AF (Var c \<in>\<^sub>s t2) # branch);
+     closeable (AF (Var c \<in>\<^sub>s t1) # AT (Var c \<in>\<^sub>s t2) # branch) \<rbrakk>
+    \<Longrightarrow> closeable branch"
+| "\<lbrakk> s \<in> tlvl_terms branch; t \<in> tlvl_terms branch;
+     closeable (AT (s \<in>\<^sub>s t) # branch); closeable (AF (s \<in>\<^sub>s t) # branch) \<rbrakk>
+    \<Longrightarrow> closeable branch"
+
+
+
+
 end

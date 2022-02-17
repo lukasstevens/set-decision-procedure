@@ -1,5 +1,6 @@
 theory Set_Proc                
   imports Main Logic ZFC_in_HOL.ZFC_in_HOL Graph_Theory.Graph_Theory "HOL-Library.Sublist"
+    "HOL-Eisbach.Eisbach"
 begin
 
 abbreviation "vset \<equiv> ZFC_in_HOL.set"
@@ -312,8 +313,25 @@ end
 
 type_synonym 'a branch = "'a pset_fm list"
 
-definition vars :: "'a branch \<Rightarrow> 'a set" where
-  "vars b \<equiv> \<Union>((\<lambda>(b, a). set_pset_atom a) ` \<Union>(atoms ` set b))"
+definition vars_pset_fm :: "'a pset_fm \<Rightarrow> 'a set" where
+  "vars_pset_fm \<phi> \<equiv> \<Union>((\<lambda>(b, a). set_pset_atom a) ` atoms \<phi>)"
+
+lemma vars_pset_fm_simps:
+  "vars_pset_fm (Atom x) = set_pset_atom (snd x)"
+  "vars_pset_fm (And p q) = vars_pset_fm p \<union> vars_pset_fm q"
+  "vars_pset_fm (Or p q) = vars_pset_fm p \<union> vars_pset_fm q"
+  "vars_pset_fm (Neg p) = vars_pset_fm p"
+  unfolding vars_pset_fm_def
+     apply(auto)
+  done
+
+definition vars_branch :: "'a branch \<Rightarrow> 'a set" where
+  "vars_branch b \<equiv> \<Union>(vars_pset_fm ` set b)"
+
+lemma vars_branch_simps:
+  "vars_branch [] = {}"
+  "vars_branch (x # xs) = vars_pset_fm x \<union> vars_branch xs"
+  unfolding vars_branch_def by auto
 
 fun member_seq :: "'a pset_term \<Rightarrow> 'a pset_literal list \<Rightarrow> 'a pset_term \<Rightarrow> bool" where
   "member_seq s [] t \<longleftrightarrow> s = t"
@@ -348,6 +366,13 @@ fun subterms_fm where
 | "subterms_fm (Or f1 f2) = subterms_fm f1 \<union> subterms_fm f2"
 | "subterms_fm (And f1 f2) = subterms_fm f1 \<union> subterms_fm f2"
 
+definition "subterms_branch b \<equiv> \<Union>(subterms_fm ` set b)"
+
+lemma subterms_branch_simps:
+  "subterms_branch [] = {}"
+  "subterms_branch (x # xs) = subterms_fm x \<union> subterms_branch xs"
+  unfolding subterms_branch_def by auto
+
 fun tlvl_terms_atom where
   "tlvl_terms_atom (t1 \<in>\<^sub>s t2) = {t1, t2}"
 | "tlvl_terms_atom (t1 \<approx>\<^sub>s t2) = {t1, t2}"
@@ -362,66 +387,86 @@ fun subst_tlvl_atom where
 fun subst_tlvl_literal where
   "subst_tlvl_literal t1 t2 (b, a) = (b, subst_tlvl_atom t1 t2 a)"
 
-inductive lextends :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
-  And: "And p q \<in> set branch \<Longrightarrow> lextends (p # q # branch) branch"
-| NegOr: "Neg (Or p q) \<in> set branch \<Longrightarrow> lextends (Neg p # Neg q # branch) branch"
-| OrNeg1: "\<lbrakk> Or p q \<in> set branch; Neg p \<in> set branch \<rbrakk> \<Longrightarrow> lextends (q # branch) branch"
-| OrNeg2: "\<lbrakk> Or p q \<in> set branch; Neg q \<in> set branch \<rbrakk> \<Longrightarrow> lextends (p # branch) branch"
-| NegAnd1: "\<lbrakk> Neg (And p q) \<in> set branch; p \<in> set branch \<rbrakk> \<Longrightarrow> lextends (Neg q # branch) branch"
-| NegAnd2: "\<lbrakk> Neg (And p q) \<in> set branch; q \<in> set branch \<rbrakk> \<Longrightarrow> lextends (Neg p # branch) branch"
+inductive lextends_fm :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
+  "And p q \<in> set branch \<Longrightarrow> lextends_fm (p # q # branch) branch"
+| "Neg (Or p q) \<in> set branch \<Longrightarrow> lextends_fm (Neg p # Neg q # branch) branch"
+| "\<lbrakk> Or p q \<in> set branch; Neg p \<in> set branch \<rbrakk> \<Longrightarrow> lextends_fm (q # branch) branch"
+| "\<lbrakk> Or p q \<in> set branch; Neg q \<in> set branch \<rbrakk> \<Longrightarrow> lextends_fm (p # branch) branch"
+| "\<lbrakk> Neg (And p q) \<in> set branch; p \<in> set branch \<rbrakk> \<Longrightarrow> lextends_fm (Neg q # branch) branch"
+| "\<lbrakk> Neg (And p q) \<in> set branch; q \<in> set branch \<rbrakk> \<Longrightarrow> lextends_fm (Neg p # branch) branch"
 
-| "AF (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set branch \<Longrightarrow> lextends (AF (s \<in>\<^sub>s t1) # AF (s \<in>\<^sub>s t2) # branch) branch"
+inductive lextends_un :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
+  "AF (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set branch \<Longrightarrow> lextends_un (AF (s \<in>\<^sub>s t1) # AF (s \<in>\<^sub>s t2) # branch) branch"
 | "\<lbrakk> AT (s \<in>\<^sub>s t1) \<in> set branch; t1 \<squnion>\<^sub>s t2 \<in> subterms_fm (last branch) \<rbrakk>
-    \<Longrightarrow> lextends (AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) # branch) branch"
+    \<Longrightarrow> lextends_un (AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) # branch) branch"
 | "\<lbrakk> AT (s \<in>\<^sub>s t2) \<in> set branch; t1 \<squnion>\<^sub>s t2 \<in> subterms_fm (last branch) \<rbrakk>
-    \<Longrightarrow> lextends (AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) # branch) branch"
+    \<Longrightarrow> lextends_un (AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) # branch) branch"
 | "\<lbrakk> AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set branch; AF (s \<in>\<^sub>s t1) \<in> set branch \<rbrakk>
-    \<Longrightarrow> lextends (AT (s \<in>\<^sub>s t2) # branch) branch"
+    \<Longrightarrow> lextends_un (AT (s \<in>\<^sub>s t2) # branch) branch"
 | "\<lbrakk> AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set branch; AF (s \<in>\<^sub>s t2) \<in> set branch \<rbrakk>
-    \<Longrightarrow> lextends (AT (s \<in>\<^sub>s t1) # branch) branch"
+    \<Longrightarrow> lextends_un (AT (s \<in>\<^sub>s t1) # branch) branch"
 | "\<lbrakk> AF (s \<in>\<^sub>s t1) \<in> set branch; AF (s \<in>\<^sub>s t2) \<in> set branch; t1 \<squnion>\<^sub>s t2 \<in> subterms_fm (last branch) \<rbrakk>
-    \<Longrightarrow> lextends (AF (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) # branch) branch"
+    \<Longrightarrow> lextends_un (AF (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) # branch) branch"
 
-| "AT (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) \<in> set branch \<Longrightarrow> lextends (AT (s \<in>\<^sub>s t1) # AT (s \<in>\<^sub>s t2) # branch) branch"
+inductive lextends_int :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
+  "AT (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) \<in> set branch \<Longrightarrow> lextends_int (AT (s \<in>\<^sub>s t1) # AT (s \<in>\<^sub>s t2) # branch) branch"
 | "\<lbrakk> AF (s \<in>\<^sub>s t1) \<in> set branch; t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm (last branch) \<rbrakk>
-    \<Longrightarrow> lextends (AF (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) # branch) branch"
+    \<Longrightarrow> lextends_int (AF (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) # branch) branch"
 | "\<lbrakk> AF (s \<in>\<^sub>s t2) \<in> set branch; t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm (last branch) \<rbrakk>
-    \<Longrightarrow> lextends (AF (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) # branch) branch"
+    \<Longrightarrow> lextends_int (AF (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) # branch) branch"
 | "\<lbrakk> AF (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) \<in> set branch; AT (s \<in>\<^sub>s t1) \<in> set branch \<rbrakk>
-    \<Longrightarrow> lextends (AF (s \<in>\<^sub>s t2) # branch) branch"
+    \<Longrightarrow> lextends_int (AF (s \<in>\<^sub>s t2) # branch) branch"
 | "\<lbrakk> AF (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) \<in> set branch; AT (s \<in>\<^sub>s t2) \<in> set branch \<rbrakk>
-    \<Longrightarrow> lextends (AF (s \<in>\<^sub>s t1) # branch) branch"
+    \<Longrightarrow> lextends_int (AF (s \<in>\<^sub>s t1) # branch) branch"
 | "\<lbrakk> AT (s \<in>\<^sub>s t1) \<in> set branch; AT (s \<in>\<^sub>s t2) \<in> set branch; t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm (last branch) \<rbrakk>
-    \<Longrightarrow> lextends (AT (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) # branch) branch"
+    \<Longrightarrow> lextends_int (AT (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) # branch) branch"
 
-| "AT (s \<in>\<^sub>s t1 -\<^sub>s t2) \<in> set branch \<Longrightarrow> lextends (AT (s \<in>\<^sub>s t1) # AF (s \<in>\<^sub>s t2) # branch) branch"
+inductive lextends_diff :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
+  "AT (s \<in>\<^sub>s t1 -\<^sub>s t2) \<in> set branch \<Longrightarrow> lextends_diff (AT (s \<in>\<^sub>s t1) # AF (s \<in>\<^sub>s t2) # branch) branch"
 | "\<lbrakk> AF (s \<in>\<^sub>s t1) \<in> set branch; t1 -\<^sub>s t2 \<in> subterms_fm (last branch) \<rbrakk>
-    \<Longrightarrow> lextends (AF (s \<in>\<^sub>s t1 -\<^sub>s t2) # branch) branch"
+    \<Longrightarrow> lextends_diff (AF (s \<in>\<^sub>s t1 -\<^sub>s t2) # branch) branch"
 | "\<lbrakk> AT (s \<in>\<^sub>s t2) \<in> set branch; t1 -\<^sub>s t2 \<in> subterms_fm (last branch) \<rbrakk>
-    \<Longrightarrow> lextends (AF (s \<in>\<^sub>s t1 -\<^sub>s t2) # branch) branch"
+    \<Longrightarrow> lextends_diff (AF (s \<in>\<^sub>s t1 -\<^sub>s t2) # branch) branch"
 | "\<lbrakk> AF (s \<in>\<^sub>s t1 -\<^sub>s t2) \<in> set branch; AT (s \<in>\<^sub>s t1) \<in> set branch \<rbrakk>
-    \<Longrightarrow> lextends (AT (s \<in>\<^sub>s t2) # branch) branch"
+    \<Longrightarrow> lextends_diff (AT (s \<in>\<^sub>s t2) # branch) branch"
 | "\<lbrakk> AF (s \<in>\<^sub>s t1 -\<^sub>s t2) \<in> set branch; AF (s \<in>\<^sub>s t2) \<in> set branch \<rbrakk>
-    \<Longrightarrow> lextends (AF (s \<in>\<^sub>s t1) # branch) branch"
+    \<Longrightarrow> lextends_diff (AF (s \<in>\<^sub>s t1) # branch) branch"
 | "\<lbrakk> AT (s \<in>\<^sub>s t1) \<in> set branch; AF (s \<in>\<^sub>s t2) \<in> set branch; t1 -\<^sub>s t2 \<in> subterms_fm (last branch) \<rbrakk>
-    \<Longrightarrow> lextends (AT (s \<in>\<^sub>s t1 -\<^sub>s t2) # branch) branch"
+    \<Longrightarrow> lextends_diff (AT (s \<in>\<^sub>s t1 -\<^sub>s t2) # branch) branch"
 
-| "Single t1 \<in> subterms_fm (last branch) \<Longrightarrow> lextends (AT (t1 \<in>\<^sub>s Single t1) # branch) branch"
-| "AT (s \<in>\<^sub>s Single t1) \<in> set branch \<Longrightarrow> lextends (AT (s \<approx>\<^sub>s t1) # branch) branch"
-| "AF (s \<in>\<^sub>s Single t1) \<in> set branch \<Longrightarrow> lextends (AF (s \<approx>\<^sub>s t1) # branch) branch"
+inductive lextends_single :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
+  "Single t1 \<in> subterms_fm (last branch) \<Longrightarrow> lextends_single (AT (t1 \<in>\<^sub>s Single t1) # branch) branch"
+| "AT (s \<in>\<^sub>s Single t1) \<in> set branch \<Longrightarrow> lextends_single (AT (s \<approx>\<^sub>s t1) # branch) branch"
+| "AF (s \<in>\<^sub>s Single t1) \<in> set branch \<Longrightarrow> lextends_single (AF (s \<approx>\<^sub>s t1) # branch) branch"
 
-| "\<lbrakk> AT (t1 \<approx>\<^sub>s t2) \<in> set branch; Atom l \<in> set branch; t1 \<in> tlvl_terms_literal l \<rbrakk>
-    \<Longrightarrow> lextends (Atom (subst_tlvl_literal t1 t2 l) # branch) branch"
+inductive lextends_eq :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
+  "\<lbrakk> AT (t1 \<approx>\<^sub>s t2) \<in> set branch; Atom l \<in> set branch; t1 \<in> tlvl_terms_literal l \<rbrakk>
+    \<Longrightarrow> lextends_eq (Atom (subst_tlvl_literal t1 t2 l) # branch) branch"
 | "\<lbrakk> AT (t1 \<approx>\<^sub>s t2) \<in> set branch; Atom l \<in> set branch; t2 \<in> tlvl_terms_literal l \<rbrakk>
-    \<Longrightarrow> lextends (Atom (subst_tlvl_literal t2 t1 l) # branch) branch"
+    \<Longrightarrow> lextends_eq (Atom (subst_tlvl_literal t2 t1 l) # branch) branch"
 | "\<lbrakk> AT (s \<in>\<^sub>s t) \<in> set branch;  AF (s' \<in>\<^sub>s t) \<in> set branch \<rbrakk>
-    \<Longrightarrow> lextends (AF (s \<approx>\<^sub>s s') # branch) branch"
+    \<Longrightarrow> lextends_eq (AF (s \<approx>\<^sub>s s') # branch) branch"
+
+inductive lextends :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
+  "lextends_fm b' b \<Longrightarrow> lextends b' b"
+| "lextends_un b' b \<Longrightarrow> lextends b' b"
+| "lextends_int b' b \<Longrightarrow> lextends b' b"
+| "lextends_diff b' b \<Longrightarrow> lextends b' b"
+| "lextends_single b' b \<Longrightarrow> lextends b' b"
+| "lextends_eq b' b \<Longrightarrow> lextends b' b"
+
+method lextends_induct =
+  (induction rule: lextends.induct;
+    ( match premises in A[thin]: "lextends_fm _ _" \<Rightarrow> \<open>rule lextends_fm.induct[OF A]\<close>
+    | match premises in A[thin]: "lextends_un _ _" \<Rightarrow> \<open>rule lextends_un.induct[OF A]\<close>
+    | match premises in A[thin]: "lextends_int _ _" \<Rightarrow> \<open>rule lextends_int.induct[OF A]\<close>
+    | match premises in A[thin]: "lextends_diff _ _" \<Rightarrow> \<open>rule lextends_diff.induct[OF A]\<close>
+    | match premises in A[thin]: "lextends_single _ _" \<Rightarrow> \<open>rule lextends_single.induct[OF A]\<close>
+    | match premises in A[thin]: "lextends_eq _ _" \<Rightarrow> \<open>rule lextends_eq.induct[OF A]\<close> ))
 
 lemma lextends_strict_suffix:
   "lextends b1 b2 \<Longrightarrow> strict_suffix b2 b1"
-  apply(induction rule: lextends.induct)
-                      apply(auto simp: strict_suffix_def suffix_def)
-  done
+  by (lextends_induct) (auto simp: strict_suffix_def suffix_def)
 
 lemma subterms_refl[simp]:
   "t \<in> subterms t"
@@ -443,6 +488,10 @@ lemma subterms_subterms_fm_trans:
   apply(induction \<phi>)
   using subterms_subterms_atom_trans by (force)+
 
+lemma subterms_subterms_branch_trans:
+  "s \<in> subterms t \<Longrightarrow> t \<in> subterms_branch b \<Longrightarrow> s \<in> subterms_branch b"
+  unfolding subterms_branch_def using subterms_subterms_fm_trans by blast
+
 lemma tlvl_terms_atom_subs_subterms_atom:
   "tlvl_terms_atom a \<subseteq> subterms_atom a"
   apply(cases a)
@@ -453,30 +502,17 @@ lemma tlvl_terms_literal_subs_subterms_literal:
   "tlvl_terms_literal l \<subseteq> subterms_literal l"
   apply(cases l) using tlvl_terms_atom_subs_subterms_atom by auto
 
-lemma subterms_atom_subst_tlvl_atom_subs:
+lemma subterms_atom_subst_tlvl_subs:
   "subterms_atom (subst_tlvl_atom t1 t2 a) \<subseteq> subterms t2 \<union> subterms_atom a"
   apply(cases a)
    apply(auto)
   done
 
-lemma subterms_literal_subst_tlvl_atom_subs:
+lemma subterms_literal_subst_tlvl_subs:
   "subterms_literal (subst_tlvl_literal t1 t2 l) \<subseteq> subterms t2 \<union> subterms_literal l"
   apply(cases l)
-   using subterms_atom_subst_tlvl_atom_subs apply(auto)
+   using subterms_atom_subst_tlvl_subs apply(auto)
   done
-
-lemma lextends_no_new_subterms:
-  "lextends b' b \<Longrightarrow> \<phi> \<in> set b' \<Longrightarrow> \<forall>\<phi> \<in> set b. subterms_fm \<phi> \<subseteq> subterms_fm (last b)
-    \<Longrightarrow> subterms_fm \<phi> \<subseteq> subterms_fm (last b)"
-  sorry
-(*
-  apply(induction rule: lextends.induct)
-                      apply(auto simp: subset_iff)
-          apply ((metis UnCI subterms.simps subterms_subterms_fm_trans)+)[7]
-   apply (metis Un_iff subsetD subterms_atom.simps(2) subterms_atom_subst_tlvl_atom_subs subterms_fm.simps(1) subterms_literal.simps)
-  by (metis Un_iff subsetD subterms_atom.simps(2) subterms_atom_subst_tlvl_atom_subs subterms_fm.simps(1) subterms_literal.simps)
- *)
- 
 
 lemmas lextends_mono = strict_suffix_set_subset[OF lextends_strict_suffix]
 
@@ -509,7 +545,7 @@ inductive extends :: "'a branch list \<Rightarrow> 'a branch \<Rightarrow> bool"
 | "\<lbrakk> AF (t1 \<approx>\<^sub>s t2) \<in> set branch; t1 \<in> subterms_fm (last branch); t2 \<in> subterms_fm (last branch);
      \<nexists>x. AT (x \<in>\<^sub>s t1) \<in> set branch \<and> AF (x \<in>\<^sub>s t2) \<in> set branch;
      \<nexists>x. AF (x \<in>\<^sub>s t1) \<in> set branch \<and> AT (x \<in>\<^sub>s t2) \<in> set branch;
-     x \<notin> vars branch \<rbrakk>
+     x \<notin> vars_branch branch \<rbrakk>
     \<Longrightarrow> extends [AT (Var x \<in>\<^sub>s t1) # AF (Var x \<in>\<^sub>s t2) # branch, AF (Var x \<in>\<^sub>s t1) # AT (Var x \<in>\<^sub>s t2) # branch] branch"
 
 
@@ -542,77 +578,224 @@ inductive closeable :: "'a branch \<Rightarrow> bool" where
 
 definition "sat branch \<equiv> lin_sat branch \<and> (\<nexists>branches. extends branches branch)"
 
-definition "params branch \<equiv> vars branch - \<Union>((\<lambda>(b, a). set_pset_atom a) ` atoms (last branch))"
+definition "params branch \<equiv> vars_branch branch - vars_pset_fm (last branch)"
 
-definition "params' branch \<equiv>
-  {x \<in> params branch. (\<forall>t \<in> subterms_fm (last branch). AT (Var x \<approx>\<^sub>s t) \<notin> set branch)}"
+definition "params' b \<equiv>
+  {c \<in> params b. \<forall>t \<in> subterms_fm (last b).
+    AT (Var c \<approx>\<^sub>s t) \<notin> set b \<and> AT (t \<approx>\<^sub>s Var c) \<notin> set b \<and> AT (t \<in>\<^sub>s Var c) \<in> set b}"
 
-definition "subterms_branch branch \<equiv>
+definition "subterms_branch' branch \<equiv>
   subterms_fm (last branch) \<union> Var ` (params branch - params' branch)"
 
 definition "bgraph branch \<equiv>
   let
-    vs = Var ` params branch \<union> subterms_branch branch
+    vs = Var ` params branch \<union> subterms_branch' branch
   in
     \<lparr> verts = vs,
       arcs = {(s, t) \<in> vs \<times> vs. AT (s \<in>\<^sub>s t) \<in> set branch},
       tail = fst,
       head = snd \<rparr>"
 
+lemma vars_pset_fm_Atom[simp]: "vars_pset_fm (Atom (b, a)) = set_pset_atom a"
+  unfolding vars_pset_fm_def by simp
 
-lemma "t \<in> subterms_fm \<phi> \<Longrightarrow> s \<in> set_pset_atom t"
-
-lemma lextends_no_new_params:
-  "lextends b' b \<Longrightarrow> vars b' = vars b"
-  apply(induction rule: lextends.induct)
-                      apply(auto simp: vars_def intro: fm.set_intros)[7]
-  subgoal
-    apply(auto simp: vars_def intro: fm.set_intros pset_term.set_intros pset_atom.set_intros)
-    using fm.set_intros pset_term.set_intros pset_atom.set_intros
-    
-
-
-lemma aux1:
-  assumes "lextends branch [\<phi>]"
-  assumes "x \<in> params' branch"
-  assumes "t \<in> subterms_fm \<phi> \<union> Var ` params branch" "AT (Var x \<approx>\<^sub>s t) \<in> set branch"
-  shows "t = Var x"
-  using assms
-  apply(induction branch "[\<phi>]" rule: lextends.induct)
-                      apply(auto simp: params_def params'_def)
+lemma Un_set_pset_term_subterms_eq_set_pset_term:
+  "\<Union>(set_pset_term ` subterms t) = set_pset_term t"
+  apply(induction t)
+       apply(auto)
   done
 
-lemma aux2:
-  assumes "extends branches [\<phi>]"
-  assumes "branch \<in> set branches"
-  assumes "x \<in> params' branch"
-  assumes "t \<in> subterms_fm \<phi> \<union> Var ` params branch" "AT (Var x \<approx>\<^sub>s t) \<in> set branch"
-  shows "t = Var x"
-  using assms
-  apply(induction branches "[\<phi>]" rule: extends.induct)
-                      apply(auto simp: params_def params'_def)
+lemma Un_set_pset_term_subteerms_atom_eq_set_pset_atom:
+  "\<Union>(set_pset_term ` subterms_atom a) = set_pset_atom a"
+  apply(cases a) using Un_set_pset_term_subterms_eq_set_pset_term by force+
+
+lemma Un_set_pset_term_subterms_fm_eq_vars_pset_fm:
+  "\<Union>(set_pset_term ` subterms_fm \<phi>) = vars_pset_fm \<phi>"
+  apply(induction \<phi>)
+  using Un_set_pset_term_subteerms_atom_eq_set_pset_atom
+  by (fastforce simp: vars_pset_fm_simps)+
+
+lemma Un_set_pset_term_subterms_branch_eq_vars_branch:
+  "\<Union>(set_pset_term ` subterms_branch b) = vars_branch b"
+  using Un_set_pset_term_subterms_fm_eq_vars_pset_fm
+  unfolding vars_branch_def subterms_branch_def
+  by force
+
+lemma subs_vars_branch_if_subs_subterms_branch:
+  "subterms_branch b1 \<subseteq> subterms_branch b2 \<Longrightarrow> vars_branch b1 \<subseteq> vars_branch b2"
+  using Un_set_pset_term_subterms_branch_eq_vars_branch
+  by (metis complete_lattice_class.Sup_subset_mono subset_image_iff)
+
+lemma subterms_branch_eq_if_vars_branch_eq:
+  "subterms_branch b1 = subterms_branch b2 \<Longrightarrow> vars_branch b1 = vars_branch b2"
+  using subs_vars_branch_if_subs_subterms_branch by blast
+
+lemma mem_pset_term_if_mem_subterms:
+  "x \<in> set_pset_term s \<Longrightarrow> s \<in> subterms t \<Longrightarrow> x \<in> set_pset_term t"
+  apply(induction t)
+       apply(auto intro: pset_term.set_intros)
   done
 
-lemma
-  assumes "extendss branch [\<phi>]"
-  assumes "x \<in> params' branch"
-  assumes "t \<in> subterms_fm \<phi> \<union> Var ` params branch" "AT (Var x \<approx>\<^sub>s t) \<in> set branch"
-  shows "t = Var x"
-  using assms
-proof(induction branch "[\<phi>]" rule: extendss.induct)
-  case (1 b1 b2)
+lemma mem_pset_atom_if_mem_subterms_atom:
+  "x \<in> set_pset_term s \<Longrightarrow> s \<in> subterms_atom a \<Longrightarrow> x \<in> set_pset_atom a"
+  apply(cases a)
+  using mem_pset_term_if_mem_subterms
+  by (fastforce intro: pset_atom.set_intros)+
+
+lemma mem_pset_fm_if_mem_subterm_fm:
+  "x \<in> set_pset_term s \<Longrightarrow> s \<in> subterms_fm \<phi> \<Longrightarrow> x \<in> vars_pset_fm \<phi>"
+  apply(induction \<phi>)
+     apply(auto simp: vars_pset_fm_def mem_pset_atom_if_mem_subterms_atom)
+  done
+
+lemma subterms_branch_subterms_subterms_atom_trans:
+  "Atom (b, a) \<in> set branch \<Longrightarrow> x \<in> subterms s \<Longrightarrow> s \<in> subterms_atom a \<Longrightarrow> x \<in> subterms_branch branch"
+  unfolding subterms_branch_def
+  by (metis UN_I subterms_fm.simps(1) subterms_literal.simps subterms_subterms_atom_trans)
+
+lemma subterms_branch_subterms_subterms_fm_trans:
+  "b \<noteq> [] \<Longrightarrow> x \<in> subterms t \<Longrightarrow> t \<in> subterms_fm (last b) \<Longrightarrow> x \<in> subterms_branch b"
+  using subterms_branch_def subterms_subterms_fm_trans by fastforce
+
+method subterms_trans =
+  (match conclusion in "X \<in> subterms_branch B" for X B \<Rightarrow> \<open>
+    match premises in X: "X \<in> subterms T" for T \<Rightarrow> \<open>
+        (match premises in not_Nil: "B \<noteq> []" and T: "T \<in> subterms_fm (last B)" \<Rightarrow> \<open>
+          (rule subterms_branch_subterms_subterms_fm_trans[OF not_Nil X T]) 
+        \<close>)
+      | (match premises in T: "Atom (b, ?C T) \<in> set B" for b \<Rightarrow> \<open>
+          (rule subterms_branch_subterms_subterms_atom_trans[OF T X]; simp; fail)
+        \<close>)
+    \<close>
+  \<close>)
+
+lemmas subterms_simps =
+  subterms_branch_simps subterms_fm.simps subterms_literal.simps subterms_atom.simps
+
+method solve_subterms = (unfold subterms_simps, safe; subterms_trans)
+
+lemma lextends_subterms_eq:
+  "lextends b' b \<Longrightarrow> b \<noteq> [] \<Longrightarrow> subterms_branch b' = subterms_branch b"
+proof(induction rule: lextends.induct)
+  case (1 b' b)
   then show ?case
-    sorry   
+    apply(induction rule: lextends_fm.induct)
+    apply(auto simp: subterms_branch_def)
+    done
 next
-  case (2 bs b2 b1)
-  then show ?case sorry
+  case (2 b' b)
+  then show ?case
+    apply(induction rule: lextends_un.induct)
+         apply(solve_subterms+)
+    done
+
 next
-  case (3 b1)
-  then show ?case using aux1 apply fast sorry
+  case (3 b' b)
+  then show ?case
+    apply(induction rule: lextends_int.induct)
+         apply(solve_subterms+)
+    done
 next
-  case (4 bs b1)
-  then show ?case using aux2 apply fast sorry
+  case (4 b' b)
+  then show ?case
+    apply(induction rule: lextends_diff.induct)
+         apply(solve_subterms+)
+    done
+next
+  case (5 b' b)
+  then show ?case
+  proof(induction rule: lextends_single.induct)
+    case (1 t1 branch)
+    then show ?case
+      apply(auto simp: subterms_branch_simps)
+      by (metis subterms_refl UnCI subterms_branch_subterms_subterms_fm_trans subterms.simps(6))+
+  qed solve_subterms+
+next
+  case (6 b' b)
+  then show ?case
+  proof(induction rule: lextends_eq.induct)
+    case (1 t1 t2 branch l)
+    then show ?case
+      by (auto simp: subterms_branch_def subterms_branch_subterms_subterms_atom_trans
+               dest!: subsetD[OF subterms_literal_subst_tlvl_subs])
+  next
+    case (2 t1 t2 branch l)
+    then show ?case
+      by (auto simp: subterms_branch_def subterms_branch_subterms_subterms_atom_trans
+               dest!: subsetD[OF subterms_literal_subst_tlvl_subs])
+  next
+    case (3 s t branch s')
+    then show ?case
+      by (auto simp: subterms_branch_simps subterms_branch_subterms_subterms_atom_trans)
+  qed
 qed
 
+lemma lextends_vars_branch_eq:
+  "lextends b' b \<Longrightarrow> b \<noteq> [] \<Longrightarrow> vars_branch b' = vars_branch b"
+  using lextends_subterms_eq subterms_branch_eq_if_vars_branch_eq by metis
+
+lemma lextends_last_eq:
+  "lextends b' b \<Longrightarrow> b \<noteq> [] \<Longrightarrow> last b' = last b"
+  using lextends_strict_suffix unfolding strict_suffix_def suffix_def by force
+
+lemma lextends_params_eq:
+  "lextends b' b \<Longrightarrow> b \<noteq> [] \<Longrightarrow> params b' = params b"
+  using lextends_last_eq lextends_vars_branch_eq unfolding params_def by force
+
+lemma lemma_2_aux:
+  assumes "lextends b' b" "b \<noteq> []"
+  defines "P \<equiv> (\<lambda>b c t. AT (Var c \<approx>\<^sub>s t) \<notin> set b \<and> AT (t \<approx>\<^sub>s Var c) \<notin> set b)"
+  assumes "\<forall>c \<in> params' b. \<forall>t \<in> subterms_fm (last b). P b c t"
+  shows "\<forall>c \<in> params' b'. \<forall>t \<in> subterms_fm (last b). P b' c t"
+  using assms(1,2,4)
+proof(induction rule: lextends.induct)
+  case (1 b' b)
+  then show ?case
+    apply(induction rule: lextends_fm.induct)
+         apply(auto simp: P_def params'_def)
+    done
+next
+  case (2 b' b)
+  then show ?case
+    apply(induction rule: lextends_un.induct)
+    apply(auto simp: P_def params'_def)
+    done
+next
+  case (3 b' b)
+  then show ?case
+    apply(induction rule: lextends_int.induct)
+    apply(auto simp: P_def params'_def)
+
+    done
+next
+  case (4 b' b)
+  then show ?case
+    apply(induction rule: lextends_diff.induct)
+    apply(auto simp: P_def params'_def)
+    done
+next
+  case (5 b' b)
+  then show ?case
+    apply(induction rule: lextends_single.induct)
+    apply(auto simp: P_def params'_def)
+    done
+next
+  case (6 b' b)
+  then show ?case
+    apply(induction rule: lextends_eq.induct)
+    apply(auto simp: P_def params'_def)
+    done
+qed
+
+thm params'_def
+
+lemma lemma_2:
+  assumes "lextends b' b" "b \<noteq> []"
+  defines "P \<equiv> (\<lambda>b c t. AT (Var c \<approx>\<^sub>s t) \<notin> set b \<and> AT (t \<approx>\<^sub>s Var c) \<notin> set b)"
+  defines "params_subterms \<equiv> (\<lambda>b. Var ` params b \<union> subterms_fm (last b))"
+  assumes "\<forall>c \<in> params' b. \<forall>t \<in> params_subterms b. P b c t"
+  shows "\<forall>c \<in> params' b'. \<forall>t \<in> params_subterms b'. P b' c t"
+  sorry
+  
 
 end

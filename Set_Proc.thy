@@ -582,7 +582,7 @@ definition "params branch \<equiv> vars_branch branch - vars_pset_fm (last branc
 
 definition "params' b \<equiv>
   {c \<in> params b. \<forall>t \<in> subterms_fm (last b).
-    AT (Var c \<approx>\<^sub>s t) \<notin> set b \<and> AT (t \<approx>\<^sub>s Var c) \<notin> set b \<and> AT (t \<in>\<^sub>s Var c) \<in> set b}"
+    AT (Var c \<approx>\<^sub>s t) \<notin> set b \<and> AT (t \<approx>\<^sub>s Var c) \<notin> set b }"
 
 definition "subterms_branch' branch \<equiv>
   subterms_fm (last branch) \<union> Var ` (params branch - params' branch)"
@@ -742,6 +742,48 @@ lemma lextends_params_eq:
   "lextends b' b \<Longrightarrow> b \<noteq> [] \<Longrightarrow> params b' = params b"
   using lextends_last_eq lextends_vars_branch_eq unfolding params_def by force
 
+lemma lextends_params'_subs:
+  assumes "lextends b' b" "b \<noteq> []"
+  shows "params' b' \<subseteq> params' b"
+  using assms lextends_params_eq[OF assms]
+proof(induction rule: lextends.induct)
+  case (1 b' b)
+  then show ?case
+    apply(induction rule: lextends_fm.induct)
+         apply(auto simp: params'_def)
+    done
+next
+  case (2 b' b)
+  then show ?case
+    apply(induction rule: lextends_un.induct)
+         apply(auto simp: params'_def lextends_params_eq)
+    done
+next
+  case (3 b' b)
+  then show ?case
+    apply(induction rule: lextends_int.induct)
+    apply(auto simp: params'_def)
+    done
+next
+  case (4 b' b)
+  then show ?case
+    apply(induction rule: lextends_diff.induct)
+    apply(auto simp: params'_def)
+    done
+next
+  case (5 b' b)
+  then show ?case
+    apply(induction rule: lextends_single.induct)
+    apply(auto simp: params'_def)
+    done
+next
+  case (6 b' b)
+  then show ?case
+    apply(induction rule: lextends_eq.induct)
+    apply(auto simp: params'_def)
+    done
+qed
+
 lemma lemma_2_aux:
   assumes "lextends b' b" "b \<noteq> []"
   defines "P \<equiv> (\<lambda>b c t. AT (Var c \<approx>\<^sub>s t) \<notin> set b \<and> AT (t \<approx>\<^sub>s Var c) \<notin> set b)"
@@ -789,13 +831,99 @@ qed
 
 thm params'_def
 
+lemma
+  assumes "lextends b' b" "b \<noteq> []"
+  defines "P \<equiv> (\<lambda>b. \<forall>t1 t2. AT (t1 \<in>\<^sub>s Single t2) \<in> set b \<longrightarrow> t2 \<in> subterms_fm (last b))"
+  assumes "P b"
+  shows "P b'"
+  using assms(1,2,4)
+proof(induction rule: lextends.induct)
+  case (1 b' b)
+  then show ?case
+    sorry
+next
+  case (2 b' b)
+  then show ?case
+    apply(induction rule: lextends_un.induct)
+    apply(auto simp: P_def)
+    done
+next
+  case (3 b' b)
+  then show ?case
+    apply(induction rule: lextends_int.induct)
+    apply(auto simp: P_def params'_def)
+
+    done
+next
+  case (4 b' b)
+  then show ?case
+    apply(induction rule: lextends_diff.induct)
+    apply(auto simp: P_def params'_def)
+    done
+next
+  case (5 b' b)
+  then show ?case
+    apply(induction rule: lextends_single.induct)
+    apply(auto simp: P_def params'_def)
+    done
+next
+  case (6 b' b)
+  then show ?case
+    apply(induction rule: lextends_eq.induct)
+    apply(auto simp: P_def params'_def)
+    done
+qed
+
 lemma lemma_2:
   assumes "lextends b' b" "b \<noteq> []"
   defines "P \<equiv> (\<lambda>b c t. AT (Var c \<approx>\<^sub>s t) \<notin> set b \<and> AT (t \<approx>\<^sub>s Var c) \<notin> set b)"
   defines "params_subterms \<equiv> (\<lambda>b. Var ` params b \<union> subterms_fm (last b))"
   assumes "\<forall>c \<in> params' b. \<forall>t \<in> params_subterms b. P b c t"
   shows "\<forall>c \<in> params' b'. \<forall>t \<in> params_subterms b'. P b' c t"
-  sorry
-  
-
+  using assms(1,2,5) lextends_last_eq[OF assms(1,2)] lextends_params_eq[OF assms(1,2)]
+    lextends_params'_subs[OF assms(1,2)]
+proof(induction rule: lextends.induct)
+  case (1 b' b)
+  then show ?case sorry
+next
+  case (2 b' b)
+  then show ?case
+    apply(induction rule: lextends_un.induct)
+         apply(auto simp: params_subterms_def P_def)
+    done
+next
+  case (3 b' b)
+  then show ?case
+    apply(induction rule: lextends_int.induct)
+         apply(auto simp: params_subterms_def P_def)
+    done
+next
+  case (4 b' b)
+  then show ?case
+    apply(induction rule: lextends_diff.induct)
+         apply(auto simp: params_subterms_def P_def)
+    done
+next
+  case (5 b' b)
+  then show ?case
+  proof(induction rule: lextends_single.induct)
+    case (2 s t1 branch)
+    have "\<forall>c \<in> params' (AT (s \<approx>\<^sub>s t1) # branch). \<forall>t \<in> params_subterms branch.
+      AT (Var c \<approx>\<^sub>s t) \<noteq> AT (s \<approx>\<^sub>s t1) \<and> AT (t \<approx>\<^sub>s Var c) \<noteq> AT (s \<approx>\<^sub>s t1)"
+    proof(safe, goal_cases)
+      case (1 c t)
+      with 2 have "t1 \<in> Var ` params (AT (Var c \<approx>\<^sub>s t1) # branch)"
+        unfolding params'_def params_subterms_def by auto
+      then show ?case sorry
+    next
+      case (2 c t)
+      then show ?case sorry
+    qed
+    with 2 show ?case unfolding params_subterms_def P_def by fastforce
+  qed (auto simp: params_subterms_def P_def)
+next
+  case (6 b' b)
+  then show ?case
+    sorry
+qed
 end

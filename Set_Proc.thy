@@ -464,8 +464,78 @@ method lextends_induct =
     | match premises in A[thin]: "lextends_single _ _" \<Rightarrow> \<open>rule lextends_single.induct[OF A]\<close>
     | match premises in A[thin]: "lextends_eq _ _" \<Rightarrow> \<open>rule lextends_eq.induct[OF A]\<close> ))
 
+lemmas lextends_inducts =
+  lextends_fm.induct lextends_un.induct lextends_int.induct lextends_diff.induct
+  lextends_single.induct lextends_eq.induct
+
+thm lextends.induct[of p]
+context
+begin
+
+ML \<open>
+  let
+    val P_b'_b = @{term \<open>(P :: 'a branch \<Rightarrow> 'a branch \<Rightarrow> bool) b' b\<close>}
+    val (P, bs) = Term.strip_comb P_b'_b
+    val _ = @{print} P
+    val _ = Induct_Tacs.induct_tac
+    val ind_thms = map (Drule.infer_instantiate' @{context} [NONE, NONE, SOME (Thm.cterm_of @{context} P)]) @{thms lextends_inducts}
+    val prems = maps (tl o Thm.prems_of) ind_thms
+    val fst_prem = HOLogic.mk_Trueprop (Term.list_comb (@{term \<open>lextends :: 'a branch \<Rightarrow> 'a branch \<Rightarrow> bool\<close>}, bs))
+    val goal = Logic.list_implies (fst_prem :: prems, HOLogic.mk_Trueprop P_b'_b)
+    fun tac ctxt =
+      Induct_Tacs.induct_tac ctxt [] (SOME [@{thm lextends.induct}]) THEN_ALL_NEW
+      K (print_tac ctxt "hello") THEN'
+      Method.insert_tac ctxt (@{thm lextends.induct} :: @{thms lextends_inducts})
+      THEN' blast_tac ctxt
+  in
+    Goal.prove @{context} ["P", "b'", "b"] [] goal (fn {context=ctxt,...} => tac ctxt 1)
+  end
+\<close>
+
+lemma
+  assumes "lextends b' b"
+  shows "
+    (\<And>p q branch. And p q \<in> set branch \<Longrightarrow> P (p # q # branch) branch) \<Longrightarrow>
+    (\<And>p q branch. Neg (Or p q) \<in> set branch \<Longrightarrow> P (Neg p # Neg q # branch) branch) \<Longrightarrow>
+    (\<And>p q branch. Or p q \<in> set branch \<Longrightarrow> Neg p \<in> set branch \<Longrightarrow> P (q # branch) branch) \<Longrightarrow>
+    (\<And>p q branch. Or p q \<in> set branch \<Longrightarrow> Neg q \<in> set branch \<Longrightarrow> P (p # branch) branch) \<Longrightarrow>
+    (\<And>p q branch. Neg (And p q) \<in> set branch \<Longrightarrow> p \<in> set branch \<Longrightarrow> P (Neg q # branch) branch) \<Longrightarrow>
+    (\<And>p q branch. Neg (And p q) \<in> set branch \<Longrightarrow> q \<in> set branch \<Longrightarrow> P (Neg p # branch) branch) \<Longrightarrow>
+    (\<And>s t1 t2 branch. AF (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set branch \<Longrightarrow> P (AF (s \<in>\<^sub>s t1) # AF (s \<in>\<^sub>s t2) # branch) branch) \<Longrightarrow>
+    (\<And>s t1 branch t2. AT (s \<in>\<^sub>s t1) \<in> set branch \<Longrightarrow> t1 \<squnion>\<^sub>s t2 \<in> subterms_fm (last branch) \<Longrightarrow> P (AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) # branch) branch) \<Longrightarrow>
+    (\<And>s t2 branch t1. AT (s \<in>\<^sub>s t2) \<in> set branch \<Longrightarrow> t1 \<squnion>\<^sub>s t2 \<in> subterms_fm (last branch) \<Longrightarrow> P (AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) # branch) branch) \<Longrightarrow>
+    (\<And>s t1 t2 branch. AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set branch \<Longrightarrow> AF (s \<in>\<^sub>s t1) \<in> set branch \<Longrightarrow> P (AT (s \<in>\<^sub>s t2) # branch) branch) \<Longrightarrow>
+    (\<And>s t1 t2 branch. AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set branch \<Longrightarrow> AF (s \<in>\<^sub>s t2) \<in> set branch \<Longrightarrow> P (AT (s \<in>\<^sub>s t1) # branch) branch) \<Longrightarrow>
+    (\<And>s t1 branch t2. AF (s \<in>\<^sub>s t1) \<in> set branch \<Longrightarrow> AF (s \<in>\<^sub>s t2) \<in> set branch \<Longrightarrow> t1 \<squnion>\<^sub>s t2 \<in> subterms_fm (last branch) \<Longrightarrow> P (AF (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) # branch) branch) \<Longrightarrow>
+    (\<And>s t1 t2 branch. AT (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) \<in> set branch \<Longrightarrow> P (AT (s \<in>\<^sub>s t1) # AT (s \<in>\<^sub>s t2) # branch) branch) \<Longrightarrow>
+    (\<And>s t1 branch t2. AF (s \<in>\<^sub>s t1) \<in> set branch \<Longrightarrow> t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm (last branch) \<Longrightarrow> P (AF (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) # branch) branch) \<Longrightarrow>
+    (\<And>s t2 branch t1. AF (s \<in>\<^sub>s t2) \<in> set branch \<Longrightarrow> t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm (last branch) \<Longrightarrow> P (AF (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) # branch) branch) \<Longrightarrow>
+    (\<And>s t1 t2 branch. AF (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) \<in> set branch \<Longrightarrow> AT (s \<in>\<^sub>s t1) \<in> set branch \<Longrightarrow> P (AF (s \<in>\<^sub>s t2) # branch) branch) \<Longrightarrow>
+    (\<And>s t1 t2 branch. AF (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) \<in> set branch \<Longrightarrow> AT (s \<in>\<^sub>s t2) \<in> set branch \<Longrightarrow> P (AF (s \<in>\<^sub>s t1) # branch) branch) \<Longrightarrow>
+    (\<And>s t1 branch t2. AT (s \<in>\<^sub>s t1) \<in> set branch \<Longrightarrow> AT (s \<in>\<^sub>s t2) \<in> set branch \<Longrightarrow> t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm (last branch) \<Longrightarrow> P (AT (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) # branch) branch) \<Longrightarrow>
+    (\<And>s t1 t2 branch. AT (s \<in>\<^sub>s t1 -\<^sub>s t2) \<in> set branch \<Longrightarrow> P (AT (s \<in>\<^sub>s t1) # AF (s \<in>\<^sub>s t2) # branch) branch) \<Longrightarrow>
+    (\<And>s t1 branch t2. AF (s \<in>\<^sub>s t1) \<in> set branch \<Longrightarrow> t1 -\<^sub>s t2 \<in> subterms_fm (last branch) \<Longrightarrow> P (AF (s \<in>\<^sub>s t1 -\<^sub>s t2) # branch) branch) \<Longrightarrow>
+    (\<And>s t2 branch t1. AT (s \<in>\<^sub>s t2) \<in> set branch \<Longrightarrow> t1 -\<^sub>s t2 \<in> subterms_fm (last branch) \<Longrightarrow> P (AF (s \<in>\<^sub>s t1 -\<^sub>s t2) # branch) branch) \<Longrightarrow>
+    (\<And>s t1 t2 branch. AF (s \<in>\<^sub>s t1 -\<^sub>s t2) \<in> set branch \<Longrightarrow> AT (s \<in>\<^sub>s t1) \<in> set branch \<Longrightarrow> P (AT (s \<in>\<^sub>s t2) # branch) branch) \<Longrightarrow>
+    (\<And>s t1 t2 branch. AF (s \<in>\<^sub>s t1 -\<^sub>s t2) \<in> set branch \<Longrightarrow> AF (s \<in>\<^sub>s t2) \<in> set branch \<Longrightarrow> P (AF (s \<in>\<^sub>s t1) # branch) branch) \<Longrightarrow>
+    (\<And>s t1 branch t2. AT (s \<in>\<^sub>s t1) \<in> set branch \<Longrightarrow> AF (s \<in>\<^sub>s t2) \<in> set branch \<Longrightarrow> t1 -\<^sub>s t2 \<in> subterms_fm (last branch) \<Longrightarrow> P (AT (s \<in>\<^sub>s t1 -\<^sub>s t2) # branch) branch) \<Longrightarrow>
+    (\<And>t1 branch. Single t1 \<in> subterms_fm (last branch) \<Longrightarrow> P (AT (t1 \<in>\<^sub>s Single t1) # branch) branch) \<Longrightarrow>
+    (\<And>s t1 branch. AT (s \<in>\<^sub>s Single t1) \<in> set branch \<Longrightarrow> P (AT (s \<approx>\<^sub>s t1) # branch) branch) \<Longrightarrow>
+    (\<And>s t1 branch. AF (s \<in>\<^sub>s Single t1) \<in> set branch \<Longrightarrow> P (AF (s \<approx>\<^sub>s t1) # branch) branch) \<Longrightarrow>
+    (\<And>t1 t2 branch l. AT (t1 \<approx>\<^sub>s t2) \<in> set branch \<Longrightarrow> Atom l \<in> set branch \<Longrightarrow> t1 \<in> tlvl_terms_literal l \<Longrightarrow> P (Atom (subst_tlvl_literal t1 t2 l) # branch) branch) \<Longrightarrow>
+    (\<And>t1 t2 branch l. AT (t1 \<approx>\<^sub>s t2) \<in> set branch \<Longrightarrow> Atom l \<in> set branch \<Longrightarrow> t2 \<in> tlvl_terms_literal l \<Longrightarrow> P (Atom (subst_tlvl_literal t2 t1 l) # branch) branch) \<Longrightarrow>
+    (\<And>s t branch s'. AT (s \<in>\<^sub>s t) \<in> set branch \<Longrightarrow> AF (s' \<in>\<^sub>s t) \<in> set branch \<Longrightarrow> P (AF (s \<approx>\<^sub>s s') # branch) branch) \<Longrightarrow> P b' b"
+  using assms
+  apply(lextends_induct)
+  subgoal apply(induction rule: lextends_fm.induct) by blast+
+
+  thm lextends.induct lextends_fm.induct
 lemma lextends_strict_suffix:
-  "lextends b1 b2 \<Longrightarrow> strict_suffix b2 b1"
+  "lextends b1 b2 \<Longrightarrow> P b1 b2 \<Longrightarrow> strict_suffix b2 b1"
+  apply(insert TrueI)
+  apply(induction rule: lextends.induct)
+  apply(match premises in A: "lextends_fm b' b" for b' b \<Rightarrow> \<open>use nothing in \<open>induction b' b rule: lextends_fm.induct\<close>\<close>)
+  subgoal for b' b
   by (lextends_induct) (auto simp: strict_suffix_def suffix_def)
 
 lemma subterms_refl[simp]:

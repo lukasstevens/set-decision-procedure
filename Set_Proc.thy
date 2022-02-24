@@ -468,31 +468,7 @@ lemmas lextends_inducts =
   lextends_fm.induct lextends_un.induct lextends_int.induct lextends_diff.induct
   lextends_single.induct lextends_eq.induct
 
-thm lextends.induct[of p]
-context
-begin
-
-ML \<open>
-  let
-    val P_b'_b = @{term \<open>(P :: 'a branch \<Rightarrow> 'a branch \<Rightarrow> bool) b' b\<close>}
-    val (P, bs) = Term.strip_comb P_b'_b
-    val _ = @{print} P
-    val _ = Induct_Tacs.induct_tac
-    val ind_thms = map (Drule.infer_instantiate' @{context} [NONE, NONE, SOME (Thm.cterm_of @{context} P)]) @{thms lextends_inducts}
-    val prems = maps (tl o Thm.prems_of) ind_thms
-    val fst_prem = HOLogic.mk_Trueprop (Term.list_comb (@{term \<open>lextends :: 'a branch \<Rightarrow> 'a branch \<Rightarrow> bool\<close>}, bs))
-    val goal = Logic.list_implies (fst_prem :: prems, HOLogic.mk_Trueprop P_b'_b)
-    fun tac ctxt =
-      Induct_Tacs.induct_tac ctxt [] (SOME [@{thm lextends.induct}]) THEN_ALL_NEW
-      K (print_tac ctxt "hello") THEN'
-      Method.insert_tac ctxt (@{thm lextends.induct} :: @{thms lextends_inducts})
-      THEN' blast_tac ctxt
-  in
-    Goal.prove @{context} ["P", "b'", "b"] [] goal (fn {context=ctxt,...} => tac ctxt 1)
-  end
-\<close>
-
-lemma
+lemma lextends_induct[consumes 1]:
   assumes "lextends b' b"
   shows "
     (\<And>p q branch. And p q \<in> set branch \<Longrightarrow> P (p # q # branch) branch) \<Longrightarrow>
@@ -526,17 +502,18 @@ lemma
     (\<And>t1 t2 branch l. AT (t1 \<approx>\<^sub>s t2) \<in> set branch \<Longrightarrow> Atom l \<in> set branch \<Longrightarrow> t2 \<in> tlvl_terms_literal l \<Longrightarrow> P (Atom (subst_tlvl_literal t2 t1 l) # branch) branch) \<Longrightarrow>
     (\<And>s t branch s'. AT (s \<in>\<^sub>s t) \<in> set branch \<Longrightarrow> AF (s' \<in>\<^sub>s t) \<in> set branch \<Longrightarrow> P (AF (s \<approx>\<^sub>s s') # branch) branch) \<Longrightarrow> P b' b"
   using assms
-  apply(lextends_induct)
-  subgoal apply(induction rule: lextends_fm.induct) by blast+
-
-  thm lextends.induct lextends_fm.induct
-lemma lextends_strict_suffix:
-  "lextends b1 b2 \<Longrightarrow> P b1 b2 \<Longrightarrow> strict_suffix b2 b1"
-  apply(insert TrueI)
   apply(induction rule: lextends.induct)
-  apply(match premises in A: "lextends_fm b' b" for b' b \<Rightarrow> \<open>use nothing in \<open>induction b' b rule: lextends_fm.induct\<close>\<close>)
-  subgoal for b' b
-  by (lextends_induct) (auto simp: strict_suffix_def suffix_def)
+  subgoal apply(induction rule: lextends_fm.induct) by metis+
+  subgoal apply(induction rule: lextends_un.induct) by metis+
+  subgoal apply(induction rule: lextends_int.induct) by metis+
+  subgoal apply(induction rule: lextends_diff.induct) by metis+
+  subgoal apply(induction rule: lextends_single.induct) by metis+
+  subgoal apply(induction rule: lextends_eq.induct) by metis+
+  done
+
+lemma lextends_strict_suffix:
+  "lextends b1 b2 \<Longrightarrow> strict_suffix b2 b1"
+  by (induction rule: lextends_induct) (auto simp: strict_suffix_def suffix_def)
 
 lemma subterms_refl[simp]:
   "t \<in> subterms t"
@@ -816,43 +793,7 @@ lemma lextends_params'_subs:
   assumes "lextends b' b" "b \<noteq> []"
   shows "params' b' \<subseteq> params' b"
   using assms lextends_params_eq[OF assms]
-proof(induction rule: lextends.induct)
-  case (1 b' b)
-  then show ?case
-    apply(induction rule: lextends_fm.induct)
-         apply(auto simp: params'_def)
-    done
-next
-  case (2 b' b)
-  then show ?case
-    apply(induction rule: lextends_un.induct)
-         apply(auto simp: params'_def lextends_params_eq)
-    done
-next
-  case (3 b' b)
-  then show ?case
-    apply(induction rule: lextends_int.induct)
-    apply(auto simp: params'_def)
-    done
-next
-  case (4 b' b)
-  then show ?case
-    apply(induction rule: lextends_diff.induct)
-    apply(auto simp: params'_def)
-    done
-next
-  case (5 b' b)
-  then show ?case
-    apply(induction rule: lextends_single.induct)
-    apply(auto simp: params'_def)
-    done
-next
-  case (6 b' b)
-  then show ?case
-    apply(induction rule: lextends_eq.induct)
-    apply(auto simp: params'_def)
-    done
-qed
+  by (induction rule: lextends_induct) (auto simp: params'_def)
 
 lemma lemma_2_aux:
   assumes "lextends b' b" "b \<noteq> []"
@@ -860,46 +801,143 @@ lemma lemma_2_aux:
   assumes "\<forall>c \<in> params' b. \<forall>t \<in> subterms_fm (last b). P b c t"
   shows "\<forall>c \<in> params' b'. \<forall>t \<in> subterms_fm (last b). P b' c t"
   using assms(1,2,4)
+  by (induction rule: lextends_induct) (auto simp: params'_def P_def)
+
+lemma subterms_intros:
+  "t1 \<squnion>\<^sub>s t2 \<in> subterms_fm \<phi> \<Longrightarrow> t1 \<in> subterms_fm \<phi>"
+  "t1 \<squnion>\<^sub>s t2 \<in> subterms_fm \<phi> \<Longrightarrow> t2 \<in> subterms_fm \<phi>"
+  "t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm \<phi> \<Longrightarrow> t1 \<in> subterms_fm \<phi>"
+  "t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm \<phi> \<Longrightarrow> t2 \<in> subterms_fm \<phi>"
+  "t1 -\<^sub>s t2 \<in> subterms_fm \<phi> \<Longrightarrow> t1 \<in> subterms_fm \<phi>"
+  "t1 -\<^sub>s t2 \<in> subterms_fm \<phi> \<Longrightarrow> t2 \<in> subterms_fm \<phi>"
+  "Single t \<in> subterms_fm \<phi> \<Longrightarrow> t \<in> subterms_fm \<phi>"
+  by (metis UnCI subterms.simps subterms_refl subterms_subterms_fm_trans)+
+
+definition "no_new_subterms b \<equiv>
+    (\<forall>p s t1 t2. Atom (p, s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set b \<longrightarrow> t1 \<squnion>\<^sub>s t2 \<in> subterms_fm (last b))
+  \<and> (\<forall>p s t1 t2. Atom (p, s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) \<in> set b \<longrightarrow> t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm (last b))
+  \<and> (\<forall>p s t1 t2. Atom (p, s \<in>\<^sub>s t1 -\<^sub>s t2) \<in> set b \<longrightarrow> t1 -\<^sub>s t2 \<in> subterms_fm (last b))
+  \<and> (\<forall>p s t. Atom (p, s \<in>\<^sub>s Single t) \<in> set b \<longrightarrow> t \<in> subterms_fm (last b))
+  \<and> (\<forall>p s t1 t2. Atom (p, t1 \<squnion>\<^sub>s t2 \<in>\<^sub>s s) \<in> set b \<longrightarrow> t1 \<squnion>\<^sub>s t2 \<in> subterms_fm (last b))
+  \<and> (\<forall>p s t1 t2. Atom (p, t1 \<sqinter>\<^sub>s t2 \<in>\<^sub>s s) \<in> set b \<longrightarrow> t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm (last b))
+  \<and> (\<forall>p s t1 t2. Atom (p, t1 -\<^sub>s t2 \<in>\<^sub>s s) \<in> set b \<longrightarrow> t1 -\<^sub>s t2 \<in> subterms_fm (last b))
+  \<and> (\<forall>p s t. Atom (p, Single t \<in>\<^sub>s s) \<in> set b \<longrightarrow> t \<in> subterms_fm (last b))
+  \<and> (\<forall>p s t1 t2. Atom (p, s \<approx>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set b \<longrightarrow> t1 \<squnion>\<^sub>s t2 \<in> subterms_fm (last b))
+  \<and> (\<forall>p s t1 t2. Atom (p, s \<approx>\<^sub>s t1 \<sqinter>\<^sub>s t2) \<in> set b \<longrightarrow> t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm (last b))
+  \<and> (\<forall>p s t1 t2. Atom (p, s \<approx>\<^sub>s t1 -\<^sub>s t2) \<in> set b \<longrightarrow> t1 -\<^sub>s t2 \<in> subterms_fm (last b))
+  \<and> (\<forall>p s t. Atom (p, s \<approx>\<^sub>s Single t) \<in> set b \<longrightarrow> t \<in> subterms_fm (last b))
+  \<and> (\<forall>p s t1 t2. Atom (p, t1 \<squnion>\<^sub>s t2 \<approx>\<^sub>s s) \<in> set b \<longrightarrow> t1 \<squnion>\<^sub>s t2 \<in> subterms_fm (last b))
+  \<and> (\<forall>p s t1 t2. Atom (p, t1 \<sqinter>\<^sub>s t2 \<approx>\<^sub>s s) \<in> set b \<longrightarrow> t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm (last b))
+  \<and> (\<forall>p s t1 t2. Atom (p, t1 -\<^sub>s t2 \<approx>\<^sub>s s) \<in> set b \<longrightarrow> t1 -\<^sub>s t2 \<in> subterms_fm (last b))
+  \<and> (\<forall>p s t. Atom (p, Single t \<approx>\<^sub>s s) \<in> set b \<longrightarrow> t \<in> subterms_fm (last b))"
+
+lemma
+  assumes "lextends b' b" "b \<noteq> []"
+  assumes "no_new_subterms b"
+  shows "no_new_subterms b'"
+  using assms
 proof(induction rule: lextends.induct)
   case (1 b' b)
+  then show ?case apply(auto simp: no_new_subterms_def) sledgehammer sorry
+next
+  case (2 b' b)
   then show ?case
-    apply(induction rule: lextends_fm.induct)
-         apply(auto simp: P_def params'_def)
+    unfolding no_new_subterms_def
+    apply(induction rule: lextends_un.induct)
+         apply(simp_all)
+      apply (meson subterms_intros)+
     done
+next
+  case (3 b' b)
+  then show ?case
+    unfolding no_new_subterms_def
+    apply(induction rule: lextends_int.induct)
+         apply(simp_all)
+    by (meson subterms_intros)+
+
+next
+  case (4 b' b)
+  then show ?case
+    unfolding no_new_subterms_def
+    apply(induction rule: lextends_diff.induct)
+         apply(simp_all)
+        by (meson subterms_intros)+
+next
+  case (5 b' b)
+  then show ?case
+    unfolding no_new_subterms_def
+    apply(induction rule: lextends_single.induct)
+      apply(simp_all)
+      apply (meson subterms_intros(7))+
+    done
+next
+  case (6 b' b)
+  then show ?case
+  proof(induction rule: lextends_eq.induct)
+    case (1 t1 t2 branch l)
+    then show ?case apply(cases l) subgoal for a b apply(cases b) apply(auto simp: no_new_subterms_def) done done
+  next
+    case (2 t1 t2 branch l)
+    then show ?case apply(cases l) subgoal for a b apply(cases b) apply(auto simp: no_new_subterms_def) done done
+  next
+    case (3 s t branch s')
+    then show ?case apply(auto simp: no_new_subterms_def) done
+  qed
+qed
+
+
+lemma
+  assumes "lextends b' b" "b \<noteq> []"
+  defines "P \<equiv> (\<lambda>b. \<forall>s t1 t2. AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set b \<longrightarrow> t1 \<in> subterms_fm (last b) \<and> t2 \<in> subterms_fm (last b))"
+  assumes "P b"
+  shows "P b'"
+  using assms(1,2,4)
+proof(induction rule: lextends.induct)
+  case (1 b' b)
+  then show ?case sorry
 next
   case (2 b' b)
   then show ?case
     apply(induction rule: lextends_un.induct)
-    apply(auto simp: P_def params'_def)
+    apply(auto simp: P_def intro: subterms_intros)
     done
 next
   case (3 b' b)
   then show ?case
     apply(induction rule: lextends_int.induct)
-    apply(auto simp: P_def params'_def)
-
-    done
+    apply(auto simp: P_def)
+    sorry
 next
   case (4 b' b)
-  then show ?case
+  then show ?case 
     apply(induction rule: lextends_diff.induct)
-    apply(auto simp: P_def params'_def)
-    done
+    apply(auto simp: P_def)
+    sorry
 next
   case (5 b' b)
   then show ?case
     apply(induction rule: lextends_single.induct)
-    apply(auto simp: P_def params'_def)
+    apply(auto simp: P_def)
     done
 next
   case (6 b' b)
   then show ?case
     apply(induction rule: lextends_eq.induct)
-    apply(auto simp: P_def params'_def)
-    done
+      apply(auto simp: P_def)
+  proof(goal_cases)
+    case (1 t1 t2 branch a b s t1a t2a)
+    then show ?case sorry
+  next
+    case (2 t1 t2 branch a b s t1a t2a)
+    then show ?case sorry
+  next
+    case (3 t1 t2 branch a b s t1a t2a)
+    then show ?case sorry
+  next
+    case (4 t1 t2 branch a b s t1a t2a)
+    then show ?case sorry
+  qed
 qed
-
-thm params'_def
 
 lemma
   assumes "lextends b' b" "b \<noteq> []"

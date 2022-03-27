@@ -250,7 +250,6 @@ proof -
             qed auto
           qed
           with nP_Suc have ?thesis if "s \<in> T" "s' \<notin> T"
-
             using that \<open>height s' < height t2\<close> by linarith
           ultimately show ?thesis
             using nP_Suc Suc \<open>s \<in> P \<union> T\<close> by auto
@@ -505,7 +504,7 @@ lemma subterms_subterms_trans:
        apply(auto)
   done
 
-lemma subterms_subterms_atom_trans:
+lemma subterms_subterms_literal_trans:
   "s \<in> subterms t \<Longrightarrow> t \<in> subterms_literal v \<Longrightarrow> s \<in> subterms_literal v"
   apply(cases v rule: subterms_literal.cases)
   using subterms_subterms_trans by auto
@@ -513,7 +512,7 @@ lemma subterms_subterms_atom_trans:
 lemma subterms_subterms_fm_trans:
   "s \<in> subterms t \<Longrightarrow> t \<in> subterms_fm \<phi> \<Longrightarrow> s \<in> subterms_fm \<phi>"
   apply(induction \<phi>)
-  using subterms_subterms_atom_trans by (force)+
+  using subterms_subterms_literal_trans by (force)+
 
 lemma subterms_subterms_branch_trans:
   "s \<in> subterms t \<Longrightarrow> t \<in> subterms_branch b \<Longrightarrow> s \<in> subterms_branch b"
@@ -616,17 +615,16 @@ lemma vars_fm_Atom[simp]: "vars_fm (Atom (b, a)) = set_pset_atom a"
 
 lemma Un_set_pset_term_subterms_eq_set_pset_term:
   "\<Union>(set_pset_term ` subterms t) = set_pset_term t"
-  apply(induction t)
-       apply(auto)
-  done
+  by (induction t) auto
 
 lemma Un_set_pset_term_subterms_fm_eq_vars_fm:
   "\<Union>(set_pset_term ` subterms_fm \<phi>) = vars_fm \<phi>"
-  apply(induction \<phi>)
-  using Un_set_pset_term_subterms_eq_set_pset_term
-  apply(fastforce simp: vars_fm_simps)
-  using Un_set_pset_term_subteerms_atom_eq_set_pset_atom
-  by (fastforce simp: vars_fm_simps)+
+proof(induction \<phi>)
+  case (Atom x)
+  then show ?case
+    by (cases x rule: subterms_literal.cases)
+       (auto simp: Un_set_pset_term_subterms_eq_set_pset_term vars_fm_simps)
+qed (fastforce simp: vars_fm_simps)+
 
 lemma Un_set_pset_term_subterms_branch_eq_vars_branch:
   "\<Union>(set_pset_term ` subterms_branch b) = vars_branch b"
@@ -649,22 +647,44 @@ lemma mem_pset_term_if_mem_subterms:
        apply(auto intro: pset_term.set_intros)
   done
 
-lemma mem_pset_atom_if_mem_subterms_atom:
-  "x \<in> set_pset_term s \<Longrightarrow> s \<in> subterms_literal a \<Longrightarrow> x \<in> set_pset_atom a"
-  apply(cases a)
-  using mem_pset_term_if_mem_subterms
-  by (fastforce intro: pset_atom.set_intros)+
-
 lemma mem_pset_fm_if_mem_subterm_fm:
   "x \<in> set_pset_term s \<Longrightarrow> s \<in> subterms_fm \<phi> \<Longrightarrow> x \<in> vars_fm \<phi>"
-  apply(induction \<phi>)
-     apply(auto simp: vars_fm_def mem_pset_atom_if_mem_subterms_atom)
+proof(induction \<phi>)
+  case (Atom x)
+  then show ?case
+    by (cases x rule: subterms_literal.cases)
+       (auto simp: mem_pset_term_if_mem_subterms vars_fm_simps)
+qed (auto simp: vars_fm_def)
+
+
+lemma set_pset_term_subs_subterms:
+  "v \<in> set_pset_term t \<Longrightarrow> Var v \<in> subterms t"
+  apply(induction t)
+       apply(auto)
   done
 
-lemma subterms_branch_subterms_subterms_atom_trans:
-  "Atom (b, a) \<in> set branch \<Longrightarrow> x \<in> subterms s \<Longrightarrow> s \<in> subterms_atom a \<Longrightarrow> x \<in> subterms_branch branch"
+lemma set_pset_atom_subs_subterms_literal:
+  "v \<in> set_pset_atom a \<Longrightarrow> Var v \<in> subterms_literal (b, a)"
+  apply(cases "(b, a)" rule: subterms_literal.cases)
+   apply(auto simp: set_pset_term_subs_subterms)
+  done
+
+lemma vars_fm_subs_subterms_fm:
+  "v \<in> vars_fm \<phi> \<Longrightarrow> Var v \<in> subterms_fm \<phi>"
+  apply(induction \<phi>)
+     apply(auto simp: set_pset_atom_subs_subterms_literal vars_fm_simps)
+  done
+
+lemma vars_branch_subs_subterms_branch:
+  "Var ` vars_branch b \<subseteq> subterms_branch b"
+  unfolding vars_branch_def subterms_branch_def
+  apply(auto simp: vars_fm_subs_subterms_fm)
+  done
+
+lemma subterms_branch_subterms_subterms_literal_trans:
+  "Atom a \<in> set b \<Longrightarrow> x \<in> subterms s \<Longrightarrow> s \<in> subterms_literal a \<Longrightarrow> x \<in> subterms_branch b"
   unfolding subterms_branch_def
-  by (metis UN_I subterms_fm.simps(1) subterms_literal.simps subterms_subterms_atom_trans)
+  by (metis UN_I subterms_fm.simps(1) subterms_literal.simps subterms_subterms_literal_trans)
 
 lemma subterms_branch_subterms_subterms_fm_trans:
   "b \<noteq> [] \<Longrightarrow> x \<in> subterms t \<Longrightarrow> t \<in> subterms_fm (last b) \<Longrightarrow> x \<in> subterms_branch b"
@@ -677,13 +697,13 @@ method subterms_trans =
           (rule subterms_branch_subterms_subterms_fm_trans[OF not_Nil X T]) 
         \<close>)
       | (match premises in T: "Atom (b, ?C T) \<in> set B" for b \<Rightarrow> \<open>
-          (rule subterms_branch_subterms_subterms_atom_trans[OF T X]; simp; fail)
+          (rule subterms_branch_subterms_subterms_literal_trans[OF T X]; simp; fail)
         \<close>)
     \<close>
   \<close>)
 
 lemmas subterms_simps =
-  subterms_branch_simps subterms_fm.simps subterms_literal.simps subterms_atom.simps
+  subterms_branch_simps subterms_fm.simps subterms_literal.simps
 
 method solve_subterms = (unfold subterms_simps, safe; subterms_trans)
 
@@ -729,17 +749,17 @@ next
   proof(induction rule: lextends_eq.induct)
     case (1 t1 t2 branch l)
     then show ?case
-      by (auto simp: subterms_branch_def subterms_branch_subterms_subterms_atom_trans
+      by (auto simp: subterms_branch_def subterms_branch_subterms_subterms_literal_trans
                dest!: subsetD[OF subterms_literal_subst_tlvl_subs])
   next
     case (2 t1 t2 branch l)
     then show ?case
-      by (auto simp: subterms_branch_def subterms_branch_subterms_subterms_atom_trans
+      by (auto simp: subterms_branch_def subterms_branch_subterms_subterms_literal_trans
                dest!: subsetD[OF subterms_literal_subst_tlvl_subs])
   next
     case (3 s t branch s')
     then show ?case
-      by (auto simp: subterms_branch_simps subterms_branch_subterms_subterms_atom_trans)
+      by (auto simp: subterms_branch_simps subterms_branch_subterms_subterms_literal_trans)
   qed
 qed
 
@@ -754,6 +774,15 @@ lemma lextends_last_eq:
 lemma lextends_params_eq:
   "lextends b' b \<Longrightarrow> b \<noteq> [] \<Longrightarrow> params b' = params b"
   using lextends_last_eq lextends_vars_branch_eq unfolding params_def by force
+
+lemma lextends_fm_params'_eq:
+  assumes "lextends_fm b' b" "b \<noteq> []"
+  assumes "\<forall>\<phi> \<in> set b. \<forall>a. \<phi> \<noteq> Atom a \<longrightarrow> vars_fm \<phi> \<inter> params b = {}"
+  shows "params' b' = params' b"
+  using assms
+  apply(induction rule: lextends_fm.induct)
+       apply(fastforce simp: params'_def params_def vars_branch_def vars_fm_simps)+
+  done
 
 lemma lextends_params'_subs:
   assumes "lextends b' b" "b \<noteq> []"
@@ -790,13 +819,58 @@ lemma subterms_branch_intros:
   unfolding subterms_branch_def using subterms_fm_intros by fast+
 
 definition "no_new_subterms b \<equiv>
-    (\<forall>t1 t2. t1 \<squnion>\<^sub>s t2 \<in> subterms_branch b \<longrightarrow> t1 \<squnion>\<^sub>s t2 \<in> subterms_fm (last b))
-  \<and> (\<forall>t1 t2. t1 \<sqinter>\<^sub>s t2 \<in> subterms_branch b \<longrightarrow> t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm (last b))
-  \<and> (\<forall>t1 t2. t1 -\<^sub>s t2 \<in> subterms_branch b \<longrightarrow> t1 -\<^sub>s t2 \<in> subterms_fm (last b))
-  \<and> (\<forall>t. Single t \<in> subterms_branch b \<longrightarrow> Single t \<in> subterms_fm (last b))
-  \<and> (\<emptyset> \<in> subterms_branch b \<longrightarrow> \<emptyset> \<in> subterms_fm (last b))
-"
+  (\<forall>t. t \<in> subterms_branch b \<and> t \<notin> Var ` params b \<longrightarrow> t \<in> subterms_fm (last b))"
 
+lemma no_new_subtermsI:
+  assumes "\<And>t. t \<in> subterms_branch b \<Longrightarrow> t \<notin> Var ` params b \<Longrightarrow> t \<in> subterms_fm (last b)"
+  shows "no_new_subterms b"
+  using assms unfolding no_new_subterms_def by blast
+
+lemma Var_in_subterms_branch_and_not_in_params:
+  assumes "Var v \<in> subterms_branch b" "v \<notin> params b"
+  shows "v \<in> vars_fm (last b)"
+  using assms unfolding params_def no_new_subterms_def
+  by (auto simp: image_set_diff[unfolded inj_on_def] image_UN
+                 Un_set_pset_term_subterms_branch_eq_vars_branch[symmetric])
+
+lemma subterms_branch_cases:
+  assumes "t \<in> subterms_branch b" "t \<notin> Var ` params b"
+  obtains
+    (Empty) "t = \<emptyset>"
+  | (Union) t1 t2 where "t = t1 \<squnion>\<^sub>s t2"
+  | (Inter) t1 t2 where "t = t1 \<sqinter>\<^sub>s t2"
+  | (Diff) t1 t2 where "t = t1 -\<^sub>s t2"
+  | (Single) t1 where "t = Single t1"
+  | (Var) v where "t = Var v" "v \<in> vars_fm (last b)"
+proof(cases t)
+  case (Var x)
+  with assms have "x \<in> vars_fm (last b)"
+    using Var_in_subterms_branch_and_not_in_params by (metis imageI)
+  with Var that show ?thesis by blast
+qed (use assms that in auto)
+
+lemma no_new_subterms_casesI[case_names Empty Union Inter Diff Single]:
+  assumes "\<emptyset> \<in> subterms_branch b \<Longrightarrow> \<emptyset> \<in> subterms_fm (last b)"
+  assumes "\<And>t1 t2. t1 \<squnion>\<^sub>s t2 \<in> subterms_branch b \<Longrightarrow> t1 \<squnion>\<^sub>s t2 \<in> subterms_fm (last b)"
+  assumes "\<And>t1 t2. t1 \<sqinter>\<^sub>s t2 \<in> subterms_branch b \<Longrightarrow> t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm (last b)"
+  assumes "\<And>t1 t2. t1 -\<^sub>s t2 \<in> subterms_branch b \<Longrightarrow> t1 -\<^sub>s t2 \<in> subterms_fm (last b)"
+  assumes "\<And>t. Single t \<in> subterms_branch b \<Longrightarrow> Single t \<in> subterms_fm (last b)"
+  shows "no_new_subterms b"
+proof(intro no_new_subtermsI)
+  fix t assume "t \<in> subterms_branch b" "t \<notin> Var ` params b"
+  with this assms show "t \<in> subterms_fm (last b)"
+    by (cases t rule: subterms_branch_cases) (auto simp: vars_fm_subs_subterms_fm)
+qed
+
+lemma no_new_subtermsE:
+  assumes "no_new_subterms b"
+  shows "\<emptyset> \<in> subterms_branch b \<Longrightarrow> \<emptyset> \<in> subterms_fm (last b)"
+        "\<And>t1 t2. t1 \<squnion>\<^sub>s t2 \<in> subterms_branch b \<Longrightarrow> t1 \<squnion>\<^sub>s t2 \<in> subterms_fm (last b)"
+        "\<And>t1 t2. t1 \<sqinter>\<^sub>s t2 \<in> subterms_branch b \<Longrightarrow> t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm (last b)"
+        "\<And>t1 t2. t1 -\<^sub>s t2 \<in> subterms_branch b \<Longrightarrow> t1 -\<^sub>s t2 \<in> subterms_fm (last b)"
+        "\<And>t. Single t \<in> subterms_branch b \<Longrightarrow> Single t \<in> subterms_fm (last b)"
+  using assms unfolding no_new_subterms_def by auto
+ 
 lemma mem_in_subterms_branch_if_in_atoms_branch:
   assumes "(p, t1 \<in>\<^sub>s t2) \<in> \<Union>(atoms ` set b)"
   shows "t1 \<in> subterms_branch b" "t2 \<in> subterms_branch b"
@@ -825,23 +899,129 @@ lemma lextends_no_new_subterms:
   assumes "lextends b' b" "b \<noteq> []"
   assumes "no_new_subterms b"
   shows "no_new_subterms b'"
-  using assms lextends_subterms_branch_eq[OF assms(1,2)] 
-  by (simp add: no_new_subterms_def lextends_last_eq)
+  using assms unfolding no_new_subterms_def
+  by (simp add: lextends_last_eq lextends_params_eq lextends_subterms_branch_eq[OF assms(1,2)])
+
+lemma subterms_branch_subterms_literalI:
+  assumes "Atom l \<in> set branch" "t \<in> subterms_literal l"
+  shows "t \<in> subterms_branch branch"
+  using assms unfolding subterms_branch_def  
+  by (cases l rule: subterms_literal.cases) (metis UnionI imageI subterms_fm.simps(1))+
+
+lemma lextends_in_params_subterms_if_in_subterms_branch:
+  assumes "lextends b' b" "b \<noteq> []"
+  defines "params_subterms \<equiv> (\<lambda>b. Var ` params b \<union> subterms_fm (last b))"
+  assumes "\<forall>t \<in> subterms_branch b. t \<in> params_subterms b"
+  shows "t \<in> subterms_branch b' \<Longrightarrow> t \<in> params_subterms b'"
+  using assms(1,2,4)
+  using lextends_last_eq[OF assms(1,2)] lextends_params_eq[OF assms(1,2)]
+        lextends_subterms_branch_eq[OF assms(1,2)]
+  apply(induction rule: lextends_induct)
+                      apply(auto simp: params_subterms_def)
+  done
+
+lemma vars_branch_vars_fmI:
+  assumes "\<phi> \<in> set branch" "v \<in> vars_fm \<phi>"
+  shows "v \<in> vars_branch branch"
+  using assms vars_branch_def vars_fm_def by fastforce
+
+lemma extends_no_new_subterms:
+  assumes "extends bs b" "b \<noteq> []"
+  assumes "b' \<in> set bs"
+  assumes "no_new_subterms b"
+  shows "no_new_subterms b'"
+  using assms
+proof(induction rule: extends.induct)
+  case (1 p q branch)
+  then show ?case
+    using no_new_subtermsE[OF \<open>no_new_subterms branch\<close>]
+    apply(auto simp: subterms_branch_simps intro!: no_new_subterms_casesI)
+    apply (metis UN_I UnCI subterms_branch_def subterms_fm.simps)+
+    done
+next
+  case (2 p q branch)
+  then show ?case
+    using no_new_subtermsE[OF \<open>no_new_subterms branch\<close>]
+    apply(auto simp: subterms_branch_simps intro!: no_new_subterms_casesI)
+    apply (metis UN_I UnCI subterms_branch_def subterms_fm.simps)+
+    done
+next
+  case (3 s t1 t2 branch)
+  then show ?case
+    using no_new_subtermsE[OF \<open>no_new_subterms branch\<close>]
+    apply(auto simp: subterms_branch_simps subterms_branch_subterms_subterms_literal_trans
+               intro!: no_new_subterms_casesI)
+    done
+next
+  case (4 s t1 branch t2)
+  then show ?case
+    using no_new_subtermsE[OF \<open>no_new_subterms branch\<close>]
+    apply(auto simp: subterms_branch_simps subterms_branch_subterms_subterms_literal_trans
+               intro: subterms_subterms_fm_trans[OF _ subterms_fm_intros(4)]
+               intro!: no_new_subterms_casesI)
+    done
+next
+  case (5 s t1 branch t2)
+  then show ?case
+    using no_new_subtermsE[OF \<open>no_new_subterms branch\<close>]
+    apply(auto simp: subterms_branch_simps subterms_branch_subterms_subterms_literal_trans
+               intro: subterms_subterms_fm_trans[OF _ subterms_fm_intros(6)]
+               intro!: no_new_subterms_casesI)
+    done
+next
+  case (6 t1 t2 branch x)
+  then show ?case
+    using no_new_subtermsE[OF \<open>no_new_subterms branch\<close>]
+    apply(auto simp: subterms_branch_simps subterms_branch_subterms_subterms_literal_trans
+               intro!: no_new_subterms_casesI)
+    done
+qed
+
+lemmas subterms_branch_subterms_fm_lastI =
+  subterms_branch_subterms_subterms_fm_trans[OF _ subterms_refl]
+
+lemma subterms_branch_eq_if_no_new_subterms:
+  assumes "no_new_subterms b" "b \<noteq> []"
+  shows "subterms_branch b = Var ` params b \<union> subterms_fm (last b)"
+  using assms no_new_subtermsE[OF assms(1)]
+proof -
+  note simps = params_def no_new_subterms_def subterms_branch_simps vars_branch_simps
+  with assms show ?thesis
+    by (auto simp: simps vars_fm_subs_subterms_fm
+                   vars_branch_subs_subterms_branch[unfolded image_subset_iff]
+             intro: subterms_branch_subterms_fm_lastI)
+qed
+
+lemma params_subterms_last_disjnt: "Var ` params b \<inter> subterms_fm (last b) = {}"
+  by (auto simp: params_def intro!: mem_pset_fm_if_mem_subterm_fm)
+
+lemma extends_params_subterms:
+  assumes "extends bs b" "b \<noteq> []"
+  assumes "b' \<in> set bs"
+  defines "params_subterms \<equiv> (\<lambda>b. Var ` params b \<union> subterms_fm (last b))"
+  assumes "\<forall>t \<in> subterms_branch b. t \<in> params_subterms b"
+  assumes "t \<in> subterms_branch b'"
+  shows "t \<in> params_subterms b'"
+  using assms(1,2,3,5,6) extends_no_new_subterms unfolding params_subterms_def
+  by (metis Un_iff no_new_subterms_def)
 
 lemma lemma_2:
-  assumes "lextends b' b" "b \<noteq> []"
-  assumes "no_new_subterms b"
-  defines "P \<equiv> (\<lambda>b c t. AT (Var c \<approx>\<^sub>s t) \<notin> set b \<and> AT (t \<approx>\<^sub>s Var c) \<notin> set b)"
   defines "params_subterms \<equiv> (\<lambda>b. Var ` params b \<union> subterms_fm (last b))"
+  defines "P \<equiv> (\<lambda>b c t. AT (Var c \<approx>\<^sub>s t) \<notin> set b \<and> AT (t \<approx>\<^sub>s Var c) \<notin> set b)"
+  assumes "lextends b' b" "b \<noteq> []"
+  assumes "\<forall>t \<in> subterms_branch b. t \<in> params_subterms b"
+  assumes "\<forall>\<phi>\<in>set b. \<forall>a. \<phi> \<noteq> Atom a \<longrightarrow> vars_fm \<phi> \<inter> params b = {}"
   assumes "\<forall>c \<in> params' b. \<forall>t \<in> params_subterms b. P b c t"
   shows "\<forall>c \<in> params' b'. \<forall>t \<in> params_subterms b'. P b' c t"
-  using assms(1,2,6) lextends_last_eq[OF assms(1,2)] lextends_params_eq[OF assms(1,2)]
-    lextends_params'_subs[OF assms(1,2)] lextends_no_new_subterms[OF assms(1,2,3)]
+  using assms(3,4,6,7) lextends_last_eq[OF assms(3,4)] lextends_params_eq[OF assms(3,4)]
+    lextends_params'_subs[OF assms(3,4)]
+    lextends_in_params_subterms_if_in_subterms_branch[OF assms(3,4,5)[unfolded params_subterms_def]]
 proof(induction rule: lextends.induct)
   case (1 b' b)
-  then show ?case
-    apply(induction rule: lextends_fm.induct)
-    sorry
+  with lextends_fm_params'_eq[OF this(1,2,3)] show ?case
+    by (smt (verit, ccfv_threshold) Diff_iff IntI P_def UN_iff insert_absorb insert_not_empty
+        mem_Collect_eq params'_def params_def params_subterms_def
+        vars_branch_def)
 next
   case (2 b' b)
   then show ?case
@@ -866,10 +1046,9 @@ next
   proof(induction rule: lextends_single.induct)
     case (2 s t1 branch)
     then have "Single t1 \<in> subterms_branch branch"
-      by (metis UN_I Un_iff subterms_atom.simps(1) subterms_branch_def subterms_fm.simps(1) subterms_literal.simps subterms_refl)
+      by (auto intro: subterms_branch_subterms_literalI)
     with 2 have "t1 \<in> subterms_fm (last branch)"
-      unfolding no_new_subterms_def
-      by (simp, metis Un_iff subterms_branch_simps(2) subterms_fm_intros(7))
+      using subterms_branch_simps(2) subterms_fm_intros(7) by fastforce
     then have "\<forall>c \<in> params' (AT (s \<approx>\<^sub>s t1) # branch). Var c \<noteq> t1"
       unfolding params'_def params_def
       by (simp, meson mem_pset_fm_if_mem_subterm_fm pset_term.set_intros(1))
@@ -887,10 +1066,15 @@ next
   then show ?case
   proof(induction rule: lextends_eq.induct)
     case eq_left: (1 t1 t2 branch l)
+    then have "t1 \<in> subterms_branch (Atom (subst_tlvl_literal t1 t2 l) # branch)"
+      by (auto simp: subterms_branch_simps intro: subterms_branch_subterms_literalI)
+    with eq_left have t1_in_params_subterms: 
+      "t1 \<in> params_subterms (Atom (subst_tlvl_literal t1 t2 l) # branch)"
+      unfolding params_subterms_def by simp
     show ?case unfolding P_def
     proof(safe, goal_cases)
       case (1 c x)
-      with 1 eq_left have "(True, Var c \<approx>\<^sub>s x) = subst_tlvl_literal t1 t2 l"
+      with eq_left have "(True, Var c \<approx>\<^sub>s x) = subst_tlvl_literal t1 t2 l"
         using P_def params_subterms_def by auto
       with 1 eq_left consider
           (refl) "l = (True, t1 \<approx>\<^sub>s t1)" "t2 = Var c" "x = Var c"
@@ -899,28 +1083,61 @@ next
         apply(cases "(t1, t2, l)" rule: subst_tlvl_literal.cases)
         by (auto split: if_splits)
       then show ?case
-      proof(cases)
-        case refl
-        with 1 eq_left show ?thesis apply(simp) sorry
-      next
-        case t1_left
-        with 1 eq_left have "t1 \<in> params_subterms branch"
-          unfolding params_subterms_def
-        with 1 eq_left show ?thesis apply(simp) sorry
-      next
-        case t1_right
-        then show ?thesis sorry
-      qed
+        apply(cases)
+        using 1 eq_left P_def params_subterms_def t1_in_params_subterms by auto
     next
       case (2 c x)
-      then show ?case sorry
+      with eq_left have "(True, x \<approx>\<^sub>s Var c) = subst_tlvl_literal t1 t2 l"
+        using P_def params_subterms_def by auto
+      with 2 eq_left consider
+          (refl) "l = (True, t1 \<approx>\<^sub>s t1)" "t2 = Var c" "x = Var c"
+        | (t1_left) "l = (True, t1 \<approx>\<^sub>s Var c)" "t2 = x"
+        | (t1_right) "l = (True, x \<approx>\<^sub>s t1)" "t2 = Var c"
+        apply(cases "(t1, t2, l)" rule: subst_tlvl_literal.cases)
+        by (auto split: if_splits)
+      then show ?case
+        apply(cases)
+        using 2 eq_left P_def params_subterms_def t1_in_params_subterms by auto
     qed
   next
-    case (2 t1 t2 branch l)
-    then show ?case sorry
+    case eq_right: (2 t1 t2 branch l)
+    then have "t2 \<in> subterms_branch (Atom (subst_tlvl_literal t2 t1 l) # branch)"
+      by (auto simp: subterms_branch_simps intro: subterms_branch_subterms_literalI)
+    with eq_right have t2_in_params_subterms: 
+      "t2 \<in> params_subterms (Atom (subst_tlvl_literal t2 t1 l) # branch)"
+      unfolding params_subterms_def by simp
+    show ?case unfolding P_def
+    proof(safe, goal_cases)
+      case (1 c x)
+      with eq_right have "(True, Var c \<approx>\<^sub>s x) = subst_tlvl_literal t2 t1 l"
+        using P_def params_subterms_def by auto
+      with 1 eq_right consider
+          (refl) "l = (True, t2 \<approx>\<^sub>s t2)" "t1 = Var c" "x = Var c"
+        | (t1_left) "l = (True, Var c \<approx>\<^sub>s t2)" "t1 = x"
+        | (t1_right) "l = (True, t2 \<approx>\<^sub>s x)" "t1 = Var c"
+        apply(cases "(t2, t1, l)" rule: subst_tlvl_literal.cases)
+        by (auto split: if_splits)
+      then show ?case
+        apply(cases)
+        using 1 eq_right P_def params_subterms_def t2_in_params_subterms by auto
+    next
+      case (2 c x)
+      with eq_right have "(True, x \<approx>\<^sub>s Var c) = subst_tlvl_literal t2 t1 l"
+        using P_def params_subterms_def by auto
+      with 2 eq_right consider
+          (refl) "l = (True, t2 \<approx>\<^sub>s t2)" "t1 = Var c" "x = Var c"
+        | (t1_left) "l = (True, t2 \<approx>\<^sub>s Var c)" "t1 = x"
+        | (t1_right) "l = (True, x \<approx>\<^sub>s t2)" "t1 = Var c"
+        apply(cases "(t2, t1, l)" rule: subst_tlvl_literal.cases)
+        by (auto split: if_splits)
+      then show ?case
+        apply(cases)
+        using 2 eq_right P_def params_subterms_def t2_in_params_subterms by auto
+    qed
   next
     case (3 s t branch s')
-    then show ?case sorry
+    then show ?case
+      using P_def params_subterms_def by auto
   qed
 qed
 end

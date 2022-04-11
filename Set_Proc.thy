@@ -771,13 +771,17 @@ lemma lextends_last_eq:
   "lextends b' b \<Longrightarrow> b \<noteq> [] \<Longrightarrow> last b' = last b"
   using lextends_strict_suffix unfolding strict_suffix_def suffix_def by force
 
+lemma extends_last_eq:
+  "extends bs b \<Longrightarrow> b' \<in> set bs \<Longrightarrow> b \<noteq> [] \<Longrightarrow> last b' = last b"
+  using extends_strict_suffix unfolding strict_suffix_def suffix_def by force
+
 lemma lextends_params_eq:
   "lextends b' b \<Longrightarrow> b \<noteq> [] \<Longrightarrow> params b' = params b"
   using lextends_last_eq lextends_vars_branch_eq unfolding params_def by force
 
 lemma lextends_fm_params'_eq:
   assumes "lextends_fm b' b" "b \<noteq> []"
-  assumes "\<forall>\<phi> \<in> set b. \<forall>a. \<phi> \<noteq> Atom a \<longrightarrow> vars_fm \<phi> \<inter> params b = {}"
+  assumes "\<forall>\<phi> \<in> set b. \<not> is_Atom \<phi> \<longrightarrow> vars_fm \<phi> \<inter> params b = {}"
   shows "params' b' = params' b"
   using assms
   apply(induction rule: lextends_fm.induct)
@@ -789,14 +793,6 @@ lemma lextends_params'_subs:
   shows "params' b' \<subseteq> params' b"
   using assms lextends_params_eq[OF assms]
   by (induction rule: lextends_induct) (auto simp: params'_def)
-
-lemma lemma_2_aux:
-  assumes "lextends b' b" "b \<noteq> []"
-  defines "P \<equiv> (\<lambda>b c t. AT (Var c \<approx>\<^sub>s t) \<notin> set b \<and> AT (t \<approx>\<^sub>s Var c) \<notin> set b)"
-  assumes "\<forall>c \<in> params' b. \<forall>t \<in> subterms_fm (last b). P b c t"
-  shows "\<forall>c \<in> params' b'. \<forall>t \<in> subterms_fm (last b). P b' c t"
-  using assms(1,2,4)
-  by (induction rule: lextends_induct) (auto simp: params'_def P_def)
 
 lemma subterms_fm_intros:
   "t1 \<squnion>\<^sub>s t2 \<in> subterms_fm \<phi> \<Longrightarrow> t1 \<in> subterms_fm \<phi>"
@@ -908,18 +904,6 @@ lemma subterms_branch_subterms_literalI:
   using assms unfolding subterms_branch_def  
   by (cases l rule: subterms_literal.cases) (metis UnionI imageI subterms_fm.simps(1))+
 
-lemma lextends_in_params_subterms_if_in_subterms_branch:
-  assumes "lextends b' b" "b \<noteq> []"
-  defines "params_subterms \<equiv> (\<lambda>b. Var ` params b \<union> subterms_fm (last b))"
-  assumes "\<forall>t \<in> subterms_branch b. t \<in> params_subterms b"
-  shows "t \<in> subterms_branch b' \<Longrightarrow> t \<in> params_subterms b'"
-  using assms(1,2,4)
-  using lextends_last_eq[OF assms(1,2)] lextends_params_eq[OF assms(1,2)]
-        lextends_subterms_branch_eq[OF assms(1,2)]
-  apply(induction rule: lextends_induct)
-                      apply(auto simp: params_subterms_def)
-  done
-
 lemma vars_branch_vars_fmI:
   assumes "\<phi> \<in> set branch" "v \<in> vars_fm \<phi>"
   shows "v \<in> vars_branch branch"
@@ -980,48 +964,61 @@ qed
 lemmas subterms_branch_subterms_fm_lastI =
   subterms_branch_subterms_subterms_fm_trans[OF _ subterms_refl]
 
+definition "params_subterms b \<equiv> Var ` params b \<union> subterms_fm (last b)"
+
 lemma subterms_branch_eq_if_no_new_subterms:
   assumes "no_new_subterms b" "b \<noteq> []"
-  shows "subterms_branch b = Var ` params b \<union> subterms_fm (last b)"
+  shows "params_subterms b = subterms_branch b"
   using assms no_new_subtermsE[OF assms(1)]
 proof -
-  note simps = params_def no_new_subterms_def subterms_branch_simps vars_branch_simps
+  note simps = params_def no_new_subterms_def params_subterms_def
+    subterms_branch_simps vars_branch_simps
   with assms show ?thesis
     by (auto simp: simps vars_fm_subs_subterms_fm
                    vars_branch_subs_subterms_branch[unfolded image_subset_iff]
              intro: subterms_branch_subterms_fm_lastI)
 qed
 
+lemma aux:
+  defines "P \<equiv> (\<lambda>b. \<forall>\<phi> \<in> set b. \<not> is_Atom \<phi> \<longrightarrow> vars_fm \<phi> \<inter> params b = {})"
+  assumes "lextends b' b" "b \<noteq> []"
+  assumes "P b"
+  shows "P b'"
+  using assms(2-) lextends_params_eq[OF assms(2,3)]
+  by (induction rule: lextends_induct)
+     (auto simp: disjoint_iff P_def vars_fm_simps)
+
 lemma params_subterms_last_disjnt: "Var ` params b \<inter> subterms_fm (last b) = {}"
   by (auto simp: params_def intro!: mem_pset_fm_if_mem_subterm_fm)
 
-lemma extends_params_subterms:
-  assumes "extends bs b" "b \<noteq> []"
-  assumes "b' \<in> set bs"
-  defines "params_subterms \<equiv> (\<lambda>b. Var ` params b \<union> subterms_fm (last b))"
-  assumes "\<forall>t \<in> subterms_branch b. t \<in> params_subterms b"
-  assumes "t \<in> subterms_branch b'"
-  shows "t \<in> params_subterms b'"
-  using assms(1,2,3,5,6) extends_no_new_subterms unfolding params_subterms_def
-  by (metis Un_iff no_new_subterms_def)
-
-lemma lemma_2:
-  defines "params_subterms \<equiv> (\<lambda>b. Var ` params b \<union> subterms_fm (last b))"
+lemma lemma_2_lextends:
   defines "P \<equiv> (\<lambda>b c t. AT (Var c \<approx>\<^sub>s t) \<notin> set b \<and> AT (t \<approx>\<^sub>s Var c) \<notin> set b)"
   assumes "lextends b' b" "b \<noteq> []"
-  assumes "\<forall>t \<in> subterms_branch b. t \<in> params_subterms b"
-  assumes "\<forall>\<phi>\<in>set b. \<forall>a. \<phi> \<noteq> Atom a \<longrightarrow> vars_fm \<phi> \<inter> params b = {}"
+  assumes "no_new_subterms b"
+  assumes "\<forall>\<phi> \<in> set b. \<not> is_Atom \<phi> \<longrightarrow> vars_fm \<phi> \<inter> params b = {}"
   assumes "\<forall>c \<in> params' b. \<forall>t \<in> params_subterms b. P b c t"
   shows "\<forall>c \<in> params' b'. \<forall>t \<in> params_subterms b'. P b' c t"
-  using assms(3,4,6,7) lextends_last_eq[OF assms(3,4)] lextends_params_eq[OF assms(3,4)]
-    lextends_params'_subs[OF assms(3,4)]
-    lextends_in_params_subterms_if_in_subterms_branch[OF assms(3,4,5)[unfolded params_subterms_def]]
+  using assms(2-6)
+  using lextends_last_eq[OF assms(2,3)] lextends_params_eq[OF assms(2,3)]
+        lextends_params'_subs[OF assms(2,3)]
 proof(induction rule: lextends.induct)
   case (1 b' b)
-  with lextends_fm_params'_eq[OF this(1,2,3)] show ?case
-    by (smt (verit, ccfv_threshold) Diff_iff IntI P_def UN_iff insert_absorb insert_not_empty
-        mem_Collect_eq params'_def params_def params_subterms_def
-        vars_branch_def)
+
+  have *: "P b' c t"
+    if "\<forall>\<phi> \<in> set b' - set b. vars_fm \<phi> \<inter> params b' = {}"
+    and "c \<in> params' b" "t \<in> params_subterms b'" for c t
+  proof -
+    from that "1.prems"(6) have "\<forall>\<phi> \<in> set b' - set b. \<phi> \<noteq> AT (Var c \<approx>\<^sub>s t) \<and> \<phi> \<noteq> AT (t \<approx>\<^sub>s Var c)"
+      by (auto simp: params'_def disjoint_iff)
+    with 1 that show ?thesis
+      unfolding P_def params_subterms_def by (metis Diff_iff params_subterms_def)
+  qed
+  moreover
+  note params'_eq =lextends_fm_params'_eq[OF "1"(1,2,4)] 
+  with "1"(1,4,7) params'_eq have "\<forall>\<phi> \<in> set b' - set b. vars_fm \<phi> \<inter> params b' = {}"
+    by (induction rule: lextends_fm.induct) (auto simp: disjoint_iff vars_fm_simps)
+  ultimately show ?case
+    using 1 by blast
 next
   case (2 b' b)
   then show ?case
@@ -1048,34 +1045,32 @@ next
     then have "Single t1 \<in> subterms_branch branch"
       by (auto intro: subterms_branch_subterms_literalI)
     with 2 have "t1 \<in> subterms_fm (last branch)"
-      using subterms_branch_simps(2) subterms_fm_intros(7) by fastforce
-    then have "\<forall>c \<in> params' (AT (s \<approx>\<^sub>s t1) # branch). Var c \<noteq> t1"
+      by (metis subterms_fm_intros(7) no_new_subtermsE(5))
+    then have "\<forall>c \<in> params' branch. Var c \<noteq> t1"
       unfolding params'_def params_def
       by (simp, meson mem_pset_fm_if_mem_subterm_fm pset_term.set_intros(1))
-    with 2 \<open>t1 \<in> subterms_fm (last branch)\<close> have
-      "\<forall>c \<in> params' (AT (s \<approx>\<^sub>s t1) # branch). \<forall>t \<in> params_subterms branch.
-        AT (Var c \<approx>\<^sub>s t) \<noteq> AT (s \<approx>\<^sub>s t1) \<and> AT (t \<approx>\<^sub>s Var c) \<noteq> AT (s \<approx>\<^sub>s t1)"
-      unfolding no_new_subterms_def
-      apply(simp)
-      apply (metis (no_types, lifting) "2.prems"(3) list.set_intros(1) mem_Collect_eq params'_def)
-      done
-    with 2 show ?case unfolding params_subterms_def P_def by fastforce
+    moreover
+    from \<open>t1 \<in> subterms_fm (last branch)\<close> have "\<forall>c \<in> params' branch. Var c \<noteq> s"
+      unfolding params'_def using "2.hyps" sorry
+    ultimately show ?case
+      using 2 by (auto simp: P_def params_subterms_def)
   qed (auto simp: params_subterms_def P_def)
 next
   case (6 b' b)
-  then show ?case
+  then have "no_new_subterms b'" "b' \<noteq> []"
+    using lextends_no_new_subterms[OF lextends.intros(6)] lextends_eq.simps by blast+
+  note subterms_branch_eq_if_no_new_subterms[OF this]
+  with 6 show ?case
   proof(induction rule: lextends_eq.induct)
     case eq_left: (1 t1 t2 branch l)
-    then have "t1 \<in> subterms_branch (Atom (subst_tlvl_literal t1 t2 l) # branch)"
+    then have t1_in_subterms_branch:
+      "t1 \<in> subterms_branch (Atom (subst_tlvl_literal t1 t2 l) # branch)"
       by (auto simp: subterms_branch_simps intro: subterms_branch_subterms_literalI)
-    with eq_left have t1_in_params_subterms: 
-      "t1 \<in> params_subterms (Atom (subst_tlvl_literal t1 t2 l) # branch)"
-      unfolding params_subterms_def by simp
     show ?case unfolding P_def
     proof(safe, goal_cases)
       case (1 c x)
       with eq_left have "(True, Var c \<approx>\<^sub>s x) = subst_tlvl_literal t1 t2 l"
-        using P_def params_subterms_def by auto
+        using P_def by (auto simp: params_subterms_def)
       with 1 eq_left consider
           (refl) "l = (True, t1 \<approx>\<^sub>s t1)" "t2 = Var c" "x = Var c"
         | (t1_left) "l = (True, Var c \<approx>\<^sub>s t1)" "t2 = x"
@@ -1084,11 +1079,11 @@ next
         by (auto split: if_splits)
       then show ?case
         apply(cases)
-        using 1 eq_left P_def params_subterms_def t1_in_params_subterms by auto
+        using 1 eq_left P_def t1_in_subterms_branch by (auto simp: params_subterms_def)
     next
       case (2 c x)
       with eq_left have "(True, x \<approx>\<^sub>s Var c) = subst_tlvl_literal t1 t2 l"
-        using P_def params_subterms_def by auto
+        using P_def by (auto simp: params_subterms_def)
       with 2 eq_left consider
           (refl) "l = (True, t1 \<approx>\<^sub>s t1)" "t2 = Var c" "x = Var c"
         | (t1_left) "l = (True, t1 \<approx>\<^sub>s Var c)" "t2 = x"
@@ -1097,20 +1092,19 @@ next
         by (auto split: if_splits)
       then show ?case
         apply(cases)
-        using 2 eq_left P_def params_subterms_def t1_in_params_subterms by auto
+        using 2 eq_left P_def params_subterms_def t1_in_subterms_branch
+        by (auto simp: params_subterms_def)
     qed
   next
     case eq_right: (2 t1 t2 branch l)
-    then have "t2 \<in> subterms_branch (Atom (subst_tlvl_literal t2 t1 l) # branch)"
+    then have t2_in_subterms_branch:
+      "t2 \<in> subterms_branch (Atom (subst_tlvl_literal t2 t1 l) # branch)"
       by (auto simp: subterms_branch_simps intro: subterms_branch_subterms_literalI)
-    with eq_right have t2_in_params_subterms: 
-      "t2 \<in> params_subterms (Atom (subst_tlvl_literal t2 t1 l) # branch)"
-      unfolding params_subterms_def by simp
     show ?case unfolding P_def
     proof(safe, goal_cases)
       case (1 c x)
       with eq_right have "(True, Var c \<approx>\<^sub>s x) = subst_tlvl_literal t2 t1 l"
-        using P_def params_subterms_def by auto
+        using P_def by (auto simp: params_subterms_def)
       with 1 eq_right consider
           (refl) "l = (True, t2 \<approx>\<^sub>s t2)" "t1 = Var c" "x = Var c"
         | (t1_left) "l = (True, Var c \<approx>\<^sub>s t2)" "t1 = x"
@@ -1119,11 +1113,12 @@ next
         by (auto split: if_splits)
       then show ?case
         apply(cases)
-        using 1 eq_right P_def params_subterms_def t2_in_params_subterms by auto
+        using 1 eq_right P_def params_subterms_def t2_in_subterms_branch
+        by (auto simp: params_subterms_def)
     next
       case (2 c x)
       with eq_right have "(True, x \<approx>\<^sub>s Var c) = subst_tlvl_literal t2 t1 l"
-        using P_def params_subterms_def by auto
+        using P_def by (auto simp: params_subterms_def)
       with 2 eq_right consider
           (refl) "l = (True, t2 \<approx>\<^sub>s t2)" "t1 = Var c" "x = Var c"
         | (t1_left) "l = (True, t2 \<approx>\<^sub>s Var c)" "t1 = x"
@@ -1132,12 +1127,46 @@ next
         by (auto split: if_splits)
       then show ?case
         apply(cases)
-        using 2 eq_right P_def params_subterms_def t2_in_params_subterms by auto
+        using 2 eq_right P_def params_subterms_def t2_in_subterms_branch
+        by (auto simp: params_subterms_def)
     qed
   next
     case (3 s t branch s')
     then show ?case
-      using P_def params_subterms_def by auto
+      using P_def by (auto simp: params_subterms_def)
   qed
 qed
+
+lemma lemma_2_extends:
+  defines "P \<equiv> (\<lambda>b c t. AT (Var c \<approx>\<^sub>s t) \<notin> set b \<and> AT (t \<approx>\<^sub>s Var c) \<notin> set b)"
+  assumes "extends bs b" "b' \<in> set bs" "b \<noteq> []"
+  assumes "\<forall>t \<in> subterms_branch b. t \<in> params_subterms b"
+  assumes "\<forall>\<phi>\<in>set b. \<forall>a. \<phi> \<noteq> Atom a \<longrightarrow> vars_fm \<phi> \<inter> params b = {}"
+  assumes "\<forall>c \<in> params' b. \<forall>t \<in> params_subterms b. P b c t"
+  shows "\<forall>c \<in> params' b'. \<forall>t \<in> params_subterms b'. P b' c t"
+  using assms(2-) extends_last_eq[OF assms(2-4)]
+proof(induction rule: extends.induct)
+  case (1 p q branch)
+  then have "params (p # branch) = params branch" "params (Neg p # branch) = params branch"
+    unfolding params_def
+    by (auto simp: vars_branch_simps vars_branch_vars_fmI vars_fm_simps)
+  with 1 show ?case sorry
+next
+  case (2 p q branch)
+  then show ?case sorry
+next
+  case (3 s t1 t2 branch)
+  then show ?case sorry
+next
+  case (4 s t1 branch t2)
+  then show ?case sorry
+next
+  case (5 s t1 branch t2)
+  then show ?case sorry
+next
+  case (6 t1 t2 branch x)
+  then show ?case sorry
+qed
+
+
 end

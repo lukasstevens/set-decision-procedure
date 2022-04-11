@@ -3,7 +3,7 @@ theory Logic
 begin
 
 datatype (atoms: 'a) fm =
-  Atom 'a | And "'a fm" "'a fm" | Or "'a fm" "'a fm" |
+  is_Atom: Atom 'a | And "'a fm" "'a fm" | Or "'a fm" "'a fm" |
   Neg "'a fm"
 
 fun amap_fm :: "('a \<Rightarrow> 'b fm) \<Rightarrow> 'a fm \<Rightarrow> 'b fm" ("amap\<^sub>f\<^sub>m") where

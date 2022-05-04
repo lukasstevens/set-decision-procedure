@@ -146,22 +146,22 @@ proof(cases t rule: height.cases)
     by auto
 qed (use P_T_partition_verts in auto)
 
+
 lemma dominates_if_mem_realization:
-  assumes "\<And>x y. x \<in> P \<Longrightarrow> y \<in> P \<union> T \<Longrightarrow> x \<noteq> y \<Longrightarrow> I x \<noteq> realization y"
+  assumes "\<forall>x \<in> P. \<forall>y \<in> P \<union> T. x \<noteq> y \<longrightarrow> I x \<noteq> realization y"
   assumes "s \<in> P \<union> T" "t \<in> P \<union> T"
   assumes "realization s \<in> elts (realization t)"
   obtains s' where "s' \<rightarrow>\<^bsub>G\<^esub> t" "realization s = realization s'"
   using assms(2-)
 proof(induction t rule: realization.induct)
   case (1 x)
-  with assms(1)[OF \<open>x \<in> P\<close>] show ?case 
-    apply(simp)
-    by (metis "1.prems"(4) mem_not_sym)
+  with assms(1) show ?case 
+    by (metis all_not_in_conv elts_of_set insert_iff mem_not_sym realization.simps(1))
 qed auto
 
 lemma lemma1_2':
-  assumes "\<And>x y. x \<in> P \<Longrightarrow> y \<in> P \<Longrightarrow> x \<noteq> y \<Longrightarrow> I x \<noteq> I y"
-  assumes "\<And>x y. x \<in> P \<Longrightarrow> y \<in> P \<union> T \<Longrightarrow> x \<noteq> y \<Longrightarrow> I x \<noteq> realization y"
+  assumes "inj_on I P"
+  assumes "\<forall>x \<in> P. \<forall>y \<in> P \<union> T. x \<noteq> y \<longrightarrow> I x \<noteq> realization y"
   assumes "t1 \<in> P \<union> T" "t2 \<in> P \<union> T" "realization t1 = realization t2"
   shows "height t1 \<le> height t2"
 proof -
@@ -260,15 +260,15 @@ proof -
 qed
 
 lemma lemma1_2:
-  assumes "\<And>x y. x \<in> P \<Longrightarrow> y \<in> P \<Longrightarrow> x \<noteq> y \<Longrightarrow> I x \<noteq> I y"
-  assumes "\<And>x y. x \<in> P \<Longrightarrow> y \<in> P \<union> T \<Longrightarrow> x \<noteq> y \<Longrightarrow> I x \<noteq> realization y"
+  assumes "inj_on I P"
+  assumes "\<forall>x \<in> P. \<forall>y \<in> P \<union> T. x \<noteq> y \<longrightarrow> I x \<noteq> realization y"
   assumes "t1 \<in> P \<union> T" "t2 \<in> P \<union> T" "realization t1 = realization t2"
   shows "height t1 = height t2"
-  using assms lemma1_2' le_antisym by metis
-    
+  using assms lemma1_2' le_antisym unfolding inj_on_def by metis
+
 lemma lemma1_3:
-  assumes "\<And>x y. x \<in> P \<Longrightarrow> y \<in> P \<Longrightarrow> x \<noteq> y \<Longrightarrow> I x \<noteq> I y"
-  assumes "\<And>x y. x \<in> P \<Longrightarrow> y \<in> P \<union> T \<Longrightarrow> x \<noteq> y \<Longrightarrow> I x \<noteq> realization y"
+  assumes "inj_on I P"
+  assumes "\<forall>x \<in> P. \<forall>y \<in> P \<union> T. x \<noteq> y \<longrightarrow> I x \<noteq> realization y"
   assumes "s \<in> P \<union> T" "t \<in> P \<union> T" "realization s \<in> elts (realization t)"
   shows "height s < height t"
 proof -
@@ -290,7 +290,7 @@ qed
 lemma ancestors1_subs_verts: "t \<in> verts G \<Longrightarrow> ancestors1 G t \<subset> verts G"
   using adj_not_same by auto
 
-lemma card_realization_less_card_verts:
+lemma card_realization_T_less_card_verts:
   "t \<in> T \<Longrightarrow> card (elts (realization t)) < card (P \<union> T)"
 proof(induction t rule: realization.induct)
   case (2 t)
@@ -306,9 +306,43 @@ proof(induction t rule: realization.induct)
     using P_T_partition_verts(2) by auto
 qed (use P_T_partition_verts in auto)
 
+lemma card_realization_P:
+  "p \<in> P \<Longrightarrow> card (elts (realization p)) = 1"
+  by simp
+
+lemma
+  assumes "t \<in> T" "x \<in> elts (realization t)" "P \<union> T \<noteq> {}"
+  shows "card (elts x) < card (P \<union> T)"
+proof -
+  obtain s where s: "x = realization s" "s \<in> ancestors1 G t"
+    using assms by force
+  then consider "s \<in> P" | "s \<in> T"
+    using P_T_partition_verts(2) adj_in_verts(1) by blast
+  then show ?thesis
+    apply(cases)
+    using assms s
+    using card_realization_T_less_card_verts card_realization_P
+     apply (metis One_nat_def Un_iff card_1_singleton_iff gr_implies_not0 less_one linorder_neqE_nat singletonD)
+    using card_realization_T_less_card_verts s(1) by blast
+
+
 end
 
-
+lemma Ex_set_family:
+  assumes "finite P"
+  shows "\<exists>I. inj_on I P \<and> (\<forall>p. card (elts (I p)) \<ge> n)"
+proof -
+  from \<open>finite P\<close> obtain ip where ip: "bij_betw ip P {..<card P}"
+    using to_nat_on_finite by blast
+  let ?I = "ord_of_nat o ((+) n) o ip"
+  from ip have "inj_on ?I P"
+    by (auto simp: inj_on_def bij_betw_def)
+  moreover have "card (elts (?I p)) \<ge> n" for p
+    by auto
+  ultimately show ?thesis
+    by auto
+qed
+    
 
 type_synonym 'a branch = "'a pset_fm list"
 
@@ -1078,7 +1112,7 @@ definition "params_subterms b \<equiv> Var ` params b \<union> subterms_fm (last
 
 lemma subterms_branch_eq_if_no_new_subterms:
   assumes "b \<noteq> []" "no_new_subterms b"
-  shows "params_subterms b = subterms_branch b"
+  shows "subterms_branch b = params_subterms b"
   using assms no_new_subtermsE[OF assms(2)]
 proof -
   note simps = params_def no_new_subterms_def params_subterms_def
@@ -1096,6 +1130,10 @@ lemma params'_subterms_branch'_disjnt: "Var ` params' b \<inter> subterms_branch
   unfolding subterms_branch'_def params'_def
   using params_subterms_last_disjnt by fastforce
 
+lemma params_subterms_eq_subterms_branch':
+  "params_subterms b = Var ` params' b \<union> subterms_branch' b"
+  unfolding params_subterms_def subterms_branch'_def
+  by (auto simp: params'D(1))
 
 lemma lextends_fm_params'_eq:
   assumes "lextends_fm b' b" "b \<noteq> []"
@@ -1531,6 +1569,8 @@ lemma finite_subterms_branch': "finite (subterms_branch' b)"
   unfolding subterms_branch'_def using finite_subterms_fm finite_params
   by auto
 
+lemma wf_branch_not_Nil[simp]: "wf_branch b \<Longrightarrow> b \<noteq> []"
+  unfolding wf_branch_def by (metis extendss_strict_suffix suffix_bot.extremum_strict)
 
 lemma subterms_branch_eq_if_wf_branch:
   assumes "wf_branch b"
@@ -1543,23 +1583,32 @@ proof -
     by (simp add: subterms_branch_simps)
   with \<open>extendss b [\<phi>]\<close> have "no_new_subterms b"
     using extendss_no_new_subterms by blast
-  with \<open>extendss b [\<phi>]\<close> show ?thesis
-    using subterms_branch_eq_if_no_new_subterms
-    by (metis extendss_strict_suffix suffix_bot.extremum_strict)
+  with \<open>extendss b [\<phi>]\<close> assms show ?thesis
+    by (intro subterms_branch_eq_if_no_new_subterms) simp_all
 qed
 
-thm subterms_branch'_def
-lemma
-  assumes "wf_branch b"
-  assumes "AT (s \<in>\<^sub>s t) \<in> set branch"
-  shows "s \<in> Var ` params' branch \<union> subterms_branch' branch"
-  using assms subterms_branch_eq_if_wf_branch
-  unfolding params_subterms_def subterms_branch'_def
-  apply(auto simp: params'_def params_def subterms_branch'_def)
-  
+lemma in_subterms_branch'_if_Atom_branch:
+  assumes "wf_branch branch"
+  assumes "Atom (b, s \<in>\<^sub>s t) \<in> set branch"
+  shows "s \<in> Var ` params' branch \<union> subterms_branch' branch" (is ?thesis1)
+    and "t \<in> Var ` params' branch \<union> subterms_branch' branch" (is ?thesis2)
+proof -
+  from assms have "s \<in> subterms_branch branch" "t \<in> subterms_branch branch"
+    by (simp_all add: subterms_branch_subterms_literalI)
+  with assms have "s \<in> params_subterms branch" "t \<in> params_subterms branch"
+    using subterms_branch_eq_if_wf_branch by blast+
+  then show ?thesis1 ?thesis2
+    using params_subterms_eq_subterms_branch' by blast+
+qed
+
+lemma lemma_2:
+  assumes "c \<in> params' b" "t \<in> params_subterms b"
+  shows "AT (Var c \<approx>\<^sub>s t) \<notin> set b" "AT (t \<approx>\<^sub>s Var c) \<notin> set b" "AT (t \<in>\<^sub>s Var c) \<notin> set b"
+  sorry
 
 locale open_branch =
-  fixes b assumes bopen: "bopen b"
+  fixes b :: "'a branch"
+  assumes wf_branch: "wf_branch b" and bopen: "bopen b"
 begin
 
 sublocale fin_digraph_bgraph: fin_digraph "bgraph b"
@@ -1572,7 +1621,8 @@ proof
     using [[simproc add: finite_Collect]]
     by (auto simp: bgraph_def Let_def inj_on_def intro!: finite_vimageI)
 
-qed (auto simp: bgraph_def Let_def)
+qed (use in_subterms_branch'_if_Atom_branch[OF wf_branch]
+      in \<open>(fastforce simp: bgraph_def Let_def)+\<close>)
 
 lemma member_seq_if_cas:
   "fin_digraph_bgraph.cas t1 is t2
@@ -1624,40 +1674,130 @@ next
   qed
 qed
 
-sublocale realization "bgraph b" "Var ` params' b" "subterms_branch' b"
-proof
-  from params'_subterms_branch'_disjnt show "Var ` params' b \<inter> subterms_branch' b = {}" .
+definition "I \<equiv> SOME f. inj_on f (Var ` params' b)
+                  \<and> (\<forall>p. card (elts (f p)) \<ge> card (Var ` params' b \<union> subterms_branch' b))"
 
-  show "verts (bgraph b) = Var ` params' b \<union> subterms_branch' b"
-    unfolding bgraph_def Let_def by simp
+lemma
+  shows inj_on_I: "inj_on I (Var ` params' b)"
+    and card_I: "card (elts (I p)) \<ge> card (Var ` params' b \<union> subterms_branch' b)"
+proof -
+  have "\<exists>f. inj_on f (Var ` params' b)
+    \<and> (\<forall>p. card (elts (f p)) \<ge> card (Var ` params' b \<union> subterms_branch' b))"
+    using Ex_set_family finite_imageI[OF finite_params'] by blast
+  from someI_ex[OF this]
+  show "inj_on I (Var ` params' b)"
+       "card (elts (I p)) \<ge> card (Var ` params' b \<union> subterms_branch' b)"
+    unfolding I_def by blast+
 qed
 
-term realization
 
-lemma (in -) lemma_3:
-  assumes "c \<in> params' b" "t \<in> params_subterms b"
-  shows "AT (Var c \<approx>\<^sub>s t) \<notin> set b" "AT (t \<approx>\<^sub>s Var c) \<notin> set b" "AT (t \<in>\<^sub>s Var c) \<notin> set b"
-  sorry
-  
-lemma
-  assumes "wf_branch b"
-  assumes "AT (s \<in>\<^sub>s t) \<in> set b"
-  shows "realization s \<in> elts (realization t)"
+sublocale realization "bgraph b" "Var ` params' b" "subterms_branch' b" I
+  rewrites "inj_on I (Var ` params' b) \<equiv> True"
+       and "(\<forall>x \<in> Var ` params' b. \<forall>y \<in> Var ` params' b \<union> subterms_branch' b.
+               x \<noteq> y \<longrightarrow> I x \<noteq> realization y) \<equiv> True"
+       and "\<And>P. (True \<Longrightarrow> P) \<equiv> Trueprop P"
+       and "\<And>P Q. (True \<Longrightarrow> PROP P \<Longrightarrow> PROP Q) \<equiv> (PROP P \<Longrightarrow> True \<Longrightarrow> PROP Q)"
 proof -
-  from assms(2) have "s \<in> subterms_branch b" "t \<in> subterms_branch b"
+  let ?r = "realization.realization (bgraph b) (pset_term.Var ` params' b) (subterms_branch' b) I"
+
+  show real: "realization (bgraph b) (pset_term.Var ` params' b) (subterms_branch' b)"
+    apply(unfold_locales)
+    using params'_subterms_branch'_disjnt by (fastforce simp: bgraph_def Let_def)+
+
+  have "\<forall>x \<in> elts (?r y). card (elts x) \<ge> card (Var ` params' b \<union> subterms_branch' b)"
+    if "y \<in> Var ` params' b" for y
+    unfolding realization.realization.simps(1)[OF real that]
+    using card_I by simp
+    
+  then have "\<forall>x \<in> Var ` params' b. \<forall>y \<in> Var ` params' b \<union> subterms_branch' b. x \<noteq> y
+    \<longrightarrow> I x \<noteq> ?r y"
+    sledgehammer
+qed (use inj_on_I card_I in auto)
+
+lemma in_params_subterms_if_Atom_mem_branch:
+  assumes "Atom (p, s \<in>\<^sub>s t) \<in> set b"
+  shows "s \<in> params_subterms b" "t \<in> params_subterms b"
+proof -
+  from assms have "s \<in> subterms_branch b" "t \<in> subterms_branch b"
     by (auto intro!: subterms_branch_subterms_literalI)
-  with subterms_branch_eq_if_wf_branch assms
-  have "s \<in> params_subterms b" "t \<in> params_subterms b"
+  with subterms_branch_eq_if_wf_branch assms wf_branch
+  show "s \<in> params_subterms b" "t \<in> params_subterms b"
     by blast+
+qed
+
+lemma in_params_subterms_if_Atom_eq_branch:
+  assumes "Atom (p, s \<approx>\<^sub>s t) \<in> set b"
+  shows "s \<in> params_subterms b" "t \<in> params_subterms b"
+proof -
+  from assms have "s \<in> subterms_branch b" "t \<in> subterms_branch b"
+    by (auto intro!: subterms_branch_subterms_literalI)
+  with subterms_branch_eq_if_wf_branch assms wf_branch
+  show "s \<in> params_subterms b" "t \<in> params_subterms b"
+    by blast+
+qed
+
+lemma lemma3_1:
+  assumes "AT (s \<in>\<^sub>s t) \<in> set b"
+  shows "realization I s \<in> elts (realization I t)"
+proof -
+  note in_params_subterms_if_Atom_mem_branch[OF assms]
   with assms have "t \<noteq> Var c" if "c \<in> params' b" for c
-    using lemma_3(3)[OF that \<open>s \<in> params_subterms b\<close>] by blast
+    using lemma_2(3)[OF that \<open>s \<in> params_subterms b\<close>] by blast
   then have "t \<in> subterms_branch' b"
     using \<open>t \<in> params_subterms b\<close> 
     unfolding subterms_branch'_def params_subterms_def by auto
   moreover
-  from assms have "s \<rightarrow>\<^bsub>bgraph b\<^esub> t"
-    unfolding bgraph_def apply(auto simp: Let_def) sledgehammer
-  then show ?thesis thm realization.simps
+  from assms have "(s, t) \<in> arcs (bgraph b)"
+    unfolding bgraph_def Let_def by simp
+  then have "s \<rightarrow>\<^bsub>bgraph b\<^esub> t"
+    unfolding arcs_ends_def arc_to_ends_def by (simp add: bgraph_def)
+  then have "s \<in> ancestors1 (bgraph b) t"
+    by auto
+  ultimately show ?thesis
+    by auto
+qed
+
+lemma lemma3_2:
+  assumes "AT (t1 \<approx>\<^sub>s t2) \<in> set b"
+  shows "realization I t1 = realization I t2"
+proof -
+  note in_params_subterms_if_Atom_eq_branch[OF assms]
+  then consider
+    (t1_param') c where "t1 = Var c" "c \<in> params' b" |
+    (t2_param') c where "t2 = Var c" "c \<in> params' b" |
+    (subterms) "t1 \<in> subterms_branch' b" "t2 \<in> subterms_branch' b"
+    by (metis Un_iff image_iff params_subterms_eq_subterms_branch')
+  then show ?thesis
+  proof(cases)
+    case t1_param'
+    with lemma_2 assms have "t1 = t2"
+      by (metis \<open>t2 \<in> params_subterms b\<close>)
+    then show ?thesis by simp
+  next
+    case t2_param'
+    with lemma_2 assms have "t1 = t2"
+      by (metis \<open>t1 \<in> params_subterms b\<close>)
+    then show ?thesis by simp
+  next
+    case subterms
+    have "False" if "realization I t1 \<noteq> realization I t2"
+    proof -
+      from that have "elts (realization I t1) \<noteq> elts (realization I t2)"
+        by blast
+      from that obtain a t1' t2' where
+        "a \<in> elts (realization I t1')" "a \<notin> elts (realization I t2')"
+        "t1' = t1 \<and> t2' = t2 \<or> t1' = t2 \<and> t2' = t1"
+        by blast
+      with subterms have "t1' \<in> subterms_branch' b"
+        by auto
+      then obtain s where "a = realization I s" "AT (s \<in>\<^sub>s t1') \<in> set b"
+        using subterms
+        apply(auto)
+        
+    then show ?thesis sorry
+  qed
+qed
+
   
 end
 

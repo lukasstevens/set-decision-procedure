@@ -7,7 +7,7 @@ abbreviation "vset \<equiv> ZFC_in_HOL.set"
 hide_const (open) ZFC_in_HOL.set
 
 datatype 'a pset_term = 
-  Empty (\<open>\<emptyset>\<close>)| Var 'a |
+  Empty (\<open>\<emptyset>\<close>)| is_Var: Var 'a |
   Union "'a pset_term" "'a pset_term" (infixr \<open>\<squnion>\<^sub>s\<close> 60) |
   Inter "'a pset_term" "'a pset_term" (infixr \<open>\<sqinter>\<^sub>s\<close> 70) |
   Diff "'a pset_term" "'a pset_term"  (infixl \<open>-\<^sub>s\<close> 80) |
@@ -20,6 +20,9 @@ datatype 'a pset_atom =
 type_synonym 'a pset_literal = "bool \<times> 'a pset_atom"
 
 definition "vdiff s1 s2 \<equiv> vset (elts s1 - elts s2)"
+
+lemma small_Diff[intro]: "small s \<Longrightarrow> small (s - t)" 
+  by (meson Diff_subset smaller_than_small)
 
 fun I\<^sub>s\<^sub>t :: "('a \<Rightarrow> V) \<Rightarrow> 'a pset_term \<Rightarrow> V" where
   "I\<^sub>s\<^sub>t v \<emptyset> = 0"
@@ -137,7 +140,7 @@ function realization :: "'a \<Rightarrow> V" where
 termination
   by (relation "measure (\<lambda>t. card (ancestors G t))") (simp_all add: card_ancestors_strict_mono)
 
-lemma small_realization_ancestors1[iff]: "small (realization ` ancestors1 G t)"
+lemma small_realization_ancestors1[simp, intro!]: "small (realization ` ancestors1 G t)"
   using small_ancestors1 by auto
 
 lemma lemma1_1:
@@ -885,6 +888,20 @@ lemma subterms_branch_intros:
   "t1 -\<^sub>s t2 \<in> subterms_branch b \<Longrightarrow> t2 \<in> subterms_branch b"
   "Single t \<in> subterms_branch b \<Longrightarrow> t \<in> subterms_branch b"
   unfolding subterms_branch_def using subterms_fm_intros by fast+
+
+lemma subterms_branch'_intros:
+  "t1 \<squnion>\<^sub>s t2 \<in> subterms_branch' b \<Longrightarrow> t1 \<in> subterms_branch' b"
+  "t1 \<squnion>\<^sub>s t2 \<in> subterms_branch' b \<Longrightarrow> t2 \<in> subterms_branch' b"
+  "t1 \<sqinter>\<^sub>s t2 \<in> subterms_branch' b \<Longrightarrow> t1 \<in> subterms_branch' b"
+  "t1 \<sqinter>\<^sub>s t2 \<in> subterms_branch' b \<Longrightarrow> t2 \<in> subterms_branch' b"
+  "t1 -\<^sub>s t2 \<in> subterms_branch' b \<Longrightarrow> t1 \<in> subterms_branch' b"
+  "t1 -\<^sub>s t2 \<in> subterms_branch' b \<Longrightarrow> t2 \<in> subterms_branch' b"
+  "Single t \<in> subterms_branch' b \<Longrightarrow> t \<in> subterms_branch' b"
+  unfolding subterms_branch'_def using subterms_fm_intros by fast+
+
+lemma subterms_branch'_if_subterms_fm_last:
+  "t \<in> subterms_fm (last b) \<Longrightarrow> t \<in> subterms_branch' b"
+  by (simp add: subterms_branch'_def)
 
 definition "no_new_subterms b \<equiv>
   (\<forall>t \<in> subterms_branch b. t \<notin> Var ` params b \<longrightarrow> t \<in> subterms_fm (last b))"
@@ -1653,6 +1670,14 @@ proof -
     by blast+
 qed
 
+lemma mem_subterms_fm_last_if_mem_subterms_branch:
+  assumes "wf_branch b"
+  assumes "t \<in> subterms_branch b" "\<not> is_Var t"
+  shows "t \<in> subterms_fm (last b)"
+  using assms
+  unfolding subterms_branch_eq_if_wf_branch[OF \<open>wf_branch b\<close>]
+  unfolding subterms_branch'_def params_subterms_def by force
+
 locale open_branch =
   fixes b :: "'a branch"
   assumes wf_branch: "wf_branch b" and bopen: "bopen b"
@@ -2094,6 +2119,209 @@ proof
     by simp
 qed
 
+lemma realization_Empty:
+  assumes "\<emptyset> \<in> subterms_branch b"
+  shows "realization \<emptyset> = 0"
+proof -
+  from bopen have "AT (s \<in>\<^sub>s \<emptyset>) \<notin> set b" for s
+    using bclosed.intros by blast
+  then have "ancestors1 (bgraph b) \<emptyset> = {}"
+    unfolding bgraph_def Let_def by auto
+  moreover from assms have "\<emptyset> \<in> subterms_branch' b"
+    using mem_subterms_fm_last_if_mem_subterms_branch[OF wf_branch]
+    unfolding subterms_branch'_def by simp
+  then have "\<emptyset> \<in> subterms_branch' b"
+    unfolding subterms_branch'_def by blast
+  ultimately show "realization \<emptyset> = 0"
+    by simp
+qed
+
+lemma realization_Union:
+  assumes "sat b"
+  assumes "t1 \<squnion>\<^sub>s t2 \<in> subterms_branch b"
+  shows "realization (t1 \<squnion>\<^sub>s t2) = realization t1 \<squnion> realization t2"
+  using assms
+proof -
+  from assms have mem_subterms_fm: "t1 \<squnion>\<^sub>s t2 \<in> subterms_fm (last b)"
+    using mem_subterms_fm_last_if_mem_subterms_branch[OF wf_branch]
+    by simp
+  have "elts (realization (t1 \<squnion>\<^sub>s t2)) \<subseteq> elts (realization t1 \<squnion> realization t2)"
+  proof
+    fix e assume "e \<in> elts (realization (t1 \<squnion>\<^sub>s t2))"
+    then obtain s where s: "e = realization s" "s \<rightarrow>\<^bsub>bgraph b\<^esub> (t1 \<squnion>\<^sub>s t2)"
+      using dominates_if_mem_realization mem_subterms_fm[THEN subterms_branch'_if_subterms_fm_last]
+      by auto
+    then have "AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set b"
+      unfolding bgraph_def Let_def by auto
+    with \<open>sat b\<close> consider "AT (s \<in>\<^sub>s t1) \<in> set b" | "AF (s \<in>\<^sub>s t1) \<in> set b"
+      unfolding sat_def using extends.intros(3)[OF _ mem_subterms_fm]
+      by blast
+    then show "e \<in> elts (realization t1 \<squnion> realization t2)"
+    proof(cases)
+      case 1
+      with s show ?thesis using realization_if_Atom_mem by auto
+    next
+      case 2
+      from \<open>sat b\<close> lextends_un.intros(4)[OF \<open>AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set b\<close> this]
+      have "AT (s \<in>\<^sub>s t2) \<in> set b"
+        unfolding sat_def using lin_satD lextends.intros(2) by force
+      with s show ?thesis using realization_if_Atom_mem by auto
+    qed
+  qed
+  moreover have "elts (realization t1 \<squnion> realization t2) \<subseteq> elts (realization (t1 \<squnion>\<^sub>s t2))"
+  proof
+    fix e assume "e \<in> elts (realization t1 \<squnion> realization t2)"
+    then consider
+      s1 where "e = realization s1" "s1 \<rightarrow>\<^bsub>bgraph b\<^esub> t1" |
+      s2 where "e = realization s2" "s2 \<rightarrow>\<^bsub>bgraph b\<^esub> t2"
+      using dominates_if_mem_realization
+      using subterms_fm_intros(1,2)[OF mem_subterms_fm, THEN subterms_branch'_if_subterms_fm_last]
+      by auto
+    then show "e \<in> elts (realization (t1 \<squnion>\<^sub>s t2))"
+    proof(cases)
+      case 1
+      then have "AT (s1 \<in>\<^sub>s t1) \<in> set b"
+        unfolding bgraph_def Let_def by auto
+      from \<open>sat b\<close> lextends_un.intros(2)[OF this mem_subterms_fm, THEN lextends.intros(2)]
+      have "AT (s1 \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set b"
+        unfolding sat_def using lin_satD by force
+      with 1 realization_if_Atom_mem[OF this] show ?thesis
+        by blast
+    next
+      case 2
+      then have "AT (s2 \<in>\<^sub>s t2) \<in> set b"
+        unfolding bgraph_def Let_def by auto
+      from \<open>sat b\<close> lextends_un.intros(3)[OF this mem_subterms_fm, THEN lextends.intros(2)]
+      have "AT (s2 \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set b"
+        unfolding sat_def using lin_satD by force
+      with 2 realization_if_Atom_mem[OF this] show ?thesis
+        by blast
+    qed
+  qed
+  ultimately show ?thesis by blast
+qed
+
+lemma (in -) elts_inf[simp]: "elts (s \<sqinter> t) = elts s \<inter> elts t"
+  unfolding inf_V_def
+  by (meson down elts_of_set inf_le2)
+
+lemma realization_Inter:
+  assumes "sat b"
+  assumes "t1 \<sqinter>\<^sub>s t2 \<in> subterms_branch b"
+  shows "realization (t1 \<sqinter>\<^sub>s t2) = realization t1 \<sqinter> realization t2"
+  using assms
+proof -
+  from assms have mem_subterms_fm: "t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm (last b)"
+    using mem_subterms_fm_last_if_mem_subterms_branch[OF wf_branch]
+    by simp
+  have "elts (realization (t1 \<sqinter>\<^sub>s t2)) \<subseteq> elts (realization t1 \<sqinter> realization t2)"
+  proof
+    fix e assume "e \<in> elts (realization (t1 \<sqinter>\<^sub>s t2))"
+    then obtain s where s: "e = realization s" "s \<rightarrow>\<^bsub>bgraph b\<^esub> (t1 \<sqinter>\<^sub>s t2)"
+      using dominates_if_mem_realization mem_subterms_fm[THEN subterms_branch'_if_subterms_fm_last]
+      by auto
+    then have "AT (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) \<in> set b"
+      unfolding bgraph_def Let_def by auto
+    with \<open>sat b\<close> lextends_int.intros(1)[OF this, THEN lextends.intros(3)]
+    have "AT (s \<in>\<^sub>s t1) \<in> set b" "AT (s \<in>\<^sub>s t2) \<in> set b"
+      unfolding sat_def using lin_satD by force+
+    from this[THEN realization_if_Atom_mem] s show "e \<in> elts (realization t1 \<sqinter> realization t2)"
+      by auto
+  qed
+  moreover have "elts (realization t1 \<sqinter> realization t2) \<subseteq> elts (realization (t1 \<sqinter>\<^sub>s t2))"
+  proof
+    fix e assume "e \<in> elts (realization t1 \<sqinter> realization t2)"
+    then obtain s1 s2 where s1_s2:
+      "e = realization s1" "s1 \<rightarrow>\<^bsub>bgraph b\<^esub> t1"
+      "e = realization s2" "s2 \<rightarrow>\<^bsub>bgraph b\<^esub> t2"
+      using dominates_if_mem_realization
+      using subterms_fm_intros(3,4)[OF mem_subterms_fm, THEN subterms_branch'_if_subterms_fm_last]
+      by auto metis+
+    then have "AT (s1 \<in>\<^sub>s t1) \<in> set b" "AT (s2 \<in>\<^sub>s t2) \<in> set b"
+      unfolding bgraph_def Let_def by auto
+    moreover have "AT (s1 \<in>\<^sub>s t2) \<in> set b"
+    proof -
+      from \<open>sat b\<close> have "AT (s1 \<in>\<^sub>s t2) \<in> set b \<or> AF (s1 \<in>\<^sub>s t2) \<in> set b"
+        unfolding sat_def using extends.intros(4)[OF \<open>AT (s1 \<in>\<^sub>s t1) \<in> set b\<close> mem_subterms_fm]
+        by blast
+      moreover from \<open>sat b\<close> s1_s2 have False if "AF (s1 \<in>\<^sub>s t2) \<in> set b"
+      proof -
+        note lextends_eq.intros(3)[OF \<open>AT (s2 \<in>\<^sub>s t2) \<in> set b\<close> that, THEN lextends.intros(6)]
+        with realization_if_Atom_neq[OF \<open>sat b\<close>, of s2 s1] have "realization s2 \<noteq> realization s1"
+          using \<open>sat b\<close> by (auto simp: sat_def lin_satD)
+        with \<open>e = realization s1\<close> \<open>e = realization s2\<close> show False by simp
+      qed
+      ultimately show "AT (s1 \<in>\<^sub>s t2) \<in> set b" by blast
+    qed
+    ultimately have "AT (s1 \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) \<in> set b"
+      using \<open>sat b\<close> lextends_int.intros(6)[OF _ _ mem_subterms_fm, THEN lextends.intros(3)]
+      unfolding sat_def by (fastforce simp: lin_satD)
+    from realization_if_Atom_mem[OF this] show "e \<in> elts (realization (t1 \<sqinter>\<^sub>s t2))"
+      unfolding \<open>e = realization s1\<close>
+      using mem_subterms_fm[THEN subterms_branch'_if_subterms_fm_last] by simp
+  qed
+  ultimately show ?thesis by blast
+qed
+
+lemma realization_Inter:
+  assumes "sat b"
+  assumes "t1 -\<^sub>s t2 \<in> subterms_branch b"
+  shows "realization (t1 -\<^sub>s t2) = vdiff (realization t1) (realization t2)"
+  using assms
+proof -
+  from assms have mem_subterms_fm: "t1 -\<^sub>s t2 \<in> subterms_fm (last b)"
+    using mem_subterms_fm_last_if_mem_subterms_branch[OF wf_branch]
+    by simp
+  have "elts (realization (t1 -\<^sub>s t2)) \<subseteq> elts (vdiff (realization t1) (realization t2))"
+  proof
+    fix e assume "e \<in> elts (realization (t1 -\<^sub>s t2))"
+    then obtain s where s: "e = realization s" "s \<rightarrow>\<^bsub>bgraph b\<^esub> (t1 -\<^sub>s t2)"
+      using dominates_if_mem_realization mem_subterms_fm[THEN subterms_branch'_if_subterms_fm_last]
+      by auto
+    then have "AT (s \<in>\<^sub>s t1 -\<^sub>s t2) \<in> set b"
+      unfolding bgraph_def Let_def by auto
+    with \<open>sat b\<close> lextends_diff.intros(1)[OF this, THEN lextends.intros(4)]
+    have "AT (s \<in>\<^sub>s t1) \<in> set b" "AF (s \<in>\<^sub>s t2) \<in> set b"
+      unfolding sat_def using lin_satD by force+
+    from this s show "e \<in> elts (vdiff (realization t1) (realization t2))"
+      using \<open>sat b\<close> realization_if_Atom_mem realization_if_Atom_not_mem
+      by (auto simp: vdiff_def)
+  qed
+  moreover have "elts (vdiff (realization t1) (realization t2)) \<subseteq> elts (realization (t1 -\<^sub>s t2))"
+  proof
+    fix e assume "e \<in> elts (vdiff (realization t1) (realization t2))"
+    then obtain s where s:
+      "e = realization s" "s \<rightarrow>\<^bsub>bgraph b\<^esub> t1" "\<not> s \<rightarrow>\<^bsub>bgraph b\<^esub> t2"
+      using dominates_if_mem_realization
+      using subterms_fm_intros(5,6)[OF mem_subterms_fm, THEN subterms_branch'_if_subterms_fm_last]
+      by (auto simp: vdiff_def split: if_splits) blast
+    then have "AT (s \<in>\<^sub>s t1) \<in> set b"
+      unfolding bgraph_def Let_def by auto
+    moreover have "AF (s \<in>\<^sub>s t2) \<in> set b"
+    proof -
+      from \<open>sat b\<close> have "AT (s \<in>\<^sub>s t2) \<in> set b \<or> AF (s \<in>\<^sub>s t2) \<in> set b"
+        unfolding sat_def using extends.intros(5)[OF \<open>AT (s \<in>\<^sub>s t1) \<in> set b\<close> mem_subterms_fm]
+        by blast
+      moreover from \<open>sat b\<close> s have False if "AT (s \<in>\<^sub>s t2) \<in> set b"
+        using that unfolding Let_def bgraph_def sledgehammer
+        note lextends_eq.intros(3)[OF \<open>AT (s \<in>\<^sub>s t2) \<in> set b\<close> that, THEN lextends.intros(6)]
+        with realization_if_Atom_neq[OF \<open>sat b\<close>, of s2 s1] have "realization s2 \<noteq> realization s1"
+          using \<open>sat b\<close> by (auto simp: sat_def lin_satD)
+        with \<open>e = realization s1\<close> \<open>e = realization s2\<close> show False by simp
+      qed
+      ultimately show "AT (s1 \<in>\<^sub>s t2) \<in> set b" by blast
+    qed
+    ultimately have "AT (s1 \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) \<in> set b"
+      using \<open>sat b\<close> lextends_int.intros(6)[OF _ _ mem_subterms_fm, THEN lextends.intros(3)]
+      unfolding sat_def by (fastforce simp: lin_satD)
+    from realization_if_Atom_mem[OF this] show "e \<in> elts (realization (t1 \<sqinter>\<^sub>s t2))"
+      unfolding \<open>e = realization s1\<close>
+      using mem_subterms_fm[THEN subterms_branch'_if_subterms_fm_last] by simp
+  qed
+  ultimately show ?thesis by blast
+qed
+
+    
 end
 
 end

@@ -367,6 +367,14 @@ lemma vars_fm_simps:
      apply(auto)
   done
 
+lemma vars_fm_intros:
+  "x \<in> vars_fm p \<Longrightarrow> x \<in> vars_fm (And p q)"
+  "x \<in> vars_fm q \<Longrightarrow> x \<in> vars_fm (And p q)"
+  "x \<in> vars_fm p \<Longrightarrow> x \<in> vars_fm (Or p q)"
+  "x \<in> vars_fm q \<Longrightarrow> x \<in> vars_fm (Or p q)"
+  "x \<in> vars_fm p \<Longrightarrow> x \<in> vars_fm (Neg p)"
+  by (auto simp: vars_fm_simps)
+
 definition vars_branch :: "'a branch \<Rightarrow> 'a set" where
   "vars_branch b \<equiv> \<Union>(vars_fm ` set b)"
 
@@ -374,6 +382,10 @@ lemma vars_branch_simps:
   "vars_branch [] = {}"
   "vars_branch (x # xs) = vars_fm x \<union> vars_branch xs"
   unfolding vars_branch_def by auto
+
+lemma vars_fm_vars_branchI:
+  "x \<in> vars_fm \<phi> \<Longrightarrow> \<phi> \<in> set b \<Longrightarrow> x \<in> vars_branch b"
+  unfolding vars_branch_def by blast
 
 fun member_seq :: "'a pset_term \<Rightarrow> 'a pset_literal list \<Rightarrow> 'a pset_term \<Rightarrow> bool" where
   "member_seq s [] t \<longleftrightarrow> s = t"
@@ -618,50 +630,58 @@ inductive bclosed :: "'a branch \<Rightarrow> bool" where
 
 abbreviation "bopen branch \<equiv> \<not> bclosed branch"
 
-inductive extends :: "'a branch list \<Rightarrow> 'a branch \<Rightarrow> bool" where
+inductive extends' :: "'a branch list \<Rightarrow> 'a branch \<Rightarrow> bool" where
   "\<lbrakk> Or p q \<in> set branch;
      p \<notin> set branch; Neg p \<notin> set branch \<rbrakk>
-    \<Longrightarrow> extends [p # branch, Neg p # branch] branch"
+    \<Longrightarrow> extends' [p # branch, Neg p # branch] branch"
 | "\<lbrakk> Neg (And p q) \<in> set branch;
      Neg p \<notin> set branch; p \<notin> set branch \<rbrakk>
-    \<Longrightarrow> extends [Neg p # branch, p # branch] branch"
+    \<Longrightarrow> extends' [Neg p # branch, p # branch] branch"
 | "\<lbrakk> AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set branch; t1 \<squnion>\<^sub>s t2 \<in> subterms_fm (last branch);
      AT (s \<in>\<^sub>s t1) \<notin> set branch; AF (s \<in>\<^sub>s t1) \<notin> set branch \<rbrakk>
-    \<Longrightarrow> extends [AT (s \<in>\<^sub>s t1) # branch, AF (s \<in>\<^sub>s t1) # branch] branch"
+    \<Longrightarrow> extends' [AT (s \<in>\<^sub>s t1) # branch, AF (s \<in>\<^sub>s t1) # branch] branch"
 | "\<lbrakk> AT (s \<in>\<^sub>s t1) \<in> set branch; t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm (last branch);
      AT (s \<in>\<^sub>s t2) \<notin> set branch; AF (s \<in>\<^sub>s t2) \<notin> set branch \<rbrakk>
-    \<Longrightarrow> extends [AT (s \<in>\<^sub>s t2) # branch, AF (s \<in>\<^sub>s t2) # branch] branch"
+    \<Longrightarrow> extends' [AT (s \<in>\<^sub>s t2) # branch, AF (s \<in>\<^sub>s t2) # branch] branch"
 | "\<lbrakk> AT (s \<in>\<^sub>s t1) \<in> set branch; t1 -\<^sub>s t2 \<in> subterms_fm (last branch);
      AT (s \<in>\<^sub>s t2) \<notin> set branch; AF (s \<in>\<^sub>s t2) \<notin> set branch \<rbrakk>
-    \<Longrightarrow> extends [AT (s \<in>\<^sub>s t2) # branch, AF (s \<in>\<^sub>s t2) # branch] branch"
+    \<Longrightarrow> extends' [AT (s \<in>\<^sub>s t2) # branch, AF (s \<in>\<^sub>s t2) # branch] branch"
+
+inductive extends :: "'a branch list \<Rightarrow> 'a branch \<Rightarrow> bool" where
+  "extends' bs b \<Longrightarrow> extends bs b"
 | "\<lbrakk> AF (t1 \<approx>\<^sub>s t2) \<in> set branch; t1 \<in> subterms_fm (last branch); t2 \<in> subterms_fm (last branch);
      \<nexists>x. AT (x \<in>\<^sub>s t1) \<in> set branch \<and> AF (x \<in>\<^sub>s t2) \<in> set branch;
      \<nexists>x. AF (x \<in>\<^sub>s t1) \<in> set branch \<and> AT (x \<in>\<^sub>s t2) \<in> set branch;
      x \<notin> vars_branch branch \<rbrakk>
     \<Longrightarrow> extends [AT (Var x \<in>\<^sub>s t1) # AF (Var x \<in>\<^sub>s t2) # branch, AF (Var x \<in>\<^sub>s t1) # AT (Var x \<in>\<^sub>s t2) # branch] branch"
 
+lemma extends'_strict_suffix:
+  "extends' bs b \<Longrightarrow> b' \<in> set bs \<Longrightarrow> strict_suffix b b'"
+  by (induction rule: extends'.induct) (auto simp: strict_suffix_def suffix_def)
 
 lemma extends_strict_suffix:
   "extends bs b \<Longrightarrow> b' \<in> set bs \<Longrightarrow> strict_suffix b b'"
-  apply(induction rule: extends.induct)
-                      apply(auto simp: strict_suffix_def suffix_def)
-  done
+proof(induction rule: extends.induct)
+  case (1 bs b)
+  with extends'_strict_suffix show ?case by blast
+qed (auto simp: strict_suffix_def suffix_def)
 
+lemmas extends'_mono = strict_suffix_set_subset[OF extends'_strict_suffix]
 lemmas extends_mono = strict_suffix_set_subset[OF extends_strict_suffix]
 
 inductive extendss :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
-  "lextends b1 b2 \<Longrightarrow> extendss b2 b3 \<Longrightarrow> extendss b1 b3"
+  "extendss b b"
+| "lextends b1 b2 \<Longrightarrow> extendss b2 b3 \<Longrightarrow> extendss b1 b3"
 | "extends bs b2 \<Longrightarrow> b1 \<in> set bs \<Longrightarrow> extendss b2 b3 \<Longrightarrow> extendss b1 b3"
-| "lextends b1 b2 \<Longrightarrow> extendss b1 b2"
-| "extends bs b \<Longrightarrow> b1 \<in> set bs \<Longrightarrow> extendss b1 b"
 
-lemma extendss_strict_suffix:
-  "extendss b1 b2 \<Longrightarrow> strict_suffix b2 b1"
+
+lemma extendss_suffix:
+  "extendss b1 b2 \<Longrightarrow> suffix b2 b1"
   apply(induction rule: extendss.induct)
      apply(use lextends_strict_suffix extends_strict_suffix in \<open>force+\<close>)
   done
 
-lemmas extendss_mono = strict_suffix_set_subset[OF extendss_strict_suffix]
+lemmas extendss_mono = set_mono_suffix[OF extendss_suffix]
 
 inductive closeable :: "'a branch \<Rightarrow> bool" where
   "bclosed b \<Longrightarrow> closeable b"
@@ -851,17 +871,50 @@ lemma lextends_vars_branch_eq:
   "lextends b' b \<Longrightarrow> b \<noteq> [] \<Longrightarrow> vars_branch b' = vars_branch b"
   using lextends_subterms_branch_eq subterms_branch_eq_if_vars_branch_eq by metis
 
-lemma lextends_last_eq:
-  "lextends b' b \<Longrightarrow> b \<noteq> [] \<Longrightarrow> last b' = last b"
-  using lextends_strict_suffix unfolding strict_suffix_def suffix_def by force
+lemma extends'_subterms_branch_eq:
+  "extends' bs b \<Longrightarrow> b' \<in> set bs \<Longrightarrow> b \<noteq> [] \<Longrightarrow> subterms_branch b' = subterms_branch b"
+proof(induction rule: extends'.induct)
+  case (3 s t1 t2 branch)
+  then show ?case
+    by (auto simp: subterms_branch_subterms_subterms_literal_trans subterms_branch_simps)
+next
+  case (4 s t1 branch t2)
+  then show ?case
+    using subterms_branch_subterms_subterms_fm_trans[OF _ _ "4"(2)]
+    by (auto simp: subterms_branch_subterms_subterms_literal_trans subterms_branch_simps)
+next
+  case (5 s t1 branch t2)
+  then show ?case
+    using subterms_branch_subterms_subterms_fm_trans[OF _ _ "5"(2)]
+    by (auto simp: subterms_branch_subterms_subterms_literal_trans subterms_branch_simps)
+qed (use subterms_branch_def in \<open>(fastforce simp: subterms_branch_simps)+\<close>)
 
-lemma extends_last_eq:
-  "extends bs b \<Longrightarrow> b' \<in> set bs \<Longrightarrow> b \<noteq> [] \<Longrightarrow> last b' = last b"
-  using extends_strict_suffix unfolding strict_suffix_def suffix_def by force
+
+lemma extends'_vars_branch_eq:
+  "extends' bs b \<Longrightarrow> b' \<in> set bs \<Longrightarrow> b \<noteq> [] \<Longrightarrow> vars_branch b' = vars_branch b"
+  using extends'_subterms_branch_eq subterms_branch_eq_if_vars_branch_eq by metis
+
+lemma 
+  shows lextends_last_eq:
+    "lextends b' b \<Longrightarrow> b \<noteq> [] \<Longrightarrow> last b' = last b"
+    and extends'_last_eq:
+    "extends' bs b \<Longrightarrow> b' \<in> set bs \<Longrightarrow> b \<noteq> [] \<Longrightarrow> last b' = last b"
+    and extends_last_eq:
+    "extends bs b \<Longrightarrow> b' \<in> set bs \<Longrightarrow> b \<noteq> [] \<Longrightarrow> last b' = last b"
+    and extendss_last_eq:
+    "extendss b' b \<Longrightarrow> b \<noteq> [] \<Longrightarrow> last b' = last b"
+  using lextends_strict_suffix extends'_strict_suffix extends_strict_suffix
+  using extendss_suffix unfolding strict_suffix_def suffix_def by fastforce+
 
 lemma lextends_params_eq:
   "lextends b' b \<Longrightarrow> b \<noteq> [] \<Longrightarrow> params b' = params b"
   using lextends_last_eq lextends_vars_branch_eq unfolding params_def by force
+
+lemma extends'_params_eq:
+  assumes "extends' bs b" "b' \<in> set bs" "b \<noteq> []" 
+  shows "params b' = params b"
+  using extends'_last_eq[OF assms] extends'_vars_branch_eq[OF assms]
+  unfolding params_def by force
 
 lemma lextends_params'_subs:
   assumes "lextends b' b" "b \<noteq> []"
@@ -998,13 +1051,12 @@ lemma vars_branch_vars_fmI:
   shows "v \<in> vars_branch branch"
   using assms vars_branch_def vars_fm_def by fastforce
 
-lemma extends_no_new_subterms:
-  assumes "extends bs b" "b \<noteq> []"
-  assumes "b' \<in> set bs"
+lemma extends'_no_new_subterms:
+  assumes "extends' bs b" "b \<noteq> []" "b' \<in> set bs"
   assumes "no_new_subterms b"
   shows "no_new_subterms b'"
   using assms
-proof(induction rule: extends.induct)
+proof(induction rule: extends'.induct)
   case (1 p q branch)
   then show ?case
     using no_new_subtermsE[OF \<open>no_new_subterms branch\<close>]
@@ -1041,8 +1093,18 @@ next
                intro: subterms_subterms_fm_trans[OF _ subterms_fm_intros(6)]
                intro!: no_new_subterms_casesI)
     done
+qed
+
+lemma extends_no_new_subterms:
+  assumes "extends bs b" "b \<noteq> []" "b' \<in> set bs"
+  assumes "no_new_subterms b"
+  shows "no_new_subterms b'"
+  using assms
+proof(induction rule: extends.induct)
+  case 1
+  with extends'_no_new_subterms show ?case by blast
 next
-  case (6 t1 t2 branch x)
+  case (2 t1 t2 branch x)
   then show ?case
     using no_new_subtermsE[OF \<open>no_new_subterms branch\<close>]
     apply(auto simp: subterms_branch_simps subterms_branch_subterms_subterms_literal_trans
@@ -1055,7 +1117,7 @@ lemma extendss_no_new_subterms:
   shows "no_new_subterms b'"
   using assms
   apply(induction b' b rule: extendss.induct)
-  using extendss_strict_suffix suffix_bot.extremum_strict
+  using extendss_suffix suffix_bot.extremum_uniqueI
   using lextends_no_new_subterms extends_no_new_subterms
   by blast+
 
@@ -1104,9 +1166,12 @@ lemma aux2:
   assumes "P b"
   shows "P b'"
   using assms(2-)
-    apply (induction rule: extends.induct)
-       apply(auto simp: Int_def P_def params_def vars_branch_vars_fmI vars_fm_simps)
-  done
+proof (induction rule: extends.induct)
+  case (1 bs b)
+  then show ?case
+    by (induction rule: extends'.induct)
+       (auto simp: Int_def P_def params_def vars_branch_vars_fmI vars_fm_simps)
+qed (auto simp: Int_def P_def params_def vars_branch_vars_fmI vars_fm_simps)
 
 lemma aux3:
   defines "P \<equiv> (\<lambda>b. \<forall>\<phi> \<in> set b. \<not> is_Atom \<phi> \<longrightarrow> vars_fm \<phi> \<inter> params b = {})"
@@ -1115,7 +1180,7 @@ lemma aux3:
   shows "P b'"
   using assms(2-)
   apply (induction rule: extendss.induct)
-     apply (metis assms aux aux2 extendss_strict_suffix suffix_bot.extremum_strict)+
+     apply (metis P_def aux aux2 extendss_suffix suffix_bot.extremum_uniqueI)+
   done
 
 lemma lextends_fm_params'_eq:
@@ -1176,6 +1241,44 @@ proof -
     done
   with lextends_params'_subs[OF \<open>lextends b' b\<close> \<open>b \<noteq> []\<close>] show ?thesis
     by auto
+qed
+
+lemma extends'_params'_eq:
+  assumes "extends' bs b" "b' \<in> set bs" "b \<noteq> []"
+  shows "params' b' = params b"
+  using assms
+proof -
+  from assms have "x \<in> params' b'" if "x \<in> params' b" for x
+    using that extends'_last_eq[OF assms] extends'_params_eq[OF assms]
+  proof(induction rule: extends'.induct)
+    case (1 p q branch)
+    then show ?case
+      apply(intro params'I)
+      sledgehammer
+        apply (simp add: params'D(1))
+      sledgehammer  sorry
+  next
+    case (2 p q branch)
+    then show ?case sorry
+  next
+    case (3 s t1 t2 branch)
+    then show ?case
+      apply(intro params'I)
+        apply (simp add: params'D(1))
+      using params'D apply fastforce+ done
+  next
+    case (4 s t1 branch t2)
+    then show ?case
+      apply(intro params'I)
+        apply (simp add: params'D(1))
+      using params'D apply fastforce+ done
+  next
+    case (5 s t1 branch t2)
+    then show ?case
+      apply(intro params'I)
+        apply (simp add: params'D(1))
+      using params'D apply fastforce+ done
+  qed
 qed
 
 lemma lemma_2_lextends:
@@ -1424,89 +1527,93 @@ lemma lemma_2_extends:
   shows "\<forall>c \<in> params' b'. \<forall>t \<in> params_subterms b'. P b' c t"
   using assms(2-) extends_last_eq[OF assms(2-4)] extends_no_new_subterms[OF assms(2,4,3,5)]
 proof(induction rule: extends.induct)
-  case (1 p q branch)
-  then have params_eq: "params (p # branch) = params branch" "params (Neg p # branch) = params branch"
-    unfolding params_def
-    by (auto simp: vars_branch_simps vars_branch_vars_fmI vars_fm_simps)
-  from 1 have "vars_fm (Or p q) \<inter> params branch = {}"
-    by simp
-  then have vars: "vars_fm p \<inter> params branch = {}" "vars_fm q \<inter> params branch = {}"
-    by (simp_all add: disjoint_iff vars_fm_simps)
-  with params_eq have "params' (p # branch) = params' branch" "params' (Neg p # branch) = params' branch"
-    by (auto simp: params'_def)
-  with "1.prems" params_eq vars show ?case
-    unfolding P_def params_subterms_def
-    by (auto simp: params'D(1)) 
+  case 1
+  then show ?case
+  proof(induction rule: extends'.induct)
+    case (1 p q branch)
+    then have params_eq: "params (p # branch) = params branch" "params (Neg p # branch) = params branch"
+      unfolding params_def
+      by (auto simp: vars_branch_simps vars_branch_vars_fmI vars_fm_simps)
+    from 1 have "vars_fm (Or p q) \<inter> params branch = {}"
+      by simp
+    then have vars: "vars_fm p \<inter> params branch = {}" "vars_fm q \<inter> params branch = {}"
+      by (simp_all add: disjoint_iff vars_fm_simps)
+    with params_eq have "params' (p # branch) = params' branch" "params' (Neg p # branch) = params' branch"
+      by (auto simp: params'_def)
+    with "1.prems" params_eq vars show ?case
+      unfolding P_def params_subterms_def
+      by (auto simp: params'D(1)) 
+  next
+    case (2 p q branch)
+    then have params_eq: "params (p # branch) = params branch" "params (Neg p # branch) = params branch"
+      unfolding params_def
+      by (auto simp: vars_branch_simps vars_branch_vars_fmI vars_fm_simps)
+    from 2 have "vars_fm (Neg (And p q)) \<inter> params branch = {}"
+      by simp
+    then have vars: "vars_fm p \<inter> params branch = {}" "vars_fm q \<inter> params branch = {}"
+      by (simp_all add: disjoint_iff vars_fm_simps)
+    with params_eq have "params' (p # branch) = params' branch" "params' (Neg p # branch) = params' branch"
+      by (auto simp: params'_def)
+    with "2.prems" params_eq vars show ?case
+      unfolding P_def params_subterms_def
+      by (auto simp: params'D(1)) 
+  next
+    case (3 s t1 t2 branch)
+    then have params_eq:
+      "params (AT (s \<in>\<^sub>s t1) # branch) = params branch"
+      "params (AF (s \<in>\<^sub>s t1) # branch) = params branch"
+      by (auto simp: params_def vars_branch_simps vars_branch_vars_fmI)
+    from \<open>t1 \<squnion>\<^sub>s t2 \<in> subterms_fm (last branch)\<close>
+    have t1_not_param: "t1 \<notin> Var ` params branch"
+      by (meson disjoint_iff params_subterms_last_disjnt subterms_fm_intros)+
+    with params_eq have
+      "params' (AT (s \<in>\<^sub>s t1) # branch) = params' branch"
+      "params' (AF (s \<in>\<^sub>s t1) # branch) = params' branch"
+      by (auto simp: params'_def)
+    with "3.prems" "3.hyps"(1,2) params_eq t1_not_param show ?case
+      unfolding P_def params_subterms_def
+      by (auto simp: params'D(1))
+  next
+    case (4 s t1 branch t2)
+    then have params_eq:
+      "params (AT (s \<in>\<^sub>s t2) # branch) = params branch"
+      "params (AF (s \<in>\<^sub>s t2) # branch) = params branch"
+      using mem_vars_fm_if_mem_subterm_fm
+      by(fastforce simp: params_def vars_branch_simps vars_branch_vars_fmI
+          intro: subterms_fm_intros(4))+
+    from \<open>t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm (last branch)\<close>
+    have t2_not_param: "t2 \<notin> Var ` params branch"
+      by (meson disjoint_iff params_subterms_last_disjnt subterms_fm_intros)+
+    with params_eq have
+      "params' (AT (s \<in>\<^sub>s t2) # branch) = params' branch"
+      "params' (AF (s \<in>\<^sub>s t2) # branch) = params' branch"
+      by (auto simp: params'_def)
+    with "4.prems" "4.hyps"(1,2) params_eq t2_not_param show ?case
+      unfolding P_def params_subterms_def
+      using subterms_fm_intros(3)[OF \<open>t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm (last branch)\<close>]
+      by (auto simp: params'D(1))
+  next
+    case (5 s t1 branch t2)
+    then have params_eq:
+      "params (AT (s \<in>\<^sub>s t2) # branch) = params branch"
+      "params (AF (s \<in>\<^sub>s t2) # branch) = params branch"
+      using mem_vars_fm_if_mem_subterm_fm
+      by(fastforce simp: params_def vars_branch_simps vars_branch_vars_fmI
+          intro: subterms_fm_intros(6))+
+    from \<open>t1 -\<^sub>s t2 \<in> subterms_fm (last branch)\<close>
+    have t2_not_param: "t2 \<notin> Var ` params branch"
+      by (meson disjoint_iff params_subterms_last_disjnt subterms_fm_intros)+
+    with params_eq have
+      "params' (AT (s \<in>\<^sub>s t2) # branch) = params' branch"
+      "params' (AF (s \<in>\<^sub>s t2) # branch) = params' branch"
+      by (auto simp: params'_def)
+    with "5.prems" "5.hyps"(1,2) params_eq t2_not_param show ?case
+      unfolding P_def params_subterms_def
+      using subterms_fm_intros(5)[OF \<open>t1 -\<^sub>s t2 \<in> subterms_fm (last branch)\<close>]
+      by (auto simp: params'D(1))
+  qed
 next
-  case (2 p q branch)
-  then have params_eq: "params (p # branch) = params branch" "params (Neg p # branch) = params branch"
-    unfolding params_def
-    by (auto simp: vars_branch_simps vars_branch_vars_fmI vars_fm_simps)
-  from 2 have "vars_fm (Neg (And p q)) \<inter> params branch = {}"
-    by simp
-  then have vars: "vars_fm p \<inter> params branch = {}" "vars_fm q \<inter> params branch = {}"
-    by (simp_all add: disjoint_iff vars_fm_simps)
-  with params_eq have "params' (p # branch) = params' branch" "params' (Neg p # branch) = params' branch"
-    by (auto simp: params'_def)
-  with "2.prems" params_eq vars show ?case
-    unfolding P_def params_subterms_def
-    by (auto simp: params'D(1)) 
-next
-  case (3 s t1 t2 branch)
-  then have params_eq:
-    "params (AT (s \<in>\<^sub>s t1) # branch) = params branch"
-    "params (AF (s \<in>\<^sub>s t1) # branch) = params branch"
-    by (auto simp: params_def vars_branch_simps vars_branch_vars_fmI)
-  from \<open>t1 \<squnion>\<^sub>s t2 \<in> subterms_fm (last branch)\<close>
-  have t1_not_param: "t1 \<notin> Var ` params branch"
-    by (meson disjoint_iff params_subterms_last_disjnt subterms_fm_intros)+
-  with params_eq have
-    "params' (AT (s \<in>\<^sub>s t1) # branch) = params' branch"
-    "params' (AF (s \<in>\<^sub>s t1) # branch) = params' branch"
-    by (auto simp: params'_def)
-  with "3.prems" "3.hyps"(1,2) params_eq t1_not_param show ?case
-    unfolding P_def params_subterms_def
-    by (auto simp: params'D(1))
-next
-  case (4 s t1 branch t2)
-  then have params_eq:
-    "params (AT (s \<in>\<^sub>s t2) # branch) = params branch"
-    "params (AF (s \<in>\<^sub>s t2) # branch) = params branch"
-    using mem_vars_fm_if_mem_subterm_fm
-    by(fastforce simp: params_def vars_branch_simps vars_branch_vars_fmI
-                 intro: subterms_fm_intros(4))+
-  from \<open>t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm (last branch)\<close>
-  have t2_not_param: "t2 \<notin> Var ` params branch"
-    by (meson disjoint_iff params_subterms_last_disjnt subterms_fm_intros)+
-  with params_eq have
-    "params' (AT (s \<in>\<^sub>s t2) # branch) = params' branch"
-    "params' (AF (s \<in>\<^sub>s t2) # branch) = params' branch"
-    by (auto simp: params'_def)
-  with "4.prems" "4.hyps"(1,2) params_eq t2_not_param show ?case
-    unfolding P_def params_subterms_def
-    using subterms_fm_intros(3)[OF \<open>t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm (last branch)\<close>]
-    by (auto simp: params'D(1))
-next
-  case (5 s t1 branch t2)
-  then have params_eq:
-    "params (AT (s \<in>\<^sub>s t2) # branch) = params branch"
-    "params (AF (s \<in>\<^sub>s t2) # branch) = params branch"
-    using mem_vars_fm_if_mem_subterm_fm
-    by(fastforce simp: params_def vars_branch_simps vars_branch_vars_fmI
-                 intro: subterms_fm_intros(6))+
-  from \<open>t1 -\<^sub>s t2 \<in> subterms_fm (last branch)\<close>
-  have t2_not_param: "t2 \<notin> Var ` params branch"
-    by (meson disjoint_iff params_subterms_last_disjnt subterms_fm_intros)+
-  with params_eq have
-    "params' (AT (s \<in>\<^sub>s t2) # branch) = params' branch"
-    "params' (AF (s \<in>\<^sub>s t2) # branch) = params' branch"
-    by (auto simp: params'_def)
-  with "5.prems" "5.hyps"(1,2) params_eq t2_not_param show ?case
-    unfolding P_def params_subterms_def
-    using subterms_fm_intros(5)[OF \<open>t1 -\<^sub>s t2 \<in> subterms_fm (last branch)\<close>]
-    by (auto simp: params'D(1))
-next
-  case (6 t1 t2 branch x)
+  case (2 t1 t2 branch x)
   then have params_eq:
     "params (AT (pset_term.Var x \<in>\<^sub>s t1) # AF (pset_term.Var x \<in>\<^sub>s t2) # branch)
     = insert x (params branch)"
@@ -1519,11 +1626,11 @@ next
     "params' (AF (pset_term.Var x \<in>\<^sub>s t1) # AT (pset_term.Var x \<in>\<^sub>s t2) # branch)
     = insert x (params' branch)"
     unfolding params'_def by (auto simp: vars_branch_vars_fmI)
-  from 6 have "t1 \<notin> Var ` params branch" "t2 \<notin> Var ` params branch"
+  from 2 have "t1 \<notin> Var ` params branch" "t2 \<notin> Var ` params branch"
     by (meson disjoint_iff_not_equal params_subterms_last_disjnt)+
   then have not_in_params': "t1 \<notin> Var ` params' branch" "t2 \<notin> Var ` params' branch"
     unfolding params'_def by auto
-  with "6"(6,7,8) "6.prems"(5,6) "6.hyps"(1,2) show ?case
+  with "2"(6,7,8) "2.prems"(5,6) "2.hyps"(1,2) show ?case
     unfolding P_def params_subterms_def
     by (auto simp: params_eq params'_eq vars_branch_vars_fmI)
 qed
@@ -1578,7 +1685,8 @@ lemma finite_subterms_branch': "finite (subterms_branch' b)"
   by auto
 
 lemma wf_branch_not_Nil[simp]: "wf_branch b \<Longrightarrow> b \<noteq> []"
-  unfolding wf_branch_def by (metis extendss_strict_suffix suffix_bot.extremum_strict)
+  unfolding wf_branch_def
+  using extendss_suffix suffix_bot.extremum_uniqueI by blast
 
 lemma subterms_branch_eq_if_wf_branch:
   assumes "wf_branch b"
@@ -1623,6 +1731,12 @@ proof -
     using params_subterms_eq_subterms_branch' by blast+
 qed
 
+lemma
+  assumes "wf_branch b"
+  shows "no_new_subterms b"
+proof -
+qed
+
 lemma lemma_2:
   assumes "wf_branch b"
   assumes "c \<in> params' b" "t \<in> params_subterms b"
@@ -1642,29 +1756,21 @@ proof -
   have "AT (Var c \<approx>\<^sub>s t) \<notin> set b \<and> AT (t \<approx>\<^sub>s Var c) \<notin> set b \<and> AT (t \<in>\<^sub>s Var c) \<notin> set b"
     using \<open>extendss b [\<phi>]\<close> assms(2,3)
   proof(induction b "[\<phi>]" arbitrary: c t rule: extendss.induct)
-    case (1 b1 b2)
-    note lemma_2_lextends[OF this(1) _ no_new_subterms[OF this(2)] disjnt_vars_params_fm[OF this(2)]]
+    case 1
+    then have "params' [\<phi>] = {}"
+      unfolding params'_def params_def by (auto simp: vars_branch_simps)
     with 1 show ?case
-      using wf_branch_def wf_branch_not_Nil by blast
+      by blast
   next
-    case (2 bs b2 b1)
-    note lemma_2_extends[OF this(1) _ _ no_new_subterms[OF this(3)] disjnt_vars_params_fm[OF this(3)]]
+    case (2 b1 b2)
+    note lemma_2_lextends[OF this(1) _ no_new_subterms[OF this(2)] disjnt_vars_params_fm[OF this(2)]]
     with 2 show ?case
       using wf_branch_def wf_branch_not_Nil by blast
   next
-    case (3 b1)
-    have "params' [\<phi>] = {}"
-      unfolding params'_def params_def vars_branch_def by simp 
-    moreover
-    note lemma_2_lextends[OF "3"(1) _ \<open>no_new_subterms [\<phi>]\<close>] \<open>vars_fm \<phi> \<inter> params [\<phi>] = {}\<close>
-    ultimately show ?case using 3 by auto
-  next
-    case (4 bs b1)
-    have "params' [\<phi>] = {}"
-      unfolding params'_def params_def vars_branch_def by simp 
-    moreover
-    note lemma_2_extends[OF "4"(1) _ _ \<open>no_new_subterms [\<phi>]\<close>] \<open>vars_fm \<phi> \<inter> params [\<phi>] = {}\<close>
-    ultimately show ?case using 4 by auto
+    case (3 bs b2 b1)
+    note lemma_2_extends[OF this(1) _ _ no_new_subterms[OF this(3)] disjnt_vars_params_fm[OF this(3)]]
+    with 3 show ?case
+      using wf_branch_def wf_branch_not_Nil by blast
   qed
   then show "AT (Var c \<approx>\<^sub>s t) \<notin> set b" "AT (t \<approx>\<^sub>s Var c) \<notin> set b" "AT (t \<in>\<^sub>s Var c) \<notin> set b"
     by blast+
@@ -1832,12 +1938,8 @@ proof -
     using \<open>t \<in> params_subterms b\<close> 
     unfolding subterms_branch'_def params_subterms_def by auto
   moreover
-  from assms have "(s, t) \<in> arcs (bgraph b)"
-    unfolding bgraph_def Let_def by simp
-  then have "s \<rightarrow>\<^bsub>bgraph b\<^esub> t"
+  from assms have "s \<rightarrow>\<^bsub>bgraph b\<^esub> t"
     unfolding arcs_ends_def arc_to_ends_def by (simp add: bgraph_def)
-  then have "s \<in> ancestors1 (bgraph b) t"
-    by auto
   ultimately show ?thesis
     by auto
 qed
@@ -2023,7 +2125,7 @@ proof -
 
       from finite_vars_branch infinite_vars obtain x where "x \<notin> vars_branch b"
         using ex_new_if_finite by blast
-      from extends.intros(6)[OF t1'_t2'(3,1,2) _ _ this] \<open>sat b\<close>[unfolded sat_def] consider
+      from extends.intros(2)[OF t1'_t2'(3,1,2) _ _ this] \<open>sat b\<close>[unfolded sat_def] consider
         s1 where "AT (s1 \<in>\<^sub>s t1') \<in> set b" "AF (s1 \<in>\<^sub>s t2') \<in> set b" |
         s2 where "AF (s2 \<in>\<^sub>s t1') \<in> set b" "AT (s2 \<in>\<^sub>s t2') \<in> set b"
         by blast 
@@ -2154,7 +2256,7 @@ proof -
     then have "AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set b"
       unfolding bgraph_def Let_def by auto
     with \<open>sat b\<close> consider "AT (s \<in>\<^sub>s t1) \<in> set b" | "AF (s \<in>\<^sub>s t1) \<in> set b"
-      unfolding sat_def using extends.intros(3)[OF _ mem_subterms_fm]
+      unfolding sat_def using extends'.intros(3)[OF _ mem_subterms_fm, THEN extends.intros(1)]
       by blast
     then show "e \<in> elts (realization t1 \<squnion> realization t2)"
     proof(cases)
@@ -2242,8 +2344,9 @@ proof -
     moreover have "AT (s1 \<in>\<^sub>s t2) \<in> set b"
     proof -
       from \<open>sat b\<close> have "AT (s1 \<in>\<^sub>s t2) \<in> set b \<or> AF (s1 \<in>\<^sub>s t2) \<in> set b"
-        unfolding sat_def using extends.intros(4)[OF \<open>AT (s1 \<in>\<^sub>s t1) \<in> set b\<close> mem_subterms_fm]
-        by blast
+        unfolding sat_def
+        using extends'.intros(4)[OF \<open>AT (s1 \<in>\<^sub>s t1) \<in> set b\<close> mem_subterms_fm]
+        using extends.intros(1) by blast
       moreover from \<open>sat b\<close> s1_s2 have False if "AF (s1 \<in>\<^sub>s t2) \<in> set b"
       proof -
         note lextends_eq.intros(3)[OF \<open>AT (s2 \<in>\<^sub>s t2) \<in> set b\<close> that, THEN lextends.intros(6)]
@@ -2263,7 +2366,7 @@ proof -
   ultimately show ?thesis by blast
 qed
 
-lemma realization_Inter:
+lemma realization_Diff:
   assumes "sat b"
   assumes "t1 -\<^sub>s t2 \<in> subterms_branch b"
   shows "realization (t1 -\<^sub>s t2) = vdiff (realization t1) (realization t2)"
@@ -2283,7 +2386,7 @@ proof -
     with \<open>sat b\<close> lextends_diff.intros(1)[OF this, THEN lextends.intros(4)]
     have "AT (s \<in>\<^sub>s t1) \<in> set b" "AF (s \<in>\<^sub>s t2) \<in> set b"
       unfolding sat_def using lin_satD by force+
-    from this s show "e \<in> elts (vdiff (realization t1) (realization t2))"
+    with s show "e \<in> elts (vdiff (realization t1) (realization t2))"
       using \<open>sat b\<close> realization_if_Atom_mem realization_if_Atom_not_mem
       by (auto simp: vdiff_def)
   qed
@@ -2300,28 +2403,113 @@ proof -
     moreover have "AF (s \<in>\<^sub>s t2) \<in> set b"
     proof -
       from \<open>sat b\<close> have "AT (s \<in>\<^sub>s t2) \<in> set b \<or> AF (s \<in>\<^sub>s t2) \<in> set b"
-        unfolding sat_def using extends.intros(5)[OF \<open>AT (s \<in>\<^sub>s t1) \<in> set b\<close> mem_subterms_fm]
+        unfolding sat_def using extends'.intros(5)[OF \<open>AT (s \<in>\<^sub>s t1) \<in> set b\<close> mem_subterms_fm]
+        using extends.intros(1) by blast
+      moreover from s(3) have False if "AT (s \<in>\<^sub>s t2) \<in> set b"
+        using that unfolding Let_def bgraph_def by (auto simp: arcs_ends_def arc_to_ends_def)
+      ultimately show "AF (s \<in>\<^sub>s t2) \<in> set b"
         by blast
-      moreover from \<open>sat b\<close> s have False if "AT (s \<in>\<^sub>s t2) \<in> set b"
-        using that unfolding Let_def bgraph_def sledgehammer
-        note lextends_eq.intros(3)[OF \<open>AT (s \<in>\<^sub>s t2) \<in> set b\<close> that, THEN lextends.intros(6)]
-        with realization_if_Atom_neq[OF \<open>sat b\<close>, of s2 s1] have "realization s2 \<noteq> realization s1"
-          using \<open>sat b\<close> by (auto simp: sat_def lin_satD)
-        with \<open>e = realization s1\<close> \<open>e = realization s2\<close> show False by simp
-      qed
-      ultimately show "AT (s1 \<in>\<^sub>s t2) \<in> set b" by blast
     qed
-    ultimately have "AT (s1 \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) \<in> set b"
-      using \<open>sat b\<close> lextends_int.intros(6)[OF _ _ mem_subterms_fm, THEN lextends.intros(3)]
+    ultimately have "AT (s \<in>\<^sub>s t1 -\<^sub>s t2) \<in> set b"
+      using \<open>sat b\<close> lextends_diff.intros(6)[OF _ _ mem_subterms_fm, THEN lextends.intros(4)]
       unfolding sat_def by (fastforce simp: lin_satD)
-    from realization_if_Atom_mem[OF this] show "e \<in> elts (realization (t1 \<sqinter>\<^sub>s t2))"
-      unfolding \<open>e = realization s1\<close>
+    from realization_if_Atom_mem[OF this] show "e \<in> elts (realization (t1 -\<^sub>s t2))"
+      unfolding \<open>e = realization s\<close>
       using mem_subterms_fm[THEN subterms_branch'_if_subterms_fm_last] by simp
   qed
   ultimately show ?thesis by blast
 qed
 
-    
+lemma realization_Single:
+  assumes "sat b"
+  assumes "Single t \<in> subterms_branch b"
+  shows "realization (Single t) = vset {realization t}"
+  using assms
+proof -
+  from assms have mem_subterms_fm: "Single t \<in> subterms_fm (last b)"
+    using mem_subterms_fm_last_if_mem_subterms_branch[OF wf_branch]
+    by simp
+  have "elts (realization (Single t)) \<subseteq> elts (vset {realization t})"
+  proof
+    fix e assume "e \<in> elts (realization (Single t))"
+    then obtain s where s: "e = realization s" "s \<rightarrow>\<^bsub>bgraph b\<^esub> Single t"
+      using dominates_if_mem_realization mem_subterms_fm[THEN subterms_branch'_if_subterms_fm_last]
+      by auto
+    then have "AT (s \<in>\<^sub>s Single t) \<in> set b"
+      unfolding bgraph_def Let_def by auto
+    with \<open>sat b\<close> lextends_single.intros(2)[OF this, THEN lextends.intros(5)]
+    have "AT (s \<approx>\<^sub>s t) \<in> set b"
+      unfolding sat_def using lin_satD by fastforce
+    with s show "e \<in> elts (vset {realization t})"
+      using realization_if_Atom_eq \<open>sat b\<close>[unfolded sat_def]
+      by auto
+  qed
+  moreover have "elts (vset {realization t}) \<subseteq> elts (realization (Single t))"
+  proof
+    fix e assume "e \<in> elts (vset {realization t})"
+    then have "e = realization t"
+      by simp
+    from lextends_single.intros(1)[OF mem_subterms_fm, THEN lextends.intros(5)] \<open>sat b\<close>
+    have "AT (t \<in>\<^sub>s Single t) \<in> set b"
+      unfolding sat_def using lin_satD by fastforce
+    from realization_if_Atom_mem[OF this] \<open>e = realization t\<close>
+    show "e \<in> elts (realization (Single t))"
+      using mem_subterms_fm[THEN subterms_branch'_if_subterms_fm_last]
+      by simp
+  qed
+  ultimately show ?thesis by blast
+qed
+
+lemmas realization_simps =
+  realization_Union realization_Inter realization_Diff realization_Single
+
 end
+
+term "(2::real) ^ 2"
+
+lemma subterms_nonempty[simp]: "subterms t \<noteq> {}"
+  by (induction t) auto
+
+lemma subterms_atom_nonempty[simp]: "subterms_literal l \<noteq> {}"
+  by (cases l rule: subterms_literal.cases) auto
+
+lemma subterms_fm_nonempty[simp]: "subterms_fm \<phi> \<noteq> {}"
+  by (induction \<phi>) auto
+
+lemma
+  assumes "wf_branch b"
+  shows "card (params b) \<le> (card (subterms_fm (last b)))^2"
+proof -
+  from assms obtain \<phi> where "extendss b [\<phi>]"
+    unfolding wf_branch_def by blast
+  with wf_branch_not_Nil[OF assms] have [simp]: "last b = \<phi>"
+    using extendss_last_eq by force
+  have False if card_gt: "card (params b) > (card (subterms_fm \<phi>))^2"
+  proof -
+    obtain b1 b2 bs where
+      "extends bs b1" "b2 \<in> set bs" "extendss b1 [\<phi>]" 
+      "card (params b1) = (card (subterms_fm \<phi>))^2"
+      "card (params b2) = (card (subterms_fm \<phi>))^2 + 1"
+      using \<open>extendss b [\<phi>]\<close> card_gt
+    proof(induction b "[\<phi>]" rule: extendss.induct)
+      case 1
+      then have "params [\<phi>] = {}"
+        unfolding params_def by (auto simp: vars_branch_simps)
+      with 1 show ?case by simp
+    next
+      case (2 b1 b2)
+      then have "b2 \<noteq> []"
+        using wf_branch_def wf_branch_not_Nil by blast
+      from lextends_params_eq[OF \<open>lextends b1 b2\<close> this] 2 show ?case by simp
+    next
+      case (3 bs b2 b1)
+      then show ?case sorry
+    qed
+
+
+theorem
+  assumes "wf_branch b" "bopen b" "sat b"
+  shows "\<exists>M. interp I\<^sub>s\<^sub>l M (last b)"
+proof -
 
 end

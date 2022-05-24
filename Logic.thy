@@ -435,6 +435,9 @@ definition "Atoms A \<equiv> {a |a. Atom a \<in> A}"
 lemma Atoms_Un[simp]: "Atoms (A \<union> B) = Atoms A \<union> Atoms B"
   unfolding Atoms_def by auto
 
+lemma Atoms_mono: "A \<subseteq> B \<Longrightarrow> Atoms A \<subseteq> Atoms B"
+  unfolding Atoms_def by auto
+
 abbreviation "ConjE trm_of c d p \<equiv>
   AppPThms (STR ''conjE'') [Bound (trm_of (And c d)), AbsP (trm_of c) (AbsP (trm_of d) p)]"
 abbreviation "DisjE trm_of c d p1 p2 \<equiv>

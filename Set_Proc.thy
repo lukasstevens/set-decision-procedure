@@ -2904,7 +2904,7 @@ function (domintros) mlss_proc_branch where
 | "\<lbrakk> \<not> sat b; bopen b; lin_sat b \<rbrakk>
   \<Longrightarrow> mlss_proc_branch b = list_all (\<lambda>b'. mlss_proc_branch (b' @ b)) (SOME bs. extends bs b)"
 | "\<lbrakk> lin_sat b; sat b \<rbrakk> \<Longrightarrow> mlss_proc_branch b = bclosed b"
-| "\<lbrakk> lin_sat b; bclosed b \<rbrakk> \<Longrightarrow> mlss_proc_branch b = bclosed b"
+| "\<lbrakk> lin_sat b; bclosed b \<rbrakk> \<Longrightarrow> mlss_proc_branch b = True"
   by auto
 
 lemma mlss_proc_branch_dom_if_wf_branch:
@@ -2987,24 +2987,22 @@ inductive lextendss where
 | "lextends b3 b2 \<Longrightarrow> set b2 \<subset> set (b3 @ b2) \<Longrightarrow> lextendss b2 b1 \<Longrightarrow> lextendss (b3 @ b2) b1"
 
 lemma lextendss_trans: "lextendss b3 b2 \<Longrightarrow> lextendss b2 b1 \<Longrightarrow> lextendss b3 b1"
-  apply (induction rule: lextendss.induct)
+  apply(induction rule: lextendss.induct)
    apply(auto simp: lextendss.intros)
   done
 
 lemma lextendss_suffix:
   "lextendss b' b \<Longrightarrow> suffix b b'"
   apply(induction rule: lextendss.induct)
-  apply(simp_all add: suffix_append)
+  apply(auto simp: suffix_append)
   done
 
 lemmas lextendss_mono = set_mono_suffix[OF lextendss_suffix]
 
-lemma lextendss_strict_suffix_if_neq:
-  "lextendss b' b \<Longrightarrow> b' \<noteq> b \<Longrightarrow> strict_suffix b b'"
+lemma lextendss_strict_mono_if_neq: "lextendss b' b \<Longrightarrow> b' \<noteq> b \<Longrightarrow> set b \<subset> set b'"
   apply(induction rule: lextendss.induct)
-  by (simp_all add: lextendss.intros(2) lextendss_suffix suffix_order.less_le)
-
-lemmas lextendss_strict_mono_if_neq = strict_suffix_set_subset[OF lextendss_strict_suffix_if_neq]
+   apply(auto)
+  done
 
 lemma lextendss_last_eq:
   "lextendss b' b \<Longrightarrow> b \<noteq> [] \<Longrightarrow> last b' = last b"
@@ -3013,65 +3011,171 @@ lemma lextendss_last_eq:
 
 lemma extendss_if_lextendss:
   "lextendss b' b \<Longrightarrow> extendss b' b"
-  by (induction rule: lextendss.induct) (auto simp: extendss.intros)
-
+  apply (induction rule: lextendss.induct)
+  using extendss.intros(1,2) extendss_trans by blast+
+ 
 lemma wf_branch_lextendss:
   "wf_branch b \<Longrightarrow> lextendss b' b \<Longrightarrow> wf_branch b'"
   by (meson extendss_if_lextendss extendss_trans wf_branch_def)
 
-lemma lin_extendss_if_not_lin_sat:
+lemma lextendss_if_not_lin_sat:
   assumes "wf_branch b"
   assumes "\<not> lin_sat b"
-  shows "\<exists>b'. lextendss b' b \<and> lin_sat b'"
+  shows "\<exists>b'. lextendss b' b \<and> lin_sat b' \<and> mlss_proc_branch b' = mlss_proc_branch b"
 proof -
-  have *: "wf_branch b' \<or> card (set b') = card (set b)" if "lextends b' b" for b'
-    using that assms(1) unfolding wf_branch_def
-    by (metis extendss.intros(2) psubsetI)
-  have "wf_branch b' \<or> card (set b') = card (set b)" if "lextendss b' b" for b'
-    using that *
-    apply(induction rule: lextendss.induct)
-     apply(auto intro: extendss.intros(2) simp: wf_branch_def)
-    by (metis List.finite_set card_seteq dual_order.refl leD lextendss.cases lextendss_mono)
+  have "wf_branch (b' @ b) \<or> card (set (b' @ b)) = card (set b)" if "lextends b' b" for b'
+    using that assms extendss.intros(2) unfolding wf_branch_def by fastforce
 
-  with card_branch_if_wf_branch assms(1) obtain c
+  from card_branch_if_wf_branch assms(1) obtain c
     where "card (set b) \<le> c" and "lextendss b' b \<longrightarrow> card (set b') \<le> c" for b'
     using lextendss_last_eq[OF _ wf_branch_not_Nil[OF assms(1)]]
-    by metis
+    by (metis wf_branch_lextendss)
   then show ?thesis
     using assms
   proof(induction "c - card (set b)" arbitrary: b rule: less_induct)
     case less
-    with less not_lin_satD obtain b' where b':
-      "lextends b' b" "set b \<subset> set b'"
-      by metis
-    with less have "c - card (set b') < c - card (set b)"
-      using lextendss.intros 
-      by (metis List.finite_set card_seteq le_diff_iff' linorder_le_less_linear psubsetE)
-    moreover have "card (set b') \<le> c"
-      using less.prems(2) b'(1) by (simp add: b'(2) lextendss.intros(1,2))
-    moreover from b' have "wf_branch b'"
-      using \<open>wf_branch b\<close> unfolding wf_branch_def by (metis extendss.intros(2))
+    with not_lin_satD obtain b' where b':
+      "lextends b' b" "set b \<subset> set (b' @ b)" "mlss_proc_branch (b' @ b) = mlss_proc_branch b"
+      using mlss_proc_branch_dom_if_wf_branch
+      by (metis (no_types, lifting) mlss_proc_branch.psimps(1) someI_ex)
+    with less have "c - card (set (b' @ b)) < c - card (set b)"
+      using lextendss.intros
+      by (metis (no_types, lifting) List.finite_set diff_less_mono2 order_less_le_trans psubset_card_mono)
+    moreover have "card (set (b' @ b)) \<le> c"
+      using less.prems(2) b' lextendss.intros by blast
+    moreover from b' have "wf_branch (b' @ b)"
+      using \<open>wf_branch b\<close> by (meson extendss.intros(2) wf_branch_def)
     ultimately have
-      "\<exists>b''. lextendss b'' b' \<and> lin_sat b''"
-      if "\<not> lin_sat b'"
-      using less that
-      by (meson b' lextendss.intros lextendss_trans)
+      "\<exists>b''. lextendss b'' (b' @ b) \<and> lin_sat b'' \<and> mlss_proc_branch b'' = mlss_proc_branch (b' @ b)"
+      if "\<not> lin_sat (b' @ b)"
+      using less that b' lextendss.intros lextendss_trans by blast
     with b' show ?case
-      by (meson lextendss.intros lextendss_trans)
+      using lextendss_trans lextendss.intros by blast
   qed
 qed
 
-lemma
-  assumes "lextendss b1' b1"
-  assumes "set b1 = set b2"
-  shows "lextendss b1' b
-lemma
-  assumes "lextends b' b"
-  assumes "wf_branch b"
-  shows "mlss_proc_branch b' = mlss_proc_branch b"
+lemma lextends_if_eq_last_and_set:
+  assumes "lextends b' b1"
+  assumes "last b1 = last b2" "set b1 \<subseteq> set b2"
+  shows "lextends b' b2"
   using assms
-  apply(induction rule: lextends_induct)
+proof(induction rule: lextends.induct)
+  case (1 b' b)
+  then show ?case
+    apply (induction rule: lextends_fm.induct)
+         apply (auto simp: lextends.simps)
+       apply (meson in_mono lextends_fm.intros)+
+    done
+next
+  case (2 b' b)
+  then show ?case
+    apply (induction rule: lextends_un.induct)
+         apply (auto simp: lextends.simps)
+       apply (meson in_mono lextends_un.intros)+
+    done
+next
+  case (3 b' b)
+  then show ?case
+    apply (induction rule: lextends_int.induct)
+         apply (auto simp: lextends.simps)
+       apply (meson in_mono lextends_int.intros)+
+    done
+next
+  case (4 b' b)
+  then show ?case
+     apply (induction rule: lextends_diff.induct)
+         apply (auto simp: lextends.simps)
+       apply (meson in_mono lextends_diff.intros)+
+    done
+next
+  case (5 b' b)
+  then show ?case
+     apply (induction rule: lextends_single.induct)
+         apply (auto simp: lextends.simps)
+       apply (meson in_mono lextends_single.intros)+
+    done
+next
+  case (6 b' b)
+  then show ?case
+     apply (induction rule: lextends_eq.induct)
+         apply (auto simp: lextends.simps)
+       apply (meson in_mono lextends_eq.intros)+
+    done
+qed
 
+lemma extends_noparam_if_eq_last_and_set:
+  assumes "extends_noparam b' b1"
+  assumes "last b1 = last b2" "set b1 = set b2"
+  shows "extends_noparam b' b2"
+  using assms
+  apply(induction rule: extends_noparam.induct)
+  using extends_noparam.intros by fastforce+
+
+lemma extends_param_if_eq_last_and_set:
+  assumes "extends_param t1 t2 x b' b1"
+  assumes "last b1 = last b2" "set b1 = set b2"
+  shows "extends_param t1 t2 x b' b2"
+  using assms
+  apply(induction rule: extends_param.induct)
+  using extends_param.intros by (metis vars_branch_def)
+
+lemma extends_if_eq_last_and_set:
+  assumes "extends b' b1"
+  assumes "last b1 = last b2" "set b1 = set b2"
+  shows "extends b' b2"
+  using assms
+  apply(induction rule: extends.induct)
+  using extends_noparam_if_eq_last_and_set extends_param_if_eq_last_and_set extends.intros
+  by metis+
+
+lemma lextendss_if_eq_last_and_set:
+  assumes "lextendss (b' @ ba) ba"
+  assumes "last ba = last bb" "set ba = set bb"
+  shows "lextendss (b' @ bb) bb"
+  using assms
+proof(induction "b' @ ba" ba arbitrary: b' bb rule: lextendss.induct)
+  case 1
+  then show ?case
+    by (simp add: lextendss.intros(1))
+next
+  case (2 b3 b2 b1)
+  then have "suffix b2 (b' @ b1)"
+    by (metis suffixI)
+  then obtain b'1 b'2 where b': "b' = b3 @ b'2 @ b'1" "b2 = b'1 @ b1"
+    by (metis "2.hyps"(3,5) append_eq_append_conv2 append_same_eq lextendss_suffix suffix_def)
+  with 2 have "lextendss (b'1 @ bb) bb"
+    by blast
+  moreover from b' 2 have "lextendss (b'2 @ b'1 @ bb) (b'1 @ bb)"
+    by (metis append_assoc lextendss.simps same_append_eq self_append_conv2)
+  moreover
+  from b' 2 have "last b2 = last (b'2 @ b'1 @ bb)" "set b2 \<subseteq> set (b'2 @ b'1 @ bb)"
+    by (auto simp: last_append)
+  note lextends_if_eq_last_and_set[OF \<open>lextends b3 b2\<close> this]
+  with 2 b' have "lextendss (b3 @ b'2 @ b'1 @ bb) (b'2 @ b'1 @ bb)"
+    by (simp add: lextendss.intros)
+  ultimately show ?case
+    using b' by (metis append_assoc lextendss_trans)
+qed
+
+lemma lextendss_set_subs_set_lin_sat:
+  assumes "lextendss ba b" "lextendss bb b" "b \<noteq> []"
+  assumes "lin_sat bb"
+  shows "set ba \<subseteq> set bb"
+  using assms
+proof(induction ba b rule: lextendss.induct)
+  case (1 b)
+  then show ?case using lextendss_mono by blast
+next
+  case (2 b3 b2 b1)
+  then show ?case
+    by (metis le_sup_iff lextends_if_eq_last_and_set lextendss_last_eq lin_sat_def set_append)
+qed
+
+lemma lextendss_lin_sat_set_eq:
+  assumes "lextendss ba b" "lextendss bb b" "b \<noteq> []"
+  assumes "lin_sat ba" "lin_sat bb"
+  shows "set ba = set bb"
+  using assms lextendss_set_subs_set_lin_sat by blast
 
 lemma mlss_proc_branch_if_closeable:
   assumes "wf_branch b"
@@ -3083,12 +3187,12 @@ proof(induction rule: closeable.induct)
   then show ?case
   proof(cases "lin_sat b")
     case False
-    with 1 lin_extendss_if_not_lin_sat obtain b' where b':
-      "extendss b' b" "lin_sat b'" "mlss_proc_branch b' = mlss_proc_branch b"
+    with 1 lextendss_if_not_lin_sat obtain b' where b':
+      "lextendss b' b" "lin_sat b'" "mlss_proc_branch b' = mlss_proc_branch b"
       by metis
-    moreover note bclosed_mono[OF \<open>bclosed b\<close> extendss_mono[OF \<open>extendss b' b\<close>]]
+    moreover note bclosed_mono[OF \<open>bclosed b\<close> lextendss_mono[OF \<open>lextendss b' b\<close>]]
     moreover have "wf_branch b'"
-      using \<open>wf_branch b\<close> b' extendss_trans unfolding wf_branch_def by blast
+      using \<open>wf_branch b\<close> b' wf_branch_lextendss by blast
     note mlss_proc_branch_dom_if_wf_branch[OF this]
     ultimately have "mlss_proc_branch b'"
       by (auto simp: mlss_proc_branch.psimps)
@@ -3096,11 +3200,11 @@ proof(induction rule: closeable.induct)
       by blast
   qed (auto simp: mlss_proc_branch.psimps mlss_proc_branch_dom_if_wf_branch)
 next
-  case (2 b' b)
+  case (2 b'1 b)
   then show ?case
-  proof(cases "set b' = set b")
+  proof(cases "set b'1 = set b")
     case True
-    then show ?thesis sorry
+    then show ?thesis sledgehammer sorry
   next
     case False
     with 2 have "set b \<subset> set b'"

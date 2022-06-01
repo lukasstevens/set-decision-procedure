@@ -2963,6 +2963,13 @@ definition "mlss_proc \<phi> \<equiv> mlss_proc_branch [\<phi>]"
 lemma not_lin_satD: "\<not> lin_sat b \<Longrightarrow> \<exists>b'. lextends b' b \<and> set b \<subset> set (b' @ b)"
   unfolding lin_sat_def by auto
 
+lemma not_satD_if_lin_sat: "\<not> sat b \<Longrightarrow> lin_sat b \<Longrightarrow> \<exists>bs'. extends bs' b"
+  unfolding sat_def by blast
+
+lemma not_satD: "\<not> sat b \<Longrightarrow> \<exists>b'. extendss b' b \<and> set b \<subset> set b'"
+  using not_lin_satD extends_strict_mono
+  by (metis extends_not_Nil extendss.simps last_in_set sat_def)
+
 lemma closeable_if_mlss_proc_branch:
   assumes "wf_branch b"
   assumes "mlss_proc_branch b"
@@ -3018,40 +3025,42 @@ lemma wf_branch_lextendss:
   "wf_branch b \<Longrightarrow> lextendss b' b \<Longrightarrow> wf_branch b'"
   by (meson extendss_if_lextendss extendss_trans wf_branch_def)
 
+lemma wf_branch_extendss: "wf_branch b \<Longrightarrow> extendss b' b \<Longrightarrow> wf_branch b'"
+  using extendss_trans wf_branch_def by blast
+
 lemma lextendss_to_lin_sat:
   assumes "wf_branch b"
   shows "\<exists>b'. lextendss b' b \<and> lin_sat b' \<and> mlss_proc_branch b' = mlss_proc_branch b"
-proof(cases "lin_sat b")
-  case True
-  then show ?thesis using lextendss.intros(1) by blast
-next
-  case False
+  using mlss_proc_branch_dom_if_wf_branch[OF assms] assms
+proof(induction rule: mlss_proc_branch.pinduct)
+  case (1 b)
+  let ?b' = "SOME b'. lextends b' b \<and> set b \<subset> set (b' @ b)"
+  from 1 not_lin_satD have b':
+    "lextends ?b' b" "set b \<subset> set (?b' @ b)" "mlss_proc_branch (?b' @ b) = mlss_proc_branch b"
+    using mlss_proc_branch.psimps(1)
+    by (metis (mono_tags, lifting) someI2_ex)+
+  with 1 show ?case
+    using lextendss.intros lextendss_trans wf_branch_lextendss by blast
+qed (use lextendss.intros(1) in \<open>blast+\<close>)
 
+thm mlss_proc_branch.pinduct
+
+lemma extendss_to_sat:
+  assumes "wf_branch b"
+  obtains bs' where
+    "\<forall>b' \<in> set bs'. extendss b' b"
+    "\<forall>b' \<in> set bs'. sat b'"
+    "list_all mlss_proc_branch bs' = mlss_proc_branch b"
+proof -
   from card_branch_if_wf_branch assms(1) obtain c
-    where "card (set b) \<le> c" and "lextendss b' b \<Longrightarrow> card (set b') \<le> c" for b'
-    using lextendss_last_eq[OF _ wf_branch_not_Nil[OF assms(1)]]
-    by (metis wf_branch_lextendss)
+    where "card (set b) \<le> c" and "extendss b' b \<Longrightarrow> card (set b') \<le> c" for b'
+    using extendss_last_eq[OF _ wf_branch_not_Nil[OF assms(1)]]
+    by (metis wf_branch_extendss)
   then show ?thesis
-    using assms False
+    using assms
   proof(induction "c - card (set b)" arbitrary: b rule: less_induct)
     case less
-    with not_lin_satD obtain b' where b':
-      "lextends b' b" "set b \<subset> set (b' @ b)" "mlss_proc_branch (b' @ b) = mlss_proc_branch b"
-      using mlss_proc_branch_dom_if_wf_branch
-      by (metis (no_types, lifting) mlss_proc_branch.psimps(1) someI_ex)
-    with less have "c - card (set (b' @ b)) < c - card (set b)"
-      using lextendss.intros
-      by (metis (no_types, lifting) List.finite_set diff_less_mono2 order_less_le_trans psubset_card_mono)
-    moreover have "card (set (b' @ b)) \<le> c"
-      using less.prems(2) b' lextendss.intros by blast
-    moreover from b' have "wf_branch (b' @ b)"
-      using \<open>wf_branch b\<close> by (meson extendss.intros(2) wf_branch_def)
-    ultimately have
-      "\<exists>b''. lextendss b'' (b' @ b) \<and> lin_sat b'' \<and> mlss_proc_branch b'' = mlss_proc_branch (b' @ b)"
-      if "\<not> lin_sat (b' @ b)"
-      using less that b' lextendss.intros lextendss_trans by blast
-    with b' show ?case
-      using lextendss_trans lextendss.intros by blast
+    
   qed
 qed
 
@@ -3182,8 +3191,6 @@ lemma lextendss_lin_sat_set_eq:
   using assms lextendss_set_subs_set_lin_sat
   by (metis order_antisym_conv set_empty2)
 
-lemma wf_branch_extendss: "wf_branch b \<Longrightarrow> extendss b' b \<Longrightarrow> wf_branch b'"
-  using extendss_trans wf_branch_def by blast
 
 lemma not_lin_sat_if_lextendss: "lextendss b' b \<Longrightarrow> b' \<noteq> b \<Longrightarrow> \<not> lin_sat b"
   apply(induction rule: lextendss.induct)
@@ -3268,7 +3275,7 @@ proof -
       with ba' bb' show ?thesis
         by blast
     next
-      case (2 b)
+      case (2 _)
       then show ?thesis sorry
     next
       case (3 b)
@@ -3278,6 +3285,117 @@ proof -
       then show ?thesis sorry
     qed
   qed
+qed
+
+lemma
+  assumes "closeable b" "b \<noteq> []"
+  assumes "last b = last ba" "set b \<subseteq> set ba"
+  shows "closeable ba"
+  using assms
+proof(induction arbitrary: ba rule: closeable.induct)
+  case (1 b)
+  then show ?case
+    using bclosed_mono closeable.intros(1) by blast
+next
+  case (2 b' b)
+  then have "lextends b' ba"
+    using lextends_if_eq_last_and_set by blast
+  with 2 have "closeable (b' @ ba)"
+    by (intro "2"(3)) (auto simp: last_append)
+  with \<open>lextends b' ba\<close> show ?case
+    using closeable.intros(2) by blast
+next
+  case extends: (3 bs' b)
+  from extends have
+    "last (b' @ b) = last (b' @ ba)" "set (b' @ b) \<subseteq> set (b' @ ba)"
+    if "b' \<in> set bs'" for b'
+    using that by (auto simp: last_append)
+  with extends have "\<forall>b' \<in> set bs'. closeable (b' @ ba)"
+    by (metis Nil_is_append_conv)
+  then show ?case
+  proof(cases "extends bs' ba")
+    case False
+    from extends(1) show ?thesis
+    proof(cases rule: extends.cases)
+      case 1
+      then show ?thesis
+      proof(cases rule: extends_noparam.cases)
+        case Or: (1 p q)
+        with False extends consider "p \<in> set ba" | "Neg p \<in> set ba"
+          using extends_noparam.intros(1)[THEN extends.intros(1)] by blast
+        with extends Or show ?thesis
+          by (cases) (auto simp: last_append)
+      next
+        case Neg_And: (2 p q)
+        with False extends consider "p \<in> set ba" | "Neg p \<in> set ba"
+          using extends_noparam.intros(2)[THEN extends.intros(1)] by blast
+        with extends Neg_And show ?thesis
+          by (cases) (auto simp: last_append)
+      next
+        case Union: (3 s t1 t2)
+        with False extends consider "AT (s \<in>\<^sub>s t1) \<in> set ba" | "AF (s \<in>\<^sub>s t1) \<in> set ba"
+          using extends_noparam.intros(3)[THEN extends.intros(1), of s t1 t2 ba]
+          by (metis subsetD)
+        with extends Union show ?thesis
+          by (cases) (auto simp: last_append)
+      next
+        case Inter: (4 s t1 t2)
+        with False extends consider "AT (s \<in>\<^sub>s t2) \<in> set ba" | "AF (s \<in>\<^sub>s t2) \<in> set ba"
+          using extends_noparam.intros(4)[THEN extends.intros(1), of s t1 ba t2]
+          by (metis subsetD)
+        with extends Inter show ?thesis
+          by (cases) (auto simp: last_append)
+      next
+        case Diff: (5 s t1 t2)
+        with False extends consider "AT (s \<in>\<^sub>s t2) \<in> set ba" | "AF (s \<in>\<^sub>s t2) \<in> set ba"
+          using extends_noparam.intros(5)[THEN extends.intros(1), of s t1 ba t2]
+          by (metis subsetD)
+        with extends Diff show ?thesis
+          by (cases) (auto simp: last_append)
+      qed
+    next
+      case (2 t1 t2 x)
+      then show ?thesis
+      proof(cases rule: extends_param.cases)
+        case 1
+        then show ?thesis sorry
+      qed
+    qed
+  qed (use closeable.intros(3) in blast)
+qed
+
+lemma bclosed_if_closeable_and_sat:
+  "closeable b \<Longrightarrow> sat b \<Longrightarrow> bclosed b"
+proof(induction rule: closeable.induct)
+  case (2 b' b)
+  then have "set (b' @ b) = set b"
+    unfolding sat_def lin_sat_def  by auto
+  with extends_if_eq_last_and_set[OF _ _ this]
+       lextends_if_eq_last_and_set[OF _ _ Set.equalityD1[OF this]] 2
+  have "sat (b' @ b)"
+    by (metis \<open>set (b' @ b) = set b\<close> last_appendR lin_sat_def sat_def set_empty2)
+  with 2 \<open>set (b' @ b) = set b\<close> show ?case
+    using bclosed_mono by blast
+qed (simp_all add: sat_def)
+
+lemma mlss_proc_branch_if_closeable:
+  assumes "wf_branch b"
+  assumes "closeable b"
+  shows "mlss_proc_branch b"
+  using mlss_proc_branch_dom_if_wf_branch[OF assms(1)] assms
+proof(induction rule: mlss_proc_branch.pinduct)
+  case (1 b)
+  then show ?case apply(simp add: mlss_proc_branch.psimps) sorry
+next
+  case (2 b)
+  then show ?case sorry
+next
+  case (3 b)
+  with bclosed_if_closeable_and_sat show ?case
+    using mlss_proc_branch.psimps by blast
+next
+  case (4 b)
+  then show ?case by (simp add: mlss_proc_branch.psimps)
 qed
 
 lemma mlss_proc_branch_if_closeable:

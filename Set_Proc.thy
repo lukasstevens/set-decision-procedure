@@ -387,6 +387,10 @@ lemma vars_branch_simps:
   "vars_branch (x # xs) = vars_fm x \<union> vars_branch xs"
   unfolding vars_branch_def by auto
 
+lemma vars_branch_append:
+  "vars_branch (b1 @ b2) = vars_branch b1 \<union> vars_branch b2"
+  unfolding vars_branch_def by simp
+
 lemma vars_fm_vars_branchI:
   "\<phi> \<in> set b \<Longrightarrow> x \<in> vars_fm \<phi> \<Longrightarrow> x \<in> vars_branch b"
   unfolding vars_branch_def by blast
@@ -3606,12 +3610,21 @@ lemma subst_vars_append:
   "subst_vars subst (vvs1 @ vvs2) x = subst_vars subst vvs1 (subst_vars subst vvs2 x)"
   unfolding subst_vars_def by auto
 
-abbreviation "subst_vars_branch \<equiv> subst_vars subst_var_branch"
-abbreviation "subst_vars_term \<equiv> subst_vars subst_var_term"
 abbreviation "subst_vars_var \<equiv> subst_vars subst_var"
+abbreviation "subst_vars_term \<equiv> subst_vars subst_var_term"
+abbreviation "subst_vars_literal \<equiv> subst_vars subst_var_literal"
+abbreviation "subst_vars_fm \<equiv> subst_vars subst_var_fm"
+abbreviation "subst_vars_branch \<equiv> subst_vars subst_var_branch"
 
 lemma subst_vars_branch_append:
   "subst_vars_branch vvs (b1 @ b2) = subst_vars_branch vvs b1 @ subst_vars_branch vvs b2"
+  by (induction vvs) auto
+
+lemma vars_branch_subst_vars_branch[simp]:
+  "vars_branch (subst_vars_branch vvs b) = subst_vars_var vvs ` vars_branch b"
+  by (induction vvs) (auto)
+
+lemma set_subst_vars_branch: "set (subst_vars_branch vvs b) \<equiv> subst_vars_fm vvs ` set b"
   by (induction vvs) auto
 
 lemma not_mem_vars_branch_subst_vars_branch:
@@ -3662,12 +3675,34 @@ next
     by (simp add: comp_def)
 qed
 
+lemma Ex_snd_eq_subst_vars_var:
+  assumes "subst_vars_var vvs z \<noteq> z"
+  shows "\<exists>vv \<in> set vvs. snd vv = subst_vars_var vvs z"
+  using assms
+proof(induction vvs)
+  case (Cons vv2 vvs)
+  then show ?case
+  proof(cases "subst_vars_var vvs z \<noteq> z")
+    case True
+    with Cons obtain vv where vv: "vv \<in> set vvs" "snd vv = subst_vars_var vvs z"
+      by auto
+    with Cons show ?thesis
+      by (cases "snd vv = subst_vars_var (vv2 # vvs) z") (auto simp: subst_var_def)
+  next
+    case False
+    with Cons have "snd vv2 = subst_vars_var (vv2 # vvs) z"
+      unfolding subst_vars_simps subst_var_def by auto
+    then show ?thesis by simp
+  qed
+qed simp
+
 lemma extends_param_subst_vars_branch:
   assumes "extends_param t1 t2 z bs' b" "b \<noteq> []"
   assumes "\<forall>ys \<in> set (suffixes vvs) - {[]}.
     snd (hd ys) \<notin> vars_branch (subst_vars_branch (tl ys) b)
   \<and> (\<forall>b' \<in> set bs. snd (hd ys) \<notin> vars_branch (subst_vars_branch (tl ys) b'))"
   assumes "\<forall>y \<in> snd ` set vvs. y \<noteq> z"
+  assumes "distinct (map snd vvs)"
   shows "extends_param (subst_vars_term vvs t1) (subst_vars_term vvs t2) (subst_vars_var vvs z)
     (map (subst_vars_branch vvs) bs') (subst_vars_branch vvs b)"
   using assms
@@ -3683,8 +3718,15 @@ next
     using \<open>b \<noteq> []\<close> by (induction vvs) auto
   moreover from Cons have "snd vv \<notin> vars_branch (subst_vars_branch vvs b)"
     using not_mem_vars_branch_subst_vars_branch by metis
-  moreover from Cons(4,5) have "snd vv \<noteq> subst_vars_var vvs z"
-    sorry
+  moreover have "snd vv \<noteq> subst_vars_var vvs z"
+  proof -
+    have "snd vv \<noteq> subst_vars_var vvs z" if "subst_vars_var vvs z = z"
+      using that by (simp add: Cons.prems)
+    moreover have "snd vv \<noteq> subst_vars_var vvs z" if "subst_vars_var vvs z \<noteq> z"
+      using Ex_snd_eq_subst_vars_var[OF that] Cons.prems(5)
+      by (metis distinct.simps(2) imageI list.set_map list.simps(9))
+    ultimately show ?thesis by blast
+  qed
   moreover from extends_param_subst_var_branch[OF calculation] show ?case
     by (simp add: comp_def)
 qed
@@ -3692,19 +3734,80 @@ qed
 lemma
   fixes b :: "'a branch"
   assumes "closeable b" "b \<noteq> []"
-  assumes "\<forall>y \<in> snd ` set vvs. y \<notin> vars_branch b"
+  assumes "\<forall>ys \<in> set (suffixes vvs) - {[]}.
+    snd (hd ys) \<notin> vars_branch (subst_vars_branch (tl ys) b)"
   assumes "distinct (map snd vvs)"
   assumes "infinite (UNIV :: 'a set)"
   shows "closeable (subst_vars_branch vvs b)"
   using assms(1-4)
 proof(induction arbitrary: vvs rule: closeable.induct)
   case (1 b)
-  then show ?case sorry
+  then show ?case
+  proof(induction rule: bclosed.induct)
+    case (contr \<phi> branch)
+    then have "subst_vars_fm vvs \<phi> \<in> set (subst_vars_branch vvs branch)"
+      using set_subst_vars_branch by force
+    moreover
+    have "subst_vars_fm vvs (Neg \<phi>) = Neg (subst_vars_fm vvs \<phi>)"
+      by (induction vvs) auto
+    with contr have
+      "Neg (subst_vars_fm vvs \<phi>) \<in> set (subst_vars_branch vvs branch)"
+      unfolding set_subst_vars_branch by force
+    ultimately show ?case
+      using bclosed.intros(1)[THEN closeable.intros(1)] by blast
+  next
+    case (elemEmpty t branch)
+    have "subst_vars_fm vvs (AT (t \<in>\<^sub>s \<emptyset>)) = AT (subst_vars_term vvs t \<in>\<^sub>s \<emptyset>)"
+    proof(induction vvs)
+      case Nil
+      then show ?case by (induction t) auto
+    next
+      case (Cons vv vvs)
+      then show ?case by (simp add: subst_var_literal_apply)
+    qed
+    with elemEmpty have "AT (subst_vars_term vvs t \<in>\<^sub>s \<emptyset>) \<in> set (subst_vars_branch vvs branch)"
+      unfolding set_subst_vars_branch by force
+    then show ?case
+      using bclosed.intros(2)[THEN closeable.intros(1)] by blast
+  next
+    case (neqSelf t branch)
+    have "subst_vars_fm vvs (AF (t \<approx>\<^sub>s t)) = AF (subst_vars_term vvs t \<approx>\<^sub>s subst_vars_term vvs t)"
+    proof(induction vvs)
+      case Nil
+      then show ?case by (induction t) auto
+    next
+      case (Cons vv vvs)
+      then show ?case by (simp add: subst_var_literal_apply)
+    qed
+    with neqSelf have "AF (subst_vars_term vvs t \<approx>\<^sub>s subst_vars_term vvs t)
+      \<in> set (subst_vars_branch vvs branch)"
+      unfolding set_subst_vars_branch by force
+    then show ?case
+      using bclosed.intros(3)[THEN closeable.intros(1)] by blast
+  next
+    case (memberCycle cs branch)
+    have subst_vars_literal: "subst_vars_literal vvs (True, s \<in>\<^sub>s t)
+        = (True, subst_vars_term vvs s \<in>\<^sub>s subst_vars_term vvs t)" for s t
+        by (induction vvs) (auto simp: subst_var_literal_apply)
+    have
+      "member_seq (subst_vars_term vvs s) (map (subst_vars_literal vvs) cs) (subst_vars_term vvs t)"
+      if "member_seq s cs t" for s t
+      using that
+      by (induction s cs t rule: member_seq.induct) (simp_all add: subst_vars_literal)
+    with memberCycle have "member_cycle (map (subst_vars_literal vvs) cs)"
+      by (induction cs rule: member_cycle.induct) (simp_all add: subst_vars_literal)
+    moreover
+    have "set (map (subst_vars_literal vvs) cs) \<subseteq> Atoms (set (subst_vars_branch vvs branch))"
+      using \<open>set cs \<subseteq> Atoms (set branch)\<close>
+      sorry
+    ultimately show ?case
+      using bclosed.intros(4)[THEN closeable.intros(1)] by blast
+  qed
 next
   case (2 b' b)
   then have "closeable (subst_vars_branch vvs (b' @ b))"
     by (simp add: lextends_vars_branch_eq)
-  moreover note lextends_subst_vars_branch[OF \<open>lextends b' b\<close> "2.prems"(1-3)]
+  moreover note lextends_subst_vars_branch[OF \<open>lextends b' b\<close> "2.prems"(1,2)]
   ultimately show ?case
     unfolding subst_vars_branch_append using closeable.intros(2) by blast
 next
@@ -3714,7 +3817,7 @@ next
     case 1
     with 3 have "closeable (subst_vars_branch vvs (b' @ b))" if "b' \<in> set bs'" for b'
       using that by (simp add: extends_noparam_vars_branch_eq)
-    moreover note extends_noparam_subst_vars_branch[OF \<open>extends_noparam bs' b\<close> "3.prems"(1-3)]
+    moreover note extends_noparam_subst_vars_branch[OF \<open>extends_noparam bs' b\<close> "3.prems"(1,2)]
     ultimately show ?thesis
       unfolding subst_vars_branch_append using closeable.intros(3)[OF extends.intros(1)]
       by (metis (no_types, lifting) image_iff list.set_map)
@@ -3722,13 +3825,14 @@ next
     case (2 t1 t2 z)
     then have "z \<notin> vars_branch b"
       by (simp add: extends_param.simps)
-    have "finite ({z} \<union> vars_branch b \<union> snd ` set vvs)"
+    have "finite ({z} \<union> vars_branch b \<union> snd ` set vvs \<union> fst ` set vvs)"
       by (simp add: finite_vars_branch)
     with \<open>z \<notin> vars_branch b\<close> \<open>infinite UNIV\<close> obtain z' where z':
-      "z' \<notin> vars_branch b" "z' \<noteq> z" "z' \<notin> snd ` set vvs"
+      "z' \<notin> vars_branch b" "z' \<noteq> z" "z' \<notin> snd ` set vvs" "z' \<notin> fst ` set vvs"
       by (metis Un_iff ex_new_if_finite singleton_iff)
 
-    note extends_param_subst_var_branch[OF 2 \<open>b \<noteq> []\<close> \<open>z' \<notin> vars_branch b\<close> \<open>z' \<noteq> z\<close>, of z]
+    note extends_z = 
+      extends_param_subst_var_branch[OF 2 \<open>b \<noteq> []\<close> \<open>z' \<notin> vars_branch b\<close> \<open>z' \<noteq> z\<close>, of z]
     moreover have "z \<notin> set_pset_term t1" "z \<notin> set_pset_term t2"
       using "3.prems"(1) extends_paramD(3,4)[OF 2] \<open>z \<notin> vars_branch b\<close>
       using vars_fm_vars_branchI[OF _ mem_vars_fm_if_mem_subterm_fm] last_in_set
@@ -3736,24 +3840,121 @@ next
     ultimately have extends_z': "extends_param t1 t2 z' (map (subst_var_branch z z') bs') b"
       using \<open>z \<notin> vars_branch b\<close> by (simp add: subst_var_apply)
 
-
-    have "\<forall>y \<in> snd ` set (vvs @ [(z, z')]). y \<notin> vars_branch (b' @ b)" if "b' \<in> set bs'" for b'
-    proof -
-      note vars_branch_eq = extends_param_vars_branch_eq[OF 2 that \<open>b \<noteq> []\<close>]
-      have "z' \<notin> vars_branch (b' @ b)"
-        unfolding vars_branch_eq using that z' by blast
-      moreover have "\<forall>y \<in> snd ` set vvs. y \<notin> vars_branch (b' @ b)"
-        using \<open>\<forall>y\<in>snd ` set vvs. y \<notin> vars_branch b\<close>
-        unfolding vars_branch_eq
-
+    have "\<forall>ys \<in> set (suffixes (vvs @ [(z, z')])) - {[]}.
+      snd (hd ys) \<notin> vars_branch (subst_vars_branch (tl ys) (b' @ b))" if "b' \<in> set bs'" for b'
+      using "3.prems"(2) z'(3-)
+    proof(induction vvs)
+      case Nil
+      with that z' show ?case
+        by (simp add: extends_param_vars_branch_eq[OF 2 that \<open>b \<noteq> []\<close>])
+    next
+      case (Cons vv vvs)
+      from this(3-) have "subst_vars_var vvs z' = z'"
+        by (induction vvs) (auto)
+      then have subst_vars_var_z: "subst_vars_var (vvs @ [(z, z')]) z = z'"
+        by (simp add: subst_var_apply subst_vars_append)
+      with \<open>z' \<noteq> z\<close> Cons have "snd vv \<noteq> subst_vars_var (vvs @ [(z, z')]) z"
+        by auto
+      moreover have "snd vv \<notin> subst_vars_var (vvs @ [(z, z')]) ` vars_branch b"
+      proof(safe)
+        fix x assume "snd vv = subst_vars_var (vvs @ [(z, z')]) x" "x \<in> vars_branch b"
+        then have "False" if "x = z"
+          using that \<open>z \<notin> vars_branch b\<close> by (auto simp: subst_vars_var_z)
+        moreover have *: "subst_vars_var (vvs @ [(z, z')]) x = subst_vars_var vvs x"
+          if "x \<noteq> z"
+          using that by (simp add: subst_vars_append subst_var_apply)
+        from "Cons.prems"(1) \<open>x \<in> vars_branch b\<close>
+        have "snd vv \<noteq> subst_vars_var (vvs @ [(z, z')]) x" if "x \<noteq> z"
+          unfolding *[OF that] by (auto simp: insert_Diff_if)
+        ultimately show False
+          using \<open>snd vv = subst_vars_var (vvs @ [(z, z')]) x\<close> by blast
+      qed
+      moreover from Cons have "\<forall>ys\<in>set (suffixes (vvs @ [(z, z')])) - {[]}.
+        snd (hd ys) \<notin> vars_branch (subst_vars_branch (tl ys) (b' @ b))"
+        by simp
+      ultimately show ?case
+        unfolding vars_branch_subst_vars_branch extends_param_vars_branch_eq[OF 2 that \<open>b \<noteq> []\<close>]
+        by auto
+    qed
     moreover from z' 3 have "distinct (map snd (vvs @ [(z, z')]))"
       by simp
-    ultimately
-    have "closeable (subst_vars_branch (vvs @ [(z, z')]) (b' @ b))"
-      if "b' \<notin> set bs'" for b'
-      using that 3 
+    ultimately have closeable: "closeable (subst_vars_branch (vvs @ [(z, z')]) (b' @ b))"
+      if "b' \<in> set bs'" for b'
+      using that 3 by (metis append_is_Nil_conv)
 
-    then show ?thesis sorry
+    have subst_vars_branch_b:
+      "subst_vars_branch vvs (subst_var_branch z z' b) = subst_vars_branch vvs b"
+      using \<open>z \<notin> vars_branch b\<close> by simp
+
+    have extends: "extends (map (subst_vars_branch (vvs @ [(z, z')])) bs') (subst_vars_branch vvs b)"
+    proof -
+      from "3.prems" \<open>z \<notin> vars_branch b\<close> have "\<forall>ys\<in>set (suffixes vvs) - {[]}.
+        snd (hd ys) \<notin> vars_branch (subst_vars_branch (tl ys) (subst_var_branch z z' b))"
+        by auto
+      moreover have "\<forall>ys\<in>set (suffixes vvs) - {[]}. \<forall>b' \<in> set (map (subst_var_branch z z') bs').
+        snd (hd ys) \<notin> vars_branch (subst_vars_branch (tl ys) b')"
+      proof -
+        have "insert z' (vars_branch b) = vars_branch (subst_var_branch z z' (b' @ b))"
+          if "b' \<in> set bs'" for b'
+          using \<open>z \<notin> vars_branch b\<close>
+          unfolding vars_branch_subst_var_branch extends_param_vars_branch_eq[OF 2 that \<open>b \<noteq> []\<close>]
+          by (auto simp: subst_var_apply)
+        moreover have
+          "vars_branch (subst_var_branch z z' b') = subst_var z z' ` vars_branch b'" for b'
+          by simp
+        ultimately have *: "vars_branch (subst_var_branch z z' b') \<subseteq> insert z' (vars_branch b)"
+          if "b' \<in> set bs'" for b'
+          using that vars_branch_append by force
+        have subs: "vars_branch (subst_vars_branch vvs' (subst_var_branch z z' b'))
+          \<subseteq> insert z' (vars_branch (subst_vars_branch vvs' b))"
+          if "b' \<in> set bs'" "vvs' \<in> set (suffixes vvs)" for b' vvs'
+          using that(2)
+        proof(induction vvs')
+          case Nil
+          with * that show ?case by simp
+        next
+          case (Cons vv vvs')
+          then have "vvs' \<in> set (suffixes vvs)"
+            by (meson in_set_suffixes suffix_ConsD)
+          from Cons.IH[OF this]
+          have "subst_var (fst vv) (snd vv) ` subst_vars_var vvs' ` subst_var z z' ` vars_branch b'
+            \<subseteq> subst_var (fst vv) (snd vv) ` (insert z' (subst_vars_var vvs' ` vars_branch b))"
+            by (intro image_mono) simp
+          moreover have "subst_var (fst vv) (snd vv) z' = z'"
+            unfolding subst_var_apply using Cons z' set_mono_suffix by fastforce
+          ultimately show ?case by simp
+        qed
+        have "xs \<in> set (suffixes ys) \<Longrightarrow> tl xs \<in> set (suffixes ys)" for xs ys
+          using in_set_suffixes suffix_order.dual_order.trans suffix_tl by blast
+        note subs[OF _ this]
+        moreover have
+          "\<forall>ys\<in>set (suffixes vvs) - {[]}. \<forall>b'\<in>set (map (subst_var_branch z z') bs').
+            snd (hd ys) \<notin> insert z' (vars_branch (subst_vars_branch (tl ys) b))"
+          using "3.prems"(2) z'(3)
+          by auto (meson imageI in_mono list.set_sel(1) set_mono_suffix)
+        ultimately show ?thesis
+          by fastforce
+      qed
+          
+      ultimately have "\<forall>ys\<in>set (suffixes vvs) - {[]}.
+        snd (hd ys) \<notin> vars_branch (subst_vars_branch (tl ys) (subst_var_branch z z' b))
+        \<and> (\<forall>b'\<in>set (map (subst_var_branch z z') bs').
+            snd (hd ys) \<notin> vars_branch (subst_vars_branch (tl ys) b'))"
+        by blast
+      moreover from z' have "\<forall>y\<in>snd ` set vvs. y \<noteq> subst_var z z' z"
+        by (auto simp: subst_var_apply)
+      moreover from \<open>b \<noteq> []\<close> have "subst_var_branch z z' b \<noteq> []"
+        by blast
+      moreover note extends = extends_param_subst_vars_branch[THEN extends.intros(2),
+          OF extends_z calculation(3,1,2) \<open>distinct (map snd vvs)\<close>]
+ 
+      from extends show ?thesis
+        unfolding subst_vars_append subst_vars_branch_b by (simp add: comp_def)
+    qed
+
+    from closeable.intros(3)[OF extends] closeable show ?thesis
+      unfolding subst_vars_branch_append subst_vars_append
+      using subst_vars_branch_b by simp
   qed
 qed
 

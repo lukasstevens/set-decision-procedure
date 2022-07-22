@@ -816,7 +816,7 @@ lemma extendss_last_eq[simp]:
 
 inductive closeable :: "'a branch \<Rightarrow> bool" where
   "bclosed b \<Longrightarrow> closeable b"
-| "lextends b' b \<Longrightarrow> closeable (b' @ b) \<Longrightarrow> closeable b"
+| "lextends b' b \<Longrightarrow> set b \<subset> set (b' @ b) \<Longrightarrow> closeable (b' @ b) \<Longrightarrow> closeable b"
 | "extends bs b \<Longrightarrow> lin_sat b \<Longrightarrow> \<forall>b' \<in> set bs. closeable (b' @ b) \<Longrightarrow> closeable b"
 
 definition "sat branch \<equiv> lin_sat branch \<and> (\<nexists>branches. extends branches branch)"
@@ -3053,7 +3053,7 @@ proof(induction b rule: mlss_proc_branch.pinduct)
   case (1 b)
   then show ?case
     using not_lin_satD[THEN someI_ex] closeable.intros(2)
-    by (auto simp: mlss_proc_branch.psimps)
+    by (force simp: mlss_proc_branch.psimps)
 next
   case (2 b)
   then have "\<exists>bs'. extends bs' b"
@@ -3061,7 +3061,7 @@ next
   from 2 this[THEN someI_ex] show ?case
     by (simp add: mlss_proc_branch.psimps)
        (metis (mono_tags, lifting) Ball_set closeable.intros(3))
-qed (use closeable.intros mlss_proc_branch.psimps in \<open>blast+\<close>)
+qed (use closeable.intros mlss_proc_branch.psimps in \<open>force+\<close>)
 
 inductive lextendss where
   "lextendss b b"
@@ -3544,8 +3544,6 @@ proof -
     by (meson extendss_mono list.set_intros(1) subset_eq)
 qed
 
-
-term extendss
 inductive extendss_branches where
   "extendss_branches {b} b"
 | "extendss_branches bs2 b1 \<Longrightarrow> b2 \<in> bs2 \<Longrightarrow> lextends b3 b2 \<Longrightarrow> set b2 \<subset> set (b3 @ b2)
@@ -3553,10 +3551,8 @@ inductive extendss_branches where
 | "extendss_branches bs2 b1 \<Longrightarrow> b2 \<in> bs2 \<Longrightarrow> extends b2s b2
     \<Longrightarrow> extendss_branches ((\<lambda>b. b @ b2) ` set b2s \<union> (bs2 - {b2})) b1"
 
-thm extends_interp
-
 lemma extendss_if_extendss_branches:
-  assumes "extendss_branches bs' b" "b \<noteq> []"
+  assumes "extendss_branches bs' b"
   assumes "b' \<in> bs'"
   shows "extendss b' b"
   using assms
@@ -3601,7 +3597,35 @@ next
 qed blast
 
 lemma
-  assumes "extendss_branches bs' b"
+  assumes "closeable b"
+  shows "\<exists>bs'. extendss_branches bs' b \<and> (\<forall>b' \<in> bs'. bclosed b')"
+  using assms
+proof(induction rule: closeable.induct)
+  case (1 b)
+  then show ?case
+    using extendss_branches.intros(1) by blast
+next
+  case (2 b' b)
+  then obtain bs'' where bs'': "extendss_branches bs'' (b' @ b)" "\<forall>b' \<in> bs''. bclosed b'"
+    by blast
+  from this(1) have "extendss_branches bs'' b"
+    using \<open>lextends b' b\<close> \<open>set b \<subset> set (b' @ b)\<close>
+  proof(induction "bs''" "b' @ b" arbitrary: b' b rule: extendss_branches.induct)
+    case (2 bs2 b2 b3)
+    then show ?case using extendss_branches.intros(2) by metis
+  next
+    case (3 bs2 b2 b2s)
+    then show ?case using extendss_branches.intros(3) by metis
+  qed (use extendss_branches.intros in fastforce)
+  with bs'' show ?case by blast
+next
+  case (3 bs b)
+  then have *: "\<exists>bs'. extendss_branches bs' (b' @ b) \<and> (\<forall>b' \<in> bs'. bclosed b')"
+    if "b' \<in> set bs" for b'
+    using that by blast
+
+  then show ?case sorry
+qed
 
 lemma
   assumes "closeable b" "b \<noteq> []"

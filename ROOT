@@ -4,5 +4,4 @@ session Set_Proc = HOL +
     Graph_Theory
     ZFC_in_HOL
   theories
-    Logic
     Set_Proc

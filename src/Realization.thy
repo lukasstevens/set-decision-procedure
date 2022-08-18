@@ -2,18 +2,18 @@ theory Realization
   imports ZFC_Extras Graph_Theory.Graph_Theory
 begin
 
-abbreviation ancestors1 :: "('a,'b) pre_digraph \<Rightarrow> 'a \<Rightarrow> 'a set"
-  where "ancestors1 G s \<equiv> {u. u \<rightarrow>\<^bsub>G\<^esub> s}"
+abbreviation parents :: "('a,'b) pre_digraph \<Rightarrow> 'a \<Rightarrow> 'a set"
+  where "parents G s \<equiv> {u. u \<rightarrow>\<^bsub>G\<^esub> s}"
 
 abbreviation ancestors :: "('a,'b) pre_digraph \<Rightarrow> 'a \<Rightarrow> 'a set"
   where "ancestors G s \<equiv> {u. u \<rightarrow>\<^sup>+\<^bsub>G\<^esub> s}"
 
-lemma (in fin_digraph) finite_ancestors1[intro]: "finite (ancestors1 G s)"
+lemma (in fin_digraph) finite_parents[intro]: "finite (parents G s)"
   using reachable_in_verts
-  by (auto intro: rev_finite_subset[where ?A="ancestors1 G s", OF finite_verts])
+  by (auto intro: rev_finite_subset[where ?A="parents G s", OF finite_verts])
 
-lemma (in fin_digraph) small_ancestors1[intro]: "small (ancestors1 G s)"
-  using finite_imp_small finite_ancestors1 by blast
+lemma (in fin_digraph) small_parents[intro]: "small (parents G s)"
+  using finite_imp_small finite_parents by blast
 
 lemma (in fin_digraph) finite_ancestors[intro]: "finite (ancestors G s)"
   using reachable_in_verts
@@ -77,7 +77,7 @@ lemma
 function height :: "'a \<Rightarrow> nat" where
   "t \<in> P \<Longrightarrow> height t = 0"
 | "t \<notin> P \<Longrightarrow> \<forall>s. \<not> s \<rightarrow>\<^bsub>G\<^esub> t \<Longrightarrow> height t = 0"
-| "t \<notin> P \<Longrightarrow> s \<rightarrow>\<^bsub>G\<^esub> t \<Longrightarrow> height t = Max (height ` ancestors1 G t) + 1"
+| "t \<notin> P \<Longrightarrow> s \<rightarrow>\<^bsub>G\<^esub> t \<Longrightarrow> height t = Max (height ` parents G t) + 1"
   by auto
 termination
   by (relation "measure (\<lambda>t. card (ancestors G t))") (simp_all add: card_ancestors_strict_mono)
@@ -88,21 +88,21 @@ lemma height_cases':
     | (nP_Suc) s where "t \<notin> P" "s \<rightarrow>\<^bsub>G\<^esub> t" "height t = height s + 1"
 proof(cases t rule: height.cases)
   case (3 t s)
-  note Max_in[OF finite_imageI[where ?h=height, OF finite_ancestors1]]
+  note Max_in[OF finite_imageI[where ?h=height, OF finite_parents]]
   with 3 that show ?thesis
     by auto
 qed simp_all
 
 function realization :: "'a \<Rightarrow> V" where
   "x \<in> P \<Longrightarrow> realization x = vset {I x}"
-| "t \<in> T \<Longrightarrow> realization t = vset (realization ` ancestors1 G t)"
+| "t \<in> T \<Longrightarrow> realization t = vset (realization ` parents G t)"
 | "x \<notin> P \<union> T \<Longrightarrow> realization x = 0"
   using P_T_partition_verts by auto
 termination
   by (relation "measure (\<lambda>t. card (ancestors G t))") (simp_all add: card_ancestors_strict_mono)
 
-lemma small_realization_ancestors1[simp, intro!]: "small (realization ` ancestors1 G t)"
-  using small_ancestors1 by auto
+lemma small_realization_parents[simp, intro!]: "small (realization ` parents G t)"
+  using small_parents by auto
 
 lemma lemma1_1:
   assumes "s \<in> P \<union> T" "t \<in> T" "s \<rightarrow>\<^bsub>G\<^esub> t"
@@ -110,7 +110,7 @@ lemma lemma1_1:
   using assms
 proof(cases t rule: height.cases)
   case (3 t u)
-  note Max_ge[OF finite_imageI[where ?h=height, OF finite_ancestors1], of "height s" t]
+  note Max_ge[OF finite_imageI[where ?h=height, OF finite_parents], of "height s" t]
   with assms 3 show ?thesis
     by auto
 qed (use P_T_partition_verts in auto)
@@ -145,10 +145,10 @@ proof -
     then show ?thesis
     proof(cases t1 rule: height.cases)
       case (3 t s)
-      have "small (realization ` ancestors1 G t1)"
+      have "small (realization ` parents G t1)"
         by blast+
-      with 2 3 assms(5) have "realization ` ancestors1 G t1 = {I t2}"
-        using \<open>small (realization ` ancestors1 G t1)\<close> by force
+      with 2 3 assms(5) have "realization ` parents G t1 = {I t2}"
+        using \<open>small (realization ` parents G t1)\<close> by force
       moreover from 3 adj_in_verts P_T_partition_verts have "s \<in> P \<union> T"
         by simp
       then have "I t2 \<noteq> realization s"
@@ -170,7 +170,7 @@ proof -
         with less.prems assms(2) show ?thesis
           using P_T_partition_verts(1)
           apply(cases t2 rule: height_cases'; cases t1 rule: height_cases')
-          by (auto simp: vset_eq_0_iff[OF small_realization_ancestors1])
+          by (auto simp: vset_eq_0_iff[OF small_realization_parents])
       next
         case (Suc x)
         then have "t2 \<notin> P"
@@ -260,12 +260,12 @@ proof(induction t rule: realization.induct)
   case (2 t)
   then have "t \<in> verts G"
     using P_T_partition_verts by simp
-  then have "ancestors1 G t \<subset> verts G"
+  then have "parents G t \<subset> verts G"
     using adj_not_same by auto
-  from psubset_card_mono[OF _ this] have "card (ancestors1 G t) < card (verts G)"
+  from psubset_card_mono[OF _ this] have "card (parents G t) < card (verts G)"
     by simp
-  then have "card (realization ` ancestors1 G t) < card (verts G)"
-    using card_image_le[OF finite_ancestors1, where ?f=realization and ?s1=t] by linarith 
+  then have "card (realization ` parents G t) < card (verts G)"
+    using card_image_le[OF finite_parents, where ?f=realization and ?s1=t] by linarith 
   with 2 show ?case
     using P_T_partition_verts(2) by auto
 qed (use P_T_partition_verts in auto)
@@ -278,7 +278,7 @@ lemma card_elts_realization_T:
   assumes "t \<in> T" "x \<in> elts (realization t)"
   shows "card (elts x) < card (P \<union> T)"
 proof -
-  obtain s where s: "x = realization s" "s \<in> ancestors1 G t"
+  obtain s where s: "x = realization s" "s \<in> parents G t"
     using assms by force
   then have "s \<in> P \<union> T"
     using P_T_partition_verts(2) adj_in_verts(1) by blast

@@ -13,11 +13,11 @@ fun member_cycle :: "'a pset_atom list \<Rightarrow> bool" where
   "member_cycle ((s \<in>\<^sub>s t) # cs) = member_seq s ((s \<in>\<^sub>s t) # cs) s"
 | "member_cycle _ = False"
 
-fun tlvl_terms_atom where
+fun tlvl_terms_atom :: "'a pset_atom \<Rightarrow> 'a pset_term set" where
   "tlvl_terms_atom (t1 \<in>\<^sub>s t2) = {t1, t2}"
 | "tlvl_terms_atom (t1 \<approx>\<^sub>s t2) = {t1, t2}"
 
-fun subst_tlvl where
+fun subst_tlvl :: "'a pset_term \<Rightarrow> 'a pset_term \<Rightarrow> 'a pset_atom \<Rightarrow> 'a pset_atom" where
   "subst_tlvl t1 t2 (s1 \<in>\<^sub>s s2) =
     (if s1 = t1 then t2 else s1) \<in>\<^sub>s (if s2 = t1 then t2 else s2)"
 | "subst_tlvl t1 t2 (s1 \<approx>\<^sub>s s2) =

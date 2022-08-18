@@ -101,7 +101,7 @@ fun subterms_atom :: "'a pset_atom \<Rightarrow> 'a pset_term set"  where
   "subterms_atom (t1 \<in>\<^sub>s t2) = subterms t1 \<union> subterms t2"
 | "subterms_atom (t1 \<approx>\<^sub>s t2) = subterms t1 \<union> subterms t2"
 
-definition subterms_fm :: "'a pset_atom fm \<Rightarrow> 'a pset_term set" where
+definition subterms_fm :: "'a pset_fm \<Rightarrow> 'a pset_term set" where
  "subterms_fm \<phi> \<equiv> \<Union>(subterms_atom ` atoms \<phi>)"
 
 lemma subterms_fm_simps[simp]:
@@ -111,7 +111,7 @@ lemma subterms_fm_simps[simp]:
   "subterms_fm (Neg p) = subterms_fm p"
   unfolding subterms_fm_def by auto
 
-definition subterms_branch :: "'a pset_atom fm list \<Rightarrow> 'a pset_term set" where
+definition subterms_branch :: "'a branch \<Rightarrow> 'a pset_term set" where
   "subterms_branch b \<equiv> \<Union>(subterms_fm ` set b)"
 
 lemma subterms_branch_simps:
@@ -189,27 +189,27 @@ lemma subterms_subterms_branch_trans:
   "s \<in> subterms t \<Longrightarrow> t \<in> subterms_branch b \<Longrightarrow> s \<in> subterms_branch b"
   unfolding subterms_branch_def using subterms_subterms_fm_trans by blast
 
-lemma subterms_branchI_if_AT_mem:
+lemma AT_mem_subterms_branchD:
   assumes "AT (s \<in>\<^sub>s t) \<in> set b"
   shows "s \<in> subterms_branch b" "t \<in> subterms_branch b"
   using assms unfolding subterms_branch_def by force+
 
-lemma subterms_branchI_if_AF_mem:
+lemma AF_mem_subterms_branchD:
   assumes "AF (s \<in>\<^sub>s t) \<in> set b"
   shows "s \<in> subterms_branch b" "t \<in> subterms_branch b"
   using assms unfolding subterms_branch_def by force+
 
-lemma subterms_branchI_if_AT_eq:
+lemma AT_eq_subterms_branchD:
   assumes "AT (s \<approx>\<^sub>s t) \<in> set b"
   shows "s \<in> subterms_branch b" "t \<in> subterms_branch b"
   using assms unfolding subterms_branch_def by force+
 
-lemma subterms_branchI_if_AF_eq:
+lemma AF_eq_subterms_branchD:
   assumes "AF (s \<approx>\<^sub>s t) \<in> set b"
   shows "s \<in> subterms_branch b" "t \<in> subterms_branch b"
   using assms unfolding subterms_branch_def by force+
 
-lemma subterms_branchI_if_mem_mem_pset_atoms_branch:
+lemma mem_pset_atoms_branch_subterms_branchD:
   assumes "(t1 \<in>\<^sub>s t2) \<in> pset_atoms_branch b"
   shows "t1 \<in> subterms_branch b" "t2 \<in> subterms_branch b"
 proof -
@@ -221,7 +221,7 @@ proof -
     unfolding subterms_branch_def by blast+
 qed
 
-lemma subterms_branchI_if_eq_mem_pset_atoms_branch:
+lemma eq_pset_atoms_branch_subterms_branchD:
   assumes "(t1 \<approx>\<^sub>s t2) \<in> pset_atoms_branch b"
   shows "t1 \<in> subterms_branch b" "t2 \<in> subterms_branch b"
 proof -

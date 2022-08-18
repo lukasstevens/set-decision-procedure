@@ -1,0 +1,125 @@
+\documentclass[sigplan,10pt,anonymous,review]{acmart}
+\settopmatter{printfolios=true,printccs=false,printacmref=false}
+
+\usepackage[british]{babel}
+
+\usepackage{mathpartir}
+
+%\usepackage{unicode-math}
+%\setmathfont{latinmodern-math.otf}
+%\setmathfont[version=bold, FakeBold=2]{latinmodern-math.otf}
+
+\usepackage{xcolor}
+
+\usepackage{academicons}
+
+\usepackage{tikz}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.16}
+
+\usepackage{enumitem}
+
+\setlength{\abovecaptionskip}{0pt}
+\setlength{\textfloatsep}{18pt plus 2pt minus 4pt}
+
+\usepackage{listings}
+\definecolor{isarblue}{HTML}{006699}
+\definecolor{isargreen}{HTML}{009966}
+\lstdefinelanguage{isabelle}{%
+    keywords=[1]{type_synonym,datatype,fun,abbreviation,definition,proof,lemma,theorem,corollary},
+    keywordstyle=[1]\bfseries\color{isarblue},
+    keywords=[2]{where,assumes,shows,and},
+    keywordstyle=[2]\bfseries\color{isargreen},
+    keywords=[3]{if,then,else,case,of,SOME,let,in,O},
+    keywordstyle=[3]\color{isarblue},
+}
+\lstset{%
+  language=isabelle,
+  escapeinside={&}{&},
+  columns=fixed,
+  extendedchars,
+  basewidth={0.5em,0.45em},
+  basicstyle=\ttfamily,
+  mathescape,
+}
+\makeatletter
+\lst@AddToHook{OnEmptyLine}{\vspace{-0.4\baselineskip}}
+\makeatother
+
+\usepackage{calc}
+
+\newcommand{\textover}[3][l]{%
+ % #1 is the alignment, default l
+ % #2 is the text to be printed
+ % #3 is the text for setting the width
+ \makebox[\widthof{#3}][#1]{#2}%
+}
+
+\hyphenation{Isa-belle}
+
+\pagestyle{plain} % turn on page numbers in llncs
+
+% % LuaLatex on Arxiv: https://tex.stackexchange.com/questions/372154/lualatex-how-to-produce-pdf-acceptable-by-arxiv 
+% \hypersetup{%
+%   pdfcreator = {},
+%   pdfproducer = {}
+% }
+% \pdfvariable suppressoptionalinfo \numexpr 1+2+4+8+16+32+64+128+256+512 \relax
+
+\begin{document}
+
+\setcounter{tocdepth}{1}
+
+\title{Verifying a Tableau Prover for Multi-Level-Syllogistics}
+\author{Lukas Stevens}
+\orcid{0000-0003-0222-6858}
+\affiliation{%
+  \institution{Technical University of Munich}
+  \department{Department of Informatics}
+  \streetaddress{Boltzmannstr. 3}
+  \city{Garching}
+  \postcode{85748}
+  \country{Germany}
+}
+\email{lukas.stevens@in.tum.de}
+
+\begin{abstract}
+  TODO
+\end{abstract}
+
+\maketitle
+
+\section{Introduction}
+TODO
+
+\subsection{Related work}
+TODO
+
+\subsection{Contributions}
+TODO
+
+\subsection{Notation}
+Isabelle/HOL~\cite{isabelle} conforms to everyday mathematical notation for the most part.
+For the benefit of the reader that is unfamiliar with Isabelle/HOL, we establish notation and in particular some essential datatypes together with their primitive operations that are specific to Isabelle/HOL.
+We write \lstinline!t :: 'a! to specify that the term \lstinline!t! has the type \lstinline!'a! and \lstinline!'a $\Rightarrow$ 'b! for the type of a total function from \lstinline!'a! to \lstinline!'b!.
+The types for booleans, natural numbers, and in integers are \lstinline!bool!, \lstinline!nat!, and \lstinline!int!, respectively.
+Sets with elements of type \lstinline!'a! have the type \lstinline!'a set!.
+Analogously, we use \lstinline!'a list! to describe lists, which are constructed as the empty list \lstinline![]! or with the infix constructor \lstinline!#!, and are appended with the infix operator \lstinline!@!.
+The function \lstinline!set! converts a list into a set.
+For optional values, Isabelle/HOL offers the type \lstinline!option! where a term \lstinline!opt :: 'a option! is either \lstinline!None! or \lstinline!Some a! with \lstinline!a :: 'a!.
+Finally, we remark that \textbf{iff} is equivalent to \lstinline!$=$! on type \lstinline!bool! and \lstinline!$\equiv$! is definitional equality of the meta-logic of Isabelle/HOL, which is called Isabelle/Pure.
+
+\section{A Semantics for Sets\label{sec:semantics}}
+TODO
+
+\section{Conclusion}
+TODO
+
+\begin{acks}
+  TODO
+\end{acks}
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{sources}
+
+\end{document}

@@ -145,60 +145,62 @@ lemma lextends_induct[consumes 1]:
 
 section \<open>Non-Linear Extension\<close>
 
-inductive extends_noparam :: "'a branch set \<Rightarrow> 'a branch \<Rightarrow> bool" where
+(* Maybe rename noparam thing*)
+inductive fextends_noparam :: "'a branch set \<Rightarrow> 'a branch \<Rightarrow> bool" where
   "\<lbrakk> Or p q \<in> set branch;
      p \<notin> set branch; Neg p \<notin> set branch \<rbrakk>
-    \<Longrightarrow> extends_noparam {[p], [Neg p]} branch"
+    \<Longrightarrow> fextends_noparam {[p], [Neg p]} branch"
 | "\<lbrakk> Neg (And p q) \<in> set branch;
      Neg p \<notin> set branch; p \<notin> set branch \<rbrakk>
-    \<Longrightarrow> extends_noparam {[Neg p], [p]} branch"
+    \<Longrightarrow> fextends_noparam {[Neg p], [p]} branch"
 | "\<lbrakk> AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set branch; t1 \<squnion>\<^sub>s t2 \<in> subterms_fm (last branch);
      AT (s \<in>\<^sub>s t1) \<notin> set branch; AF (s \<in>\<^sub>s t1) \<notin> set branch \<rbrakk>
-    \<Longrightarrow> extends_noparam {[AT (s \<in>\<^sub>s t1)], [AF (s \<in>\<^sub>s t1)]} branch"
+    \<Longrightarrow> fextends_noparam {[AT (s \<in>\<^sub>s t1)], [AF (s \<in>\<^sub>s t1)]} branch"
 | "\<lbrakk> AT (s \<in>\<^sub>s t1) \<in> set branch; t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm (last branch);
      AT (s \<in>\<^sub>s t2) \<notin> set branch; AF (s \<in>\<^sub>s t2) \<notin> set branch \<rbrakk>
-    \<Longrightarrow> extends_noparam {[AT (s \<in>\<^sub>s t2)], [AF (s \<in>\<^sub>s t2)]} branch"
+    \<Longrightarrow> fextends_noparam {[AT (s \<in>\<^sub>s t2)], [AF (s \<in>\<^sub>s t2)]} branch"
 | "\<lbrakk> AT (s \<in>\<^sub>s t1) \<in> set branch; t1 -\<^sub>s t2 \<in> subterms_fm (last branch);
      AT (s \<in>\<^sub>s t2) \<notin> set branch; AF (s \<in>\<^sub>s t2) \<notin> set branch \<rbrakk>
-    \<Longrightarrow> extends_noparam {[AT (s \<in>\<^sub>s t2)], [AF (s \<in>\<^sub>s t2)]} branch"
+    \<Longrightarrow> fextends_noparam {[AT (s \<in>\<^sub>s t2)], [AF (s \<in>\<^sub>s t2)]} branch"
 
-inductive extends_param ::
+inductive fextends_param ::
   "'a pset_term \<Rightarrow> 'a pset_term \<Rightarrow> 'a \<Rightarrow> 'a branch set \<Rightarrow> 'a branch \<Rightarrow> bool" for t1 t2 x where
   "\<lbrakk> AF (t1 \<approx>\<^sub>s t2) \<in> set branch; t1 \<in> subterms_fm (last branch); t2 \<in> subterms_fm (last branch);
      \<nexists>x. AT (x \<in>\<^sub>s t1) \<in> set branch \<and> AF (x \<in>\<^sub>s t2) \<in> set branch;
      \<nexists>x. AT (x \<in>\<^sub>s t2) \<in> set branch \<and> AF (x \<in>\<^sub>s t1) \<in> set branch;
      x \<notin> vars_branch branch \<rbrakk>
-    \<Longrightarrow> extends_param t1 t2 x {[AT (Var x \<in>\<^sub>s t1), AF (Var x \<in>\<^sub>s t2)],
+    \<Longrightarrow> fextends_param t1 t2 x {[AT (Var x \<in>\<^sub>s t1), AF (Var x \<in>\<^sub>s t2)],
                                [AT (Var x \<in>\<^sub>s t2), AF (Var x \<in>\<^sub>s t1)]} branch"
 
-inductive_cases extends_param_cases[consumes 1]: "extends_param t1 t2 x bs b"
+inductive_cases fextends_param_cases[consumes 1]: "fextends_param t1 t2 x bs b"
 
-lemma extends_paramD:
-  assumes "extends_param t1 t2 x bs b"
+lemma fextends_paramD:
+  assumes "fextends_param t1 t2 x bs b"
   shows "bs = {[AT (pset_term.Var x \<in>\<^sub>s t1), AF (pset_term.Var x \<in>\<^sub>s t2)],
                [AT (pset_term.Var x \<in>\<^sub>s t2), AF (pset_term.Var x \<in>\<^sub>s t1)]}"
         "AF (t1 \<approx>\<^sub>s t2) \<in> set b" "t1 \<in> subterms_fm (last b)" "t2 \<in> subterms_fm (last b)"
         "\<nexists>x. AT (x \<in>\<^sub>s t1) \<in> set b \<and> AF (x \<in>\<^sub>s t2) \<in> set b"
         "\<nexists>x. AT (x \<in>\<^sub>s t2) \<in> set b \<and> AF (x \<in>\<^sub>s t1) \<in> set b"
         "x \<notin> vars_branch b"
-  using extends_param.cases[OF assms] by metis+
+  using fextends_param.cases[OF assms] by metis+
 
-inductive extends :: "'a branch set \<Rightarrow> 'a branch \<Rightarrow> bool" where
-  "extends_noparam bs b \<Longrightarrow> extends bs b"
-| "extends_param t1 t2 x bs b \<Longrightarrow> extends bs b"
+(* rename into ffextends (fulfilling rules) *)
+inductive fextends :: "'a branch set \<Rightarrow> 'a branch \<Rightarrow> bool" where
+  "fextends_noparam bs b \<Longrightarrow> fextends bs b"
+| "fextends_param t1 t2 x bs b \<Longrightarrow> fextends bs b"
 
-lemma extends_disjnt:
-  assumes "extends bs' b" "b' \<in> bs'"
+lemma fextends_disjnt:
+  assumes "fextends bs' b" "b' \<in> bs'"
   shows "set b \<inter> set b' = {}"
   using assms
-proof(induction bs' b rule: extends.induct)
+proof(induction bs' b rule: fextends.induct)
   case (1 bs b)
   then show ?case
-    by (induction rule: extends_noparam.induct) (auto intro: list.set_intros(1))
+    by (induction rule: fextends_noparam.induct) (auto intro: list.set_intros(1))
 next
   case (2 t1 t2 x bs b)
   then show ?case
-  proof(induction rule: extends_param.induct)
+  proof(induction rule: fextends_param.induct)
     case (1 branch)
     from \<open>x \<notin> vars_branch branch\<close>
     have "AT (Var x \<in>\<^sub>s t1) \<notin> set branch" "AF (Var x \<in>\<^sub>s t1) \<notin> set branch"
@@ -208,36 +210,36 @@ next
   qed
 qed
 
-lemma extends_branch_not_Nil:
-  assumes "extends bs' b" "b' \<in> bs'"
+lemma fextends_branch_not_Nil:
+  assumes "fextends bs' b" "b' \<in> bs'"
   shows "b' \<noteq> []"
   using assms
-proof(induction bs' b rule: extends.induct)
+proof(induction bs' b rule: fextends.induct)
   case (1 bs b)
   then show ?case
-    by (induction rule: extends_noparam.induct) auto
+    by (induction rule: fextends_noparam.induct) auto
 next
   case (2 t1 t2 x bs b)
   then show ?case
-    by (induction rule: extends_param.induct) auto
+    by (induction rule: fextends_param.induct) auto
 qed
 
-lemma extends_nonempty: "extends bs' b \<Longrightarrow> bs' \<noteq> {}"
-proof(induction rule: extends.induct)
+lemma fextends_nonempty: "fextends bs' b \<Longrightarrow> bs' \<noteq> {}"
+proof(induction rule: fextends.induct)
   case (1 bs b)
-  then show ?case by (induction rule: extends_noparam.induct) auto
+  then show ?case by (induction rule: fextends_noparam.induct) auto
 next
   case (2 t1 t2 x bs b)
-  then show ?case by (induction rule: extends_param.induct) auto
+  then show ?case by (induction rule: fextends_param.induct) auto
 qed
 
-lemma extends_strict_mono:
-  assumes "extends bs' b" "b' \<in> bs'"
+lemma fextends_strict_mono:
+  assumes "fextends bs' b" "b' \<in> bs'"
   shows "set b \<subset> set (b' @ b)"
-  using extends_disjnt[OF assms] extends_branch_not_Nil[OF assms]
+  using fextends_disjnt[OF assms] fextends_branch_not_Nil[OF assms]
   by (simp add: less_le) (metis Un_Int_eq(1) set_empty2)
 
-inductive_cases extends_cases[consumes 1, case_names no_param param]: "extends bs b"
+inductive_cases fextends_cases[consumes 1, case_names no_param param]: "fextends bs b"
 
 
 section \<open>Extension Closure\<close>
@@ -245,7 +247,7 @@ section \<open>Extension Closure\<close>
 inductive extendss :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
   "extendss b b"
 | "lextends b3 b2 \<Longrightarrow> set b2 \<subset> set (b3 @ b2) \<Longrightarrow> extendss b2 b1 \<Longrightarrow> extendss (b3 @ b2) b1"
-| "extends bs b2 \<Longrightarrow> b3 \<in> bs \<Longrightarrow> extendss b2 b1 \<Longrightarrow> extendss (b3 @ b2) b1"
+| "fextends bs b2 \<Longrightarrow> b3 \<in> bs \<Longrightarrow> extendss b2 b1 \<Longrightarrow> extendss (b3 @ b2) b1"
 
 lemma extendss_trans: "extendss b3 b2 \<Longrightarrow> extendss b2 b1 \<Longrightarrow> extendss b3 b1"
   by (induction rule: extendss.induct) (auto simp: extendss.intros)
@@ -267,7 +269,7 @@ section \<open>Closedness\<close>
 
 inductive bclosed :: "'a branch \<Rightarrow> bool" where
   contr: "\<lbrakk> \<phi> \<in> set branch; Neg \<phi> \<in> set branch \<rbrakk> \<Longrightarrow> bclosed branch"
-| elemEmpty: "AT (t \<in>\<^sub>s \<emptyset>) \<in> set branch \<Longrightarrow> bclosed branch"
+| memEmpty: "AT (t \<in>\<^sub>s \<emptyset>) \<in> set branch \<Longrightarrow> bclosed branch"
 | neqSelf: "AF (t \<approx>\<^sub>s t) \<in> set branch \<Longrightarrow> bclosed branch"
 | memberCycle: "\<lbrakk> member_cycle cs; set cs \<subseteq> Atoms (set branch) \<rbrakk> \<Longrightarrow> bclosed branch"
 

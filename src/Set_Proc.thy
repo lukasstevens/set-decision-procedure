@@ -13,11 +13,11 @@ lemma lin_satD:
   shows "x \<in> set b"
   using assms unfolding lin_sat_def by auto
 
-definition "sat branch \<equiv> lin_sat branch \<and> (\<nexists>branches. extends branches branch)"
+definition "sat branch \<equiv> lin_sat branch \<and> (\<nexists>branches. fextends branches branch)"
 
 lemma satD:
   assumes "sat b"
-  shows "lin_sat b" "\<nexists>b'. extends b' b"
+  shows "lin_sat b" "\<nexists>b'. fextends b' b"
   using assms unfolding sat_def by auto
 
 definition "wf_branch b \<equiv> (\<exists>\<phi>. extendss b [\<phi>])"
@@ -63,6 +63,7 @@ proof -
   then show ?thesis using finite_params finite_subset by blast
 qed
 
+(* TODO: rename this *)
 definition subterms_branch' :: "'a branch \<Rightarrow> 'a pset_term set" where
   "subterms_branch' branch \<equiv>
     subterms_fm (last branch) \<union> Var ` (params branch - params' branch)"
@@ -144,9 +145,9 @@ lemma lextends_vars_branch_eq:
   "lextends b' b \<Longrightarrow> b \<noteq> [] \<Longrightarrow> vars_branch (b' @ b) = vars_branch b"
   using lextends_subterms_branch_eq subterms_branch_eq_if_vars_branch_eq by metis
 
-lemma extends_noparam_subterms_branch_eq:
-  "extends_noparam bs b \<Longrightarrow> b' \<in> bs \<Longrightarrow> b \<noteq> [] \<Longrightarrow> subterms_branch (b' @ b) = subterms_branch b"
-proof(induction rule: extends_noparam.induct)
+lemma fextends_noparam_subterms_branch_eq:
+  "fextends_noparam bs b \<Longrightarrow> b' \<in> bs \<Longrightarrow> b \<noteq> [] \<Longrightarrow> subterms_branch (b' @ b) = subterms_branch b"
+proof(induction rule: fextends_noparam.induct)
   case (3 s t1 t2 branch)
   then show ?case
     by (auto simp: subterms_branch_subterms_subterms_atom_trans subterms_branch_simps)
@@ -163,30 +164,30 @@ next
 qed (use subterms_branch_def in \<open>(fastforce simp: subterms_branch_simps)+\<close>)
 
 
-lemma extends_noparam_vars_branch_eq:
-  "extends_noparam bs b \<Longrightarrow> b' \<in> bs \<Longrightarrow> b \<noteq> [] \<Longrightarrow> vars_branch (b' @ b) = vars_branch b"
-  using extends_noparam_subterms_branch_eq subterms_branch_eq_if_vars_branch_eq by metis
+lemma fextends_noparam_vars_branch_eq:
+  "fextends_noparam bs b \<Longrightarrow> b' \<in> bs \<Longrightarrow> b \<noteq> [] \<Longrightarrow> vars_branch (b' @ b) = vars_branch b"
+  using fextends_noparam_subterms_branch_eq subterms_branch_eq_if_vars_branch_eq by metis
 
 lemma lextends_params_eq:
   "lextends b' b \<Longrightarrow> b \<noteq> [] \<Longrightarrow> params (b' @ b) = params b"
   using lextends_vars_branch_eq unfolding params_def by force
 
-lemma extends_noparam_params_eq:
-  assumes "extends_noparam bs b" "b' \<in> bs" "b \<noteq> []" 
+lemma fextends_noparam_params_eq:
+  assumes "fextends_noparam bs b" "b' \<in> bs" "b \<noteq> []" 
   shows "params (b' @ b) = params b"
-  using extends_noparam_vars_branch_eq[OF assms] assms(3)
+  using fextends_noparam_vars_branch_eq[OF assms] assms(3)
   unfolding params_def by simp
 
-lemma extends_param_vars_branch_eq:
-  assumes "extends_param t1 t2 x bs b" "b' \<in> bs" "b \<noteq> []"
+lemma fextends_param_vars_branch_eq:
+  assumes "fextends_param t1 t2 x bs b" "b' \<in> bs" "b \<noteq> []"
   shows "vars_branch (b' @ b) = insert x (vars_branch b)"
-  using assms extends_paramD[OF assms(1)]
+  using assms fextends_paramD[OF assms(1)]
   by (auto simp: mem_vars_fm_if_mem_subterm_fm vars_branch_simps vars_fm_vars_branchI)
 
-lemma extends_param_params_eq:
-  assumes "extends_param t1 t2 x bs b" "b' \<in> bs" "b \<noteq> []"
+lemma fextends_param_params_eq:
+  assumes "fextends_param t1 t2 x bs b" "b' \<in> bs" "b \<noteq> []"
   shows "params (b' @ b) = insert x (params b)"
-  using assms extends_paramD[OF assms(1)]
+  using assms fextends_paramD[OF assms(1)]
   unfolding params_def
   by (auto simp: mem_vars_fm_if_mem_subterm_fm vars_branch_simps vars_branch_def)
 
@@ -278,31 +279,31 @@ lemma subterms_branch_subterms_atomI:
    apply (metis subterms_branch_def subterms_branch_subterms_subterms_atom_trans subterms_refl)+
   done
   
-lemma extends_noparam_no_new_subterms:
-  assumes "extends_noparam bs b" "b' \<in> bs" "b \<noteq> []" 
+lemma fextends_noparam_no_new_subterms:
+  assumes "fextends_noparam bs b" "b' \<in> bs" "b \<noteq> []" 
   assumes "no_new_subterms b"
   shows "no_new_subterms (b' @ b)"
   using assms unfolding no_new_subterms_def
-  by (simp add: extends_noparam_params_eq extends_noparam_subterms_branch_eq[OF assms(1,2)])
+  by (simp add: fextends_noparam_params_eq fextends_noparam_subterms_branch_eq[OF assms(1,2)])
 
-lemma extends_param_no_new_subterms:
-  assumes "extends_param t1 t2 x bs b" "b \<noteq> []" "b' \<in> bs"
+lemma fextends_param_no_new_subterms:
+  assumes "fextends_param t1 t2 x bs b" "b \<noteq> []" "b' \<in> bs"
   assumes "no_new_subterms b"
   shows "no_new_subterms (b' @ b)"
   using assms
-  apply(induction rule: extends_param.induct)
+  apply(induction rule: fextends_param.induct)
   apply(auto simp: subterms_branch_simps subterms_subterms_atom_trans subterms_subterms_fm_trans
              elim: no_new_subtermsE
              intro!: no_new_subterms_casesI)
   done
 
-lemma extends_no_new_subterms:
-  assumes "extends bs b" "b \<noteq> []" "b' \<in> bs"
+lemma fextends_no_new_subterms:
+  assumes "fextends bs b" "b \<noteq> []" "b' \<in> bs"
   assumes "no_new_subterms b"
   shows "no_new_subterms (b' @ b)"
   using assms
-  apply(cases rule: extends.cases)
-  using extends_noparam_no_new_subterms extends_param_no_new_subterms by metis+
+  apply(cases rule: fextends.cases)
+  using fextends_noparam_no_new_subterms fextends_param_no_new_subterms by metis+
 
 lemma extendss_no_new_subterms:
   assumes "extendss b' b" "b \<noteq> []" "no_new_subterms b"
@@ -310,12 +311,13 @@ lemma extendss_no_new_subterms:
   using assms
   apply(induction b' b rule: extendss.induct)
   using extendss_suffix suffix_bot.extremum_uniqueI
-  using lextends_no_new_subterms extends_no_new_subterms
+  using lextends_no_new_subterms fextends_no_new_subterms
   by blast+
 
 lemmas subterms_branch_subterms_fm_lastI =
   subterms_branch_subterms_subterms_fm_trans[OF _ subterms_refl]
 
+(* TODO: consider renaming this *)
 definition params_subterms :: "'a branch \<Rightarrow> 'a pset_term set" where
   "params_subterms b \<equiv> Var ` params b \<union> subterms_fm (last b)"
 
@@ -352,6 +354,7 @@ fun is_literal :: "'a fm \<Rightarrow> bool" where
 | "is_literal (Neg (Atom _)) = True"
 | "is_literal _ = False"
 
+(* TODO: give the invariant P a proper name *)
 lemma lextends_no_params_if_not_literal:
   defines "P \<equiv> (\<lambda>b. \<forall>\<phi> \<in> set b. \<not> is_literal \<phi> \<longrightarrow> vars_fm \<phi> \<inter> params b = {})"
   assumes "lextends b' b" "b \<noteq> []"
@@ -360,32 +363,32 @@ lemma lextends_no_params_if_not_literal:
   using assms(2-) lextends_params_eq[OF assms(2,3)]
   by (induction rule: lextends_induct)(auto simp: disjoint_iff P_def)
 
-lemma extends_noparam_no_params_if_not_literal:
+lemma fextends_noparam_no_params_if_not_literal:
   defines "P \<equiv> (\<lambda>b. \<forall>\<phi> \<in> set b. \<not> is_literal \<phi> \<longrightarrow> vars_fm \<phi> \<inter> params b = {})"
-  assumes "extends_noparam bs b" "b' \<in> bs" "b \<noteq> []"
+  assumes "fextends_noparam bs b" "b' \<in> bs" "b \<noteq> []"
   assumes "P b"
   shows "P (b' @ b)"
   using assms(2-)
-  by (induction rule: extends_noparam.induct)
+  by (induction rule: fextends_noparam.induct)
      (auto simp: Int_def P_def params_def vars_fm_vars_branchI)
 
-lemma extends_param_no_params_if_not_literal:
+lemma fextends_param_no_params_if_not_literal:
   defines "P \<equiv> (\<lambda>b. \<forall>\<phi> \<in> set b. \<not> is_literal \<phi> \<longrightarrow> vars_fm \<phi> \<inter> params b = {})"
-  assumes "extends_param t1 t2 x bs b" "b' \<in> bs" "b \<noteq> []"
+  assumes "fextends_param t1 t2 x bs b" "b' \<in> bs" "b \<noteq> []"
   assumes "P b"
   shows "P (b' @ b)"
   using assms(2-)
-  by (induction rule: extends_param.induct)
+  by (induction rule: fextends_param.induct)
      (auto simp: Int_def P_def params_def vars_fm_vars_branchI)
 
-lemma extends_no_params_if_not_literal:
+lemma fextends_no_params_if_not_literal:
   defines "P \<equiv> (\<lambda>b. \<forall>\<phi> \<in> set b. \<not> is_literal \<phi> \<longrightarrow> vars_fm \<phi> \<inter> params b = {})"
-  assumes "extends bs b" "b' \<in> bs" "b \<noteq> []"
+  assumes "fextends bs b" "b' \<in> bs" "b \<noteq> []"
   assumes "P b"
   shows "P (b' @ b)"
   using assms(2-)
-  apply(cases bs b rule: extends_cases)
-  using extends_param_no_params_if_not_literal extends_noparam_no_params_if_not_literal
+  apply(cases bs b rule: fextends_cases)
+  using fextends_param_no_params_if_not_literal fextends_noparam_no_params_if_not_literal
   using P_def by fast+
 
 lemma extendss_no_params_if_not_literal:
@@ -395,7 +398,7 @@ lemma extendss_no_params_if_not_literal:
   shows "P b'"
   using assms(2-)
   apply (induction rule: extendss.induct)
-  using lextends_no_params_if_not_literal extends_no_params_if_not_literal
+  using lextends_no_params_if_not_literal fextends_no_params_if_not_literal
      apply (metis P_def extendss_suffix suffix_bot.extremum_uniqueI)+
   done
 
@@ -459,29 +462,30 @@ proof -
     by auto
 qed
 
-lemma extends_noparam_params'_eq:
-  assumes "extends_noparam bs b" "b' \<in> bs" "b \<noteq> []"
+lemma fextends_noparam_params'_eq:
+  assumes "fextends_noparam bs b" "b' \<in> bs" "b \<noteq> []"
   assumes "\<forall>\<phi> \<in> set b. \<not> is_literal \<phi> \<longrightarrow> vars_fm \<phi> \<inter> params b = {}"
   shows "params' (b' @ b) = params' b"
   using assms
 proof -
   from assms have "x \<in> params' (b' @ b)" if "x \<in> params' b" for x
-    using that extends_noparam_params_eq[OF assms(1-3)]
-    by (induction rule: extends_noparam.induct)
+    using that fextends_noparam_params_eq[OF assms(1-3)]
+    by (induction rule: fextends_noparam.induct)
        (intro params'I; fastforce simp: params'D)+
   moreover from assms have "params' (b' @ b) \<subseteq> params' b"
     unfolding params'_def
-    using extends_noparam_params_eq by fastforce
+    using fextends_noparam_params_eq by fastforce
   ultimately show ?thesis by blast
 qed
 
-lemma extends_param_params'_eq:
-  assumes "extends_param t1 t2 x bs b" "b' \<in> bs" "b \<noteq> []"
+lemma fextends_param_params'_eq:
+  assumes "fextends_param t1 t2 x bs b" "b' \<in> bs" "b \<noteq> []"
   shows "params' (b' @ b) = insert x (params' b)"
-  using assms(2,3) extends_paramD[OF assms(1)]
-  unfolding params'_def extends_param_params_eq[OF assms] 
+  using assms(2,3) fextends_paramD[OF assms(1)]
+  unfolding params'_def fextends_param_params_eq[OF assms] 
   by (auto simp: vars_fm_vars_branchI)
 
+(* TODO: give the invariant P a proper name *)
 lemma lemma_2_lextends:
   defines "P \<equiv> (\<lambda>b c t. AT (Var c \<approx>\<^sub>s t) \<notin> set b \<and> AT (t \<approx>\<^sub>s Var c) \<notin> set b \<and> AT (t \<in>\<^sub>s Var c) \<notin> set b)"
   assumes "lextends b' b" "b \<noteq> []"
@@ -808,20 +812,20 @@ next
   qed
 qed
 
-lemma lemma_2_extends:
+lemma lemma_2_fextends:
   defines "P \<equiv> (\<lambda>b c t. AT (Var c \<approx>\<^sub>s t) \<notin> set b \<and> AT (t \<approx>\<^sub>s Var c) \<notin> set b
                       \<and> AT (t \<in>\<^sub>s Var c) \<notin> set b)"
-  assumes "extends bs b" "b' \<in> bs" "b \<noteq> []"
+  assumes "fextends bs b" "b' \<in> bs" "b \<noteq> []"
   assumes "no_new_subterms b"
   assumes "\<forall>\<phi> \<in> set b. \<not> is_literal \<phi> \<longrightarrow> vars_fm \<phi> \<inter> params b = {}"
   assumes "\<forall>c \<in> params' b. \<forall>t \<in> params_subterms b. P b c t"
   shows "\<forall>c \<in> params' (b' @ b). \<forall>t \<in> params_subterms (b' @ b). P (b' @ b) c t"
-  using assms(2-) extends_no_new_subterms[OF assms(2,4,3,5)]
-proof(induction rule: extends.induct)
+  using assms(2-) fextends_no_new_subterms[OF assms(2,4,3,5)]
+proof(induction rule: fextends.induct)
   case (1 bs b)
   then show ?case
-    using extends_noparam_params_eq[OF "1"(1-3)] extends_noparam_params'_eq[OF "1"(1-3,5)]
-  proof(induction rule: extends_noparam.induct)
+    using fextends_noparam_params_eq[OF "1"(1-3)] fextends_noparam_params'_eq[OF "1"(1-3,5)]
+  proof(induction rule: fextends_noparam.induct)
     case (1 p q branch)
     then show ?case
       unfolding P_def params_subterms_def
@@ -855,13 +859,13 @@ proof(induction rule: extends.induct)
   qed
 next
   case (2 t1 t2 x bs branch)
-  from extends_paramD[OF "2"(1)] have "t1 \<notin> Var ` params branch" "t2 \<notin> Var ` params branch"
+  from fextends_paramD[OF "2"(1)] have "t1 \<notin> Var ` params branch" "t2 \<notin> Var ` params branch"
     by (meson disjoint_iff_not_equal params_subterms_last_disjnt)+
   then have not_in_params': "t1 \<notin> Var ` params' branch" "t2 \<notin> Var ` params' branch"
     unfolding params'_def by auto
-  with extends_paramD[OF "2"(1)] "2"(2-) show ?case
+  with fextends_paramD[OF "2"(1)] "2"(2-) show ?case
     unfolding P_def params_subterms_def
-    unfolding extends_param_params'_eq[OF "2"(1-3)] extends_param_params_eq[OF "2"(1-3)]
+    unfolding fextends_param_params'_eq[OF "2"(1-3)] fextends_param_params_eq[OF "2"(1-3)]
     by (auto simp: vars_fm_vars_branchI)
 qed
 
@@ -961,7 +965,7 @@ proof -
       using wf_branch_def wf_branch_not_Nil by blast
   next
     case (3 bs b2 b1)
-    note lemma_2_extends[OF this(1) _ _
+    note lemma_2_fextends[OF this(1) _ _
         no_new_subterms[OF this(3)] no_params_if_not_literal[OF this(3)]]
     with 3 show ?case
       using wf_branch_def wf_branch_not_Nil by blast
@@ -1335,10 +1339,10 @@ proof -
  
       from finite_vars_branch infinite_vars obtain x where "x \<notin> vars_branch b"
         using ex_new_if_finite by blast
-      from extends_param.intros[OF t1'_t2'(3,1,2) _ _ this] \<open>sat b\<close>[unfolded sat_def] consider
+      from fextends_param.intros[OF t1'_t2'(3,1,2) _ _ this] \<open>sat b\<close>[unfolded sat_def] consider
         s1 where "AT (s1 \<in>\<^sub>s t1') \<in> set b" "AF (s1 \<in>\<^sub>s t2') \<in> set b" |
         s2 where "AF (s2 \<in>\<^sub>s t1') \<in> set b" "AT (s2 \<in>\<^sub>s t2') \<in> set b"
-        using extends.intros(2-) by metis 
+        using fextends.intros(2-) by metis 
       then show ?thesis
       proof cases
         case 1
@@ -1466,7 +1470,7 @@ proof -
     then have "AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set b"
       unfolding bgraph_def Let_def by auto
     with \<open>sat b\<close> consider "AT (s \<in>\<^sub>s t1) \<in> set b" | "AF (s \<in>\<^sub>s t1) \<in> set b"
-      unfolding sat_def using extends_noparam.intros(3)[OF _ mem_subterms_fm, THEN extends.intros(1)]
+      unfolding sat_def using fextends_noparam.intros(3)[OF _ mem_subterms_fm, THEN fextends.intros(1)]
       by blast
     then show "e \<in> elts (realization t1 \<squnion> realization t2)"
     proof(cases)
@@ -1551,8 +1555,8 @@ proof -
     proof -
       from \<open>sat b\<close> have "AT (s1 \<in>\<^sub>s t2) \<in> set b \<or> AF (s1 \<in>\<^sub>s t2) \<in> set b"
         unfolding sat_def
-        using extends_noparam.intros(4)[OF \<open>AT (s1 \<in>\<^sub>s t1) \<in> set b\<close> mem_subterms_fm]
-        using extends.intros(1) by blast
+        using fextends_noparam.intros(4)[OF \<open>AT (s1 \<in>\<^sub>s t1) \<in> set b\<close> mem_subterms_fm]
+        using fextends.intros(1) by blast
       moreover from \<open>sat b\<close> s1_s2 have False if "AF (s1 \<in>\<^sub>s t2) \<in> set b"
       proof -
         note lextends_eq.intros(5)[OF \<open>AT (s2 \<in>\<^sub>s t2) \<in> set b\<close> that, THEN lextends.intros(6)]
@@ -1609,8 +1613,8 @@ proof -
     moreover have "AF (s \<in>\<^sub>s t2) \<in> set b"
     proof -
       from \<open>sat b\<close> have "AT (s \<in>\<^sub>s t2) \<in> set b \<or> AF (s \<in>\<^sub>s t2) \<in> set b"
-        unfolding sat_def using extends_noparam.intros(5)[OF \<open>AT (s \<in>\<^sub>s t1) \<in> set b\<close> mem_subterms_fm]
-        using extends.intros(1) by blast
+        unfolding sat_def using fextends_noparam.intros(5)[OF \<open>AT (s \<in>\<^sub>s t1) \<in> set b\<close> mem_subterms_fm]
+        using fextends.intros(1) by blast
       moreover from s(3) have False if "AT (s \<in>\<^sub>s t2) \<in> set b"
         using that unfolding Let_def bgraph_def by (auto simp: arcs_ends_def arc_to_ends_def)
       ultimately show "AF (s \<in>\<^sub>s t2) \<in> set b"
@@ -1674,11 +1678,11 @@ end
 
 section \<open>Upper Bounding the Cardinality of a Branch\<close>
 
-lemma Ex_extends_params_if_in_params:
+lemma Ex_fextends_params_if_in_params:
   assumes "wf_branch b"
   assumes "x \<in> params b"
   obtains t1 t2 bs b2 b1 where
-    "extendss b (b2 @ b1)" "extends_param t1 t2 x bs b1" "b2 \<in> bs" "extendss b1 [last b]"
+    "extendss b (b2 @ b1)" "fextends_param t1 t2 x bs b1" "b2 \<in> bs" "extendss b1 [last b]"
     "x \<notin> params b1" "params (b2 @ b1) = insert x (params b1)"
 proof -
   from assms obtain \<phi> where "extendss b [\<phi>]"
@@ -1699,19 +1703,19 @@ proof -
   next
     case (3 bs _ b2)
     then show ?case
-    proof(induction rule: extends.induct)
+    proof(induction rule: fextends.induct)
       case (1 bs b1)
       with extendss_mono have "b1 \<noteq> []"
         by fastforce
-      with extends_noparam_params_eq[OF \<open>extends_noparam bs b1\<close> \<open>b2 \<in> bs\<close> this] 1 show ?case
-        by (metis extends.intros(1) extendss.intros(3))
+      with fextends_noparam_params_eq[OF \<open>fextends_noparam bs b1\<close> \<open>b2 \<in> bs\<close> this] 1 show ?case
+        by (metis fextends.intros(1) extendss.intros(3))
     next
       case (2 t1 t2 y bs b1)
       show ?case
       proof(cases "x \<in> params b1")
         case True
         from 2 have "extendss (b2 @ b1) b1"
-          using extendss.intros(3)[OF _ "2.prems"(1)] extends.intros(2)[OF "2.hyps"]
+          using extendss.intros(3)[OF _ "2.prems"(1)] fextends.intros(2)[OF "2.hyps"]
           by (metis extendss.intros(1))
         with True 2 show ?thesis
           using extendss_trans by blast
@@ -1719,9 +1723,9 @@ proof -
         case False
         from 2 have "b1 \<noteq> []"
           using extendss_mono by fastforce
-        with extends_paramD[OF "2"(1)] "2"(2-) have "params (b2 @ b1) = insert y (params b1)"
+        with fextends_paramD[OF "2"(1)] "2"(2-) have "params (b2 @ b1) = insert y (params b1)"
           unfolding params_def
-          by (metis "2.hyps" extends_param_params_eq params_def)
+          by (metis "2.hyps" fextends_param_params_eq params_def)
         moreover from \<open>y \<notin> vars_branch b1\<close> have "y \<notin> params b1"
           unfolding params_def by simp
         moreover from calculation have "y = x"
@@ -1744,20 +1748,20 @@ proof -
   have False if card_gt: "card (params b) > (card (subterms_fm \<phi>))^2"
   proof -
     define ts where "ts \<equiv> (\<lambda>x. SOME (t1, t2). \<exists>bs b2 b1.
-       extendss b (b2 @ b1) \<and> b2 \<in> bs \<and> extends_param t1 t2 x bs b1  \<and> extendss b1 [\<phi>])"
+       extendss b (b2 @ b1) \<and> b2 \<in> bs \<and> fextends_param t1 t2 x bs b1  \<and> extendss b1 [\<phi>])"
     from \<open>extendss b [\<phi>]\<close> \<open>last b = \<phi>\<close>
     have "\<exists>t1 t2 bs b2 b1.
-      extendss b (b2 @ b1) \<and> b2 \<in> bs \<and> extends_param t1 t2 x bs b1 \<and> extendss b1 [\<phi>]"
+      extendss b (b2 @ b1) \<and> b2 \<in> bs \<and> fextends_param t1 t2 x bs b1 \<and> extendss b1 [\<phi>]"
       if "x \<in> params b" for x
-      using that Ex_extends_params_if_in_params[OF \<open>wf_branch b\<close> that] by metis
+      using that Ex_fextends_params_if_in_params[OF \<open>wf_branch b\<close> that] by metis
     then have ts_wd:
-      "\<exists>bs b2 b1. extendss b (b2 @ b1) \<and> b2 \<in> bs \<and> extends_param t1 t2 x bs b1 \<and> extendss b1 [\<phi>]"
+      "\<exists>bs b2 b1. extendss b (b2 @ b1) \<and> b2 \<in> bs \<and> fextends_param t1 t2 x bs b1 \<and> extendss b1 [\<phi>]"
       if "ts x = (t1, t2)" "x \<in> params b" for t1 t2 x
       using that unfolding ts_def by (smt (verit, ccfv_SIG) prod.case someI)
     with \<open>last b = \<phi>\<close> \<open>extendss b [\<phi>]\<close> have in_subterms_fm:
       "t1 \<in> subterms_fm \<phi>" "t2 \<in> subterms_fm \<phi>"
       if "ts x = (t1, t2)" "x \<in> params b" for t1 t2 x
-      using that extends_paramD
+      using that fextends_paramD
       by (metis extendss_last_eq list.discI)+
     have "\<not> inj_on ts (params b)"
     proof -
@@ -1773,19 +1777,19 @@ proof -
   
     from \<open>\<not> inj_on ts (params b)\<close> obtain x t1 t2 xb1 xbs2 xb2 y yb1 ybs2 yb2 where x_y:
       "x \<noteq> y" "x \<in> params b" "y \<in> params b"
-      "extendss xb1 [\<phi>]" "extends_param t1 t2 x xbs2 xb1" "xb2 \<in> xbs2" "extendss b (xb2 @ xb1)"
-      "extendss yb1 [\<phi>]" "extends_param t1 t2 y ybs2 yb1" "yb2 \<in> ybs2" "extendss b (yb2 @ yb1)"
+      "extendss xb1 [\<phi>]" "fextends_param t1 t2 x xbs2 xb1" "xb2 \<in> xbs2" "extendss b (xb2 @ xb1)"
+      "extendss yb1 [\<phi>]" "fextends_param t1 t2 y ybs2 yb1" "yb2 \<in> ybs2" "extendss b (yb2 @ yb1)"
       unfolding inj_on_def by (metis ts_wd prod.exhaust)
     have "xb2 \<noteq> yb2"
-      using x_y(5)[THEN extends_paramD(1)] x_y(9)[THEN extends_paramD(1)] x_y(1,6,10) 
+      using x_y(5)[THEN fextends_paramD(1)] x_y(9)[THEN fextends_paramD(1)] x_y(1,6,10) 
       by auto
     moreover from x_y have "suffix (xb2 @ xb1) (yb2 @ yb1) \<or> suffix (yb2 @ yb1) (xb2 @ xb1)"
       using extendss_suffix suffix_same_cases by blast 
     then have "suffix (xb2 @ xb1) yb1 \<or> suffix (yb2 @ yb1) xb1"
-      using x_y(5)[THEN extends_paramD(1)] x_y(9)[THEN extends_paramD(1)] x_y(1,6,10)
+      using x_y(5)[THEN fextends_paramD(1)] x_y(9)[THEN fextends_paramD(1)] x_y(1,6,10)
       by (auto simp: suffix_Cons)
     ultimately show False
-      using extends_paramD(1,5,6)[OF x_y(5)] extends_paramD(1,5,6)[OF x_y(9)] x_y(6,10)
+      using fextends_paramD(1,5,6)[OF x_y(5)] fextends_paramD(1,5,6)[OF x_y(9)] x_y(6,10)
       by (auto dest!: set_mono_suffix)
   qed
   then show ?thesis
@@ -1859,7 +1863,7 @@ proof -
     by (meson dual_order.trans mult_le_mono2 power2_nat_le_eq_le)
 qed
 
-lemma lextends_not_Atom_mem_subfms_last:
+lemma lextends_not_literal_mem_subfms_last:
   defines "P \<equiv> (\<lambda>b. \<forall>\<psi> \<in> set b. \<not> is_literal \<psi>
                           \<longrightarrow> \<psi> \<in> subfms (last b) \<or> \<psi> \<in> Neg ` subfms (last b))"
   assumes "lextends b' b" "b \<noteq> []"
@@ -1870,28 +1874,28 @@ lemma lextends_not_Atom_mem_subfms_last:
                       apply(fastforce simp: P_def dest: subfmsD)+
   done
 
-lemma extends_not_Atom_mem_subfms_last:
+lemma fextends_not_literal_mem_subfms_last:
   defines "P \<equiv> (\<lambda>b. \<forall>\<psi> \<in> set b. \<not> is_literal \<psi>
                           \<longrightarrow> \<psi> \<in> subfms (last b) \<or> \<psi> \<in> Neg ` subfms (last b))"
-  assumes "extends bs b" "b' \<in> bs" "b \<noteq> []"
+  assumes "fextends bs b" "b' \<in> bs" "b \<noteq> []"
   assumes "P b"
   shows "P (b' @ b)"
   using assms(2-)
-proof(induction bs b rule: extends.induct)
+proof(induction bs b rule: fextends.induct)
   case (1 bs b)
   then show ?case
-    apply(induction rule: extends_noparam.induct)
+    apply(induction rule: fextends_noparam.induct)
         apply(fastforce simp: P_def dest: subfmsD)+
     done
 next
   case (2 t1 t2 x bs b)
   then show ?case
-    apply(induction rule: extends_param.induct)
+    apply(induction rule: fextends_param.induct)
     apply(fastforce simp: P_def dest: subfmsD)+
     done
 qed
 
-lemma extendss_not_Atom_mem_subfms_last:
+lemma extendss_not_literal_mem_subfms_last:
   defines "P \<equiv> (\<lambda>b. \<forall>\<psi> \<in> set b. \<not> is_literal \<psi>
                           \<longrightarrow> \<psi> \<in> subfms (last b) \<or> \<psi> \<in> Neg ` subfms (last b))"
   assumes "extendss b' b" "b \<noteq> []"
@@ -1903,16 +1907,16 @@ proof(induction b' b rule: extendss.induct)
   then have "b2 \<noteq> []"
     using extendss_suffix suffix_bot.extremum_uniqueI by blast
   with 2 show ?case
-    using lextends_not_Atom_mem_subfms_last unfolding P_def by blast
+    using lextends_not_literal_mem_subfms_last unfolding P_def by blast
 next
   case (3 bs b2 b3 b1)
   then have "b2 \<noteq> []"
     using extendss_suffix suffix_bot.extremum_uniqueI by blast
   with 3 show ?case
-    using extends_not_Atom_mem_subfms_last unfolding P_def by blast
+    using fextends_not_literal_mem_subfms_last unfolding P_def by blast
 qed simp
 
-lemma card_not_Atoms_branch_if_wf_branch:
+lemma card_not_literal_branch_if_wf_branch:
   assumes "wf_branch b"
   shows "card {\<phi> \<in> set b. \<not> is_literal \<phi>} \<le> 2 * card (subfms (last b))"
 proof -
@@ -1921,7 +1925,7 @@ proof -
   then have [simp]: "last b = \<phi>"
     by simp
   have "{\<psi> \<in> set b. \<not> is_literal \<psi>} \<subseteq> subfms \<phi> \<union> Neg ` subfms \<phi>"
-    using extendss_not_Atom_mem_subfms_last[OF \<open>extendss b [\<phi>]\<close>]
+    using extendss_not_literal_mem_subfms_last[OF \<open>extendss b [\<phi>]\<close>]
     by auto
   from card_mono[OF _ this] have
     "card {\<psi> \<in> set b. \<not> is_literal \<psi>} \<le> card (subfms \<phi> \<union> Neg ` subfms \<phi>)"
@@ -1947,7 +1951,7 @@ proof -
     using card_Un_disjoint finite_Un
     by (metis (no_types, lifting) List.finite_set disjoint_iff mem_Collect_eq)
   also have "\<dots> \<le> 2 * card (subfms (last b)) + 4 * (?csts + card (params b))^2"
-    using assms card_Atoms_branch_if_wf_branch card_not_Atoms_branch_if_wf_branch
+    using assms card_Atoms_branch_if_wf_branch card_not_literal_branch_if_wf_branch
     by fastforce
   also have "\<dots> \<le> 2 * card (subfms (last b)) + 4 * (?csts + ?csts^2)^2"
     using assms card_params_ub_if_wf_branch by auto
@@ -1977,7 +1981,7 @@ function (domintros) mlss_proc_branch :: "'a branch \<Rightarrow> bool" where
   "\<not> lin_sat b
   \<Longrightarrow> mlss_proc_branch b = mlss_proc_branch ((SOME b'. lextends b' b \<and> set b \<subset> set (b' @ b)) @ b)"
 | "\<lbrakk> \<not> sat b; bopen b; lin_sat b \<rbrakk>
-  \<Longrightarrow> mlss_proc_branch b = (\<forall>b' \<in> (SOME bs. extends bs b). mlss_proc_branch (b' @ b))"
+  \<Longrightarrow> mlss_proc_branch b = (\<forall>b' \<in> (SOME bs. fextends bs b). mlss_proc_branch (b' @ b))"
 | "\<lbrakk> lin_sat b; sat b \<rbrakk> \<Longrightarrow> mlss_proc_branch b = bclosed b"
 | "\<lbrakk> lin_sat b; bclosed b \<rbrakk> \<Longrightarrow> mlss_proc_branch b = True"
   by auto
@@ -2011,10 +2015,10 @@ proof -
       case False
       then consider
         b' where  "\<not> lin_sat b" "lextends b' b" "set b \<subset> set (b' @ b)"|
-        bs' where "lin_sat b" "\<not> sat b" "extends bs' b" "bs' \<noteq> {}"
+        bs' where "lin_sat b" "\<not> sat b" "fextends bs' b" "bs' \<noteq> {}"
                   "\<forall>b' \<in> bs'. set b \<subset> set (b' @ b)"
         unfolding sat_def lin_sat_def
-        using extends_strict_mono extends_nonempty
+        using fextends_strict_mono fextends_nonempty
         by (metis (no_types, opaque_lifting) inf_sup_aci(5) psubsetI set_append sup_ge1)
       then show ?thesis
       proof(cases)
@@ -2028,7 +2032,7 @@ proof -
         case 2
         then show ?thesis
           using less' mlss_proc_branch.domintros(2,4)
-          by (metis (mono_tags, lifting) extends_strict_mono extendss.intros(1,3) someI_ex)
+          by (metis (mono_tags, lifting) fextends_strict_mono extendss.intros(1,3) someI_ex)
       qed
     qed (use mlss_proc_branch.domintros(3) sat_def in metis)
   qed
@@ -2079,8 +2083,8 @@ proof -
       using wf_branch_not_Nil by auto
   next
     case (2 b)
-    let ?bs' = "SOME bs. extends bs b"
-    from 2 have bs': "extends ?bs' b"
+    let ?bs' = "SOME bs. fextends bs b"
+    from 2 have bs': "fextends ?bs' b"
       by (meson sat_def tfl_some)
     with 2 obtain b' where b': "b' \<in> ?bs'" "\<not> mlss_proc_branch (b' @ b)"
       using mlss_proc_branch.psimps by blast
@@ -2097,7 +2101,7 @@ proof -
       by (simp add: mlss_proc_branch.psimps)
     interpret open_branch b
       apply(unfold_locales) using 3 assms(3) \<open>bopen b\<close> by auto
-   define M where "M \<equiv> (\<lambda>x. realization (Var x))"
+    define M where "M \<equiv> (\<lambda>x. realization (Var x))"
     have "interp I\<^sub>s\<^sub>a M \<phi>" if "\<phi> \<in> set b" for \<phi>
       using that
     proof(induction "size \<phi>" arbitrary: \<phi> rule: less_induct)
@@ -2129,7 +2133,7 @@ proof -
       next
         case (Or \<phi>1 \<phi>2)
         with \<open>\<phi> \<in> set b\<close> \<open>sat b\<close>[THEN satD(2)] have "\<phi>1 \<in> set b \<or> Neg \<phi>1 \<in> set b"
-          using extends_noparam.intros(1)[THEN extends.intros(1)]
+          using fextends_noparam.intros(1)[THEN fextends.intros(1)]
           by blast
         with less Or \<open>sat b\<close>[THEN satD(1), THEN lin_satD] have "\<phi>1 \<in> set b \<or> \<phi>2 \<in> set b"
           using lextends_fm.intros(3)[THEN lextends.intros(1)] by fastforce
@@ -2159,7 +2163,7 @@ proof -
         next
           case (And \<phi>1 \<phi>2)
           with Neg \<open>sat b\<close>[THEN satD(2)] less have "\<phi>1 \<in> set b \<or> Neg \<phi>1 \<in> set b"
-            using extends_noparam.intros(2)[THEN extends.intros(1)] by blast
+            using fextends_noparam.intros(2)[THEN fextends.intros(1)] by blast
           with \<open>sat b\<close>[THEN satD(1), THEN lin_satD] Neg And less
           have "Neg \<phi>2 \<in> set b \<or> Neg \<phi>1 \<in> set b"
             using lextends_fm.intros(5)[THEN lextends.intros(1)] by fastforce
@@ -2274,12 +2278,12 @@ next
   qed
 qed
 
-lemma extends_noparam_interp:
-  assumes "extends_noparam bs' b"
+lemma fextends_noparam_interp:
+  assumes "fextends_noparam bs' b"
   assumes "\<And>\<psi>. \<psi> \<in> set b \<Longrightarrow> interp I\<^sub>s\<^sub>a M \<psi>"
   shows "\<exists>b' \<in> bs'. \<forall>\<psi> \<in> set b'. interp I\<^sub>s\<^sub>a M \<psi>"
   using assms
-  by (induction rule: extends_noparam.induct) force+
+  by (induction rule: fextends_noparam.induct) force+
 
 lemma I\<^sub>s\<^sub>t_upd_eq_if_not_mem_set_pset_term:
   assumes "x \<notin> set_pset_term t"
@@ -2298,12 +2302,12 @@ lemma interp_upd_eq_if_not_mem_vars_fm:
   using assms
   by (induction \<phi>) (auto simp: I\<^sub>s\<^sub>a_upd_eq_if_not_mem_set_pset_atom)
 
-lemma extends_param_interp:
-  assumes "extends_param t1 t2 x bs' b"
+lemma fextends_param_interp:
+  assumes "fextends_param t1 t2 x bs' b"
   assumes "\<And>\<psi>. \<psi> \<in> set b \<Longrightarrow> interp I\<^sub>s\<^sub>a M \<psi>"
   shows "\<exists>M. \<exists>b' \<in> bs'. \<forall>\<psi> \<in> set (b' @ b). interp I\<^sub>s\<^sub>a M \<psi>"
   using assms
-proof (induction rule: extends_param.induct)
+proof (induction rule: fextends_param.induct)
   let ?bs'="{[AT (pset_term.Var x \<in>\<^sub>s t1), AF (pset_term.Var x \<in>\<^sub>s t2)],
              [AT (pset_term.Var x \<in>\<^sub>s t2), AF (pset_term.Var x \<in>\<^sub>s t1)]}"
   case (1 b)
@@ -2326,20 +2330,20 @@ proof (induction rule: extends_param.induct)
     by auto (metis fun_upd_same)+
 qed
 
-lemma extends_interp:
-  assumes "extends bs' b"
+lemma fextends_interp:
+  assumes "fextends bs' b"
   assumes "\<And>\<psi>. \<psi> \<in> set b \<Longrightarrow> interp I\<^sub>s\<^sub>a M \<psi>"
   shows "\<exists>M. \<exists>b' \<in> bs'. \<forall>\<psi> \<in> set (b' @ b). interp I\<^sub>s\<^sub>a M \<psi>"
   using assms
-proof(induction rule: extends.induct)
+proof(induction rule: fextends.induct)
   case (1 bs' b)
-  with extends_noparam_interp[OF this(1)] have "\<exists>b' \<in> bs'. \<forall>\<psi> \<in> set b'. interp I\<^sub>s\<^sub>a M \<psi>"
+  with fextends_noparam_interp[OF this(1)] have "\<exists>b' \<in> bs'. \<forall>\<psi> \<in> set b'. interp I\<^sub>s\<^sub>a M \<psi>"
     by blast
   with 1 show ?case
     by auto
 next
   case (2 t1 t2 x bs b)
-  then show ?case using extends_param_interp by metis
+  then show ?case using fextends_param_interp by metis
 qed
 
 lemma wf_trancl_elts_rel: "wf ({(x, y). x \<in> elts y}\<^sup>+)"
@@ -2412,15 +2416,15 @@ proof
       by (metis (no_types, lifting) not_lin_satD someI_ex)
   next
     case (2 b)
-    let ?bs' = "SOME bs. extends bs b"
-    from 2 have bs'_wd: "extends ?bs' b"
+    let ?bs' = "SOME bs. fextends bs b"
+    from 2 have bs'_wd: "fextends ?bs' b"
       by (meson sat_def tfl_some)
     with \<open>wf_branch b\<close> have wf_branch_b': "wf_branch (b' @ b)" if "b' \<in> ?bs'" for b'
       using that  extendss.intros(3) wf_branch_def by blast
-    from extends_interp[OF bs'_wd] 2 obtain M' b' where
+    from fextends_interp[OF bs'_wd] 2 obtain M' b' where
       "b' \<in> ?bs'" "\<forall>\<psi> \<in> set (b' @ b). interp I\<^sub>s\<^sub>a M' \<psi>"
       by metis
-    with 2 extends_interp[OF \<open>extends ?bs' b\<close>] wf_branch_b' obtain b'' where
+    with 2 fextends_interp[OF \<open>fextends ?bs' b\<close>] wf_branch_b' obtain b'' where
       "b' \<in> ?bs'" "extendss b'' (b' @ b)"
       "\<exists>M. \<forall>\<psi> \<in> set b''. interp I\<^sub>s\<^sub>a M \<psi>" "bclosed b''"
       using mlss_proc_branch.psimps(2)[OF "2.hyps"(2-4,1)] by blast

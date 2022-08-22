@@ -26,7 +26,7 @@
 \definecolor{isarblue}{HTML}{006699}
 \definecolor{isargreen}{HTML}{009966}
 \lstdefinelanguage{isabelle}{%
-    keywords=[1]{type_synonym,datatype,fun,abbreviation,definition,proof,lemma,theorem,corollary},
+    keywords=[1]{type_synonym,datatype,fun,function,abbreviation,definition,proof,lemma,theorem,corollary},
     keywordstyle=[1]\bfseries\color{isarblue},
     keywords=[2]{where,assumes,shows,and},
     keywordstyle=[2]\bfseries\color{isargreen},
@@ -57,8 +57,6 @@
 
 \hyphenation{Isa-belle}
 
-\pagestyle{plain} % turn on page numbers in llncs
-
 % % LuaLatex on Arxiv: https://tex.stackexchange.com/questions/372154/lualatex-how-to-produce-pdf-acceptable-by-arxiv 
 % \hypersetup{%
 %   pdfcreator = {},
@@ -70,7 +68,7 @@
 
 \setcounter{tocdepth}{1}
 
-\title{Verifying a Tableau Prover for Multi-Level-Syllogistics}
+\title{Towards a Verified Tableau Prover for Multi-Level-Syllogistics}
 \author{Lukas Stevens}
 \orcid{0000-0003-0222-6858}
 \affiliation{%
@@ -93,7 +91,7 @@
 TODO
 
 \subsection{Related work}
-TODO
+AFP entry~\cite{hybrid_logic_afp} and workshop paper in Isabelle 2022 workshop.
 
 \subsection{Contributions}
 TODO
@@ -108,9 +106,146 @@ Analogously, we use \lstinline!'a list! to describe lists, which are constructed
 The function \lstinline!set! converts a list into a set.
 For optional values, Isabelle/HOL offers the type \lstinline!option! where a term \lstinline!opt :: 'a option! is either \lstinline!None! or \lstinline!Some a! with \lstinline!a :: 'a!.
 Finally, we remark that \textbf{iff} is equivalent to \lstinline!$=$! on type \lstinline!bool! and \lstinline!$\equiv$! is definitional equality of the meta-logic of Isabelle/HOL, which is called Isabelle/Pure.
-
+TODO: Add arrows and bracket notation for Pure formulae
 \section{A Semantics for Sets\label{sec:semantics}}
+\begin{lstlisting}
+datatype 'a fm =
+  Atom 'a | Neg ('a fm)
+| And ('a fm) ('a fm) | Or ('a fm) ('a fm)
+\end{lstlisting}
+
+% TODO: Think about introducing notation for single
+\begin{lstlisting}
+datatype 'a pset_term =
+  $\emptyset$ | Var 'a | Single ('a pset_term)
+| 'a pset_term $\sqcup_\text{s}$ 'a pset_term
+| 'a pset_term $\sqcap_\text{s}$ 'a pset_term
+| 'a pset_term $-_\text{s}$ 'a pset_term
+\end{lstlisting}
+
+\begin{lstlisting}
+datatype 'a pset_atom =
+  'a pset_term $\in_\text{s}$ 'a pset_term
+| 'a pset_term $\approx_\text{s}$ 'a pset_term
+\end{lstlisting}
+
+\begin{lstlisting}
+type_synonym 'a pset_fm = 'a pset_atom fm
+type_synonym 'a branch = 'a pset_fm list
+\end{lstlisting}
+
+\begin{lstlisting}
+definition vars_fm :: 'a pset_fm $\Rightarrow$ 'a set where
+  vars_fm $\phi$ $\equiv$ $\bigcup$(set_pset_atom ` atoms $\phi$)
+\end{lstlisting}
+
+\begin{lstlisting}
+definition vars_branch :: 'a branch $\Rightarrow$ 'a set 
+  vars_branch b $\equiv$ $\bigcup$(vars_fm ` set b)
+\end{lstlisting}
+
+
+\begin{lstlisting}
+fun I$_\text{st}$ :: ('a $\Rightarrow$ V) $\Rightarrow$ 'a pset_term $\Rightarrow$ V where
+  I$_\text{st}$ v $\emptyset$
+| I$_\text{st}$ v (Var x) = v x
+| I$_\text{st}$ v (Single s) = vset {I$_\text{st}$ v s}
+| I$_\text{st}$ v (s $\sqcup_\text{s}$ t) = I$_\text{st}$ v s $\sqcup$ I$_\text{st}$ v t 
+| I$_\text{st}$ v (s $\sqcap_\text{s}$ t) = I$_\text{st}$ v s $\sqcap$ I$_\text{st}$ v t 
+| I$_\text{st}$ v (s $-_\text{s}$ t) = I$_\text{st}$ v s $-$ I$_\text{st}$ v t 
+\end{lstlisting}
+
+\begin{lstlisting}
+fun I$_\text{sa}$ :: ('a $\Rightarrow$ V) $\Rightarrow$ 'a pset_atom $\Rightarrow$ V where
+  I$_\text{sa}$ v (s $\in_\text{s}$ t) $\longleftrightarrow$ I$_\text{st}$ v s $\in$ elts (I$_\text{st}$ v t)
+| I$_\text{sa}$ v (s $\approx_\text{s}$ t) $\longleftrightarrow$ I$_\text{st}$ v s = I$_\text{st}$ v t
+\end{lstlisting}
+
+\begin{lstlisting}
+fun subterms :: 'a pset_term $\Rightarrow$ 'a pset_term set
+where
+  subterms $\emptyset$ = {$\emptyset$}
+| subterms (Var x) = {Var x}
+| subterms (s $\sqcup_\text{s}$ t) = {s $\sqcup_\text{s}$ t}
+    $\cup$ subterms s $\cup$ subterms t
+| subterms (s $\sqcap_\text{s}$ t) = {s $\sqcap_\text{s}$ t}
+    $\cup$ subterms s $\cup$ subterms t
+| subterms (s $-_\text{s}$ t) = {s $-\text{s}$ t}
+    $\cup$ subterms s $\cup$ subterms t
+| subterms (Single t) = {Single t} $\cup$ subterms t
+\end{lstlisting}
+
+\begin{lstlisting}
+fun subterms_atom ::
+      'a pset_atom $\Rightarrow$ 'a pset_term set where
+  subterms_atom (s $\in_\text{s}$ t) = subterms s $\cup$ subterms t
+| subterms_atom (s $\approx_\text{s}$ t) = subterms s $\cup$ subterms t
+\end{lstlisting}
+
+\begin{lstlisting}
+definition subterms_fm ::
+    'a pset_fm $\Rightarrow$ 'a pset_term set where
+  subterms_fm $\phi$ $\equiv$ $\bigcup$(subterms_atom ` atoms $\phi$)
+\end{lstlisting}
+
+\begin{lstlisting}
+definition subterms_branch ::
+    'a branch $\Rightarrow$ 'a pset_term set where
+  subterms_branch b $\equiv$ $\bigcup$(subterms_fm ` set b)
+\end{lstlisting}
+
+\section{A Tableau Calculus for MLSS}
+Interesting: they forgot one rule.
+
+\section{Completeness of the Calculus}
+\begin{lstlisting}
+definition lin_sat b $\equiv$
+  $\forall$b'. lextends b' b $\rightarrow$ set b' $\subseteq$ set b
+\end{lstlisting}
+
+\begin{lstlisting}
+definition sat b $\equiv$
+  lin_sat b $\land$ ($\nexists$bs'. fextends bs' b)
+\end{lstlisting}
+
+\subsection{Building a Model: Realisation of a Branch}
+Idea: keep this short. The formalisation matches the pen-and-paper proof quite closely.
+Show the results in Realisation of an Open Branch.
+
+\subsection{Formalising the Key Technical Lemma}
+Only one quite trivial invariant needed 
+
+\section{An Abstract Specification of the Decision Procedure}
+Think about using the notion of coherent (or is this wfbranch?)
+\begin{figure*}
+  \centering
+\begin{lstlisting}
+function mlss_proc_branch :: 'a branch $\Rightarrow$ bool where
+  $\neg$ lin_sat b $\Longrightarrow$
+  mlss_proc_branch = mlss_proc_branch ((SOME b'. lextends b' b $\land$ set b $\subset$ set (b' @ b)) @ b)
+|  $\llbracket$ $\neg$ sat b; bopen b; lin_sat b $\rrbracket$ $\Longrightarrow$
+   mlss_proc_branch b = ($\forall$b' $\in$ (SOME bs. fextends bs b). mlss_proc_branch (b' @ b))
+| $\llbracket$ lin_sat b; sat b $\rrbracket$ $\Longrightarrow$ mlss_proc_branch b = bclosed b
+| $\llbracket$ lin_sat b; bclosed b $\rrbracket$ $\Longrightarrow$ mlss_proc_branch b = True
+
+definition mlss_proc :: 'a pset_fm $\Rightarrow$ bool where
+  mlss_proc $\phi$ $\equiv$ mlss_proc_branch [$\phi$]
+\end{lstlisting}
+\caption{Definition of the function \lstinline|mlss_proc_branch| and \lstinline|mlss_proc|.}
+\end{figure*}
+
+\subsection{Termination}
+Maybe interesting: technical lemma that allows to obtain the point at which a parameter was introduced.
+\subsection{Soundness}
+Interesting: The model changes because auf new parameters.
+Maybe move this to the chapter on the calculus?
+\subsection{Lifting the Completeness of the Calculus}
 TODO
+
+\section{Future Work}
+Challenges in obtaining an executable specification: membership cycle test unnecessary, fast branch membership test, proof reconstruction.
+Additional constructs such as finiteness and pairs.
+Optimisations for the algorithm.
 
 \section{Conclusion}
 TODO

@@ -64,6 +64,8 @@
 % }
 % \pdfvariable suppressoptionalinfo \numexpr 1+2+4+8+16+32+64+128+256+512 \relax
 
+\usepackage{todonotes}
+
 \begin{document}
 
 \setcounter{tocdepth}{1}
@@ -82,19 +84,21 @@
 \email{lukas.stevens@in.tum.de}
 
 \begin{abstract}
-  TODO
+  \todo[inline]{Write the abstract}
 \end{abstract}
 
 \maketitle
 
+\listoftodos{}
+
 \section{Introduction}
-TODO
+\todo[inline]{Write the introduction}
 
 \subsection{Related work}
 AFP entry~\cite{hybrid_logic_afp} and workshop paper in Isabelle 2022 workshop.
 
 \subsection{Contributions}
-TODO
+\todo[inline]{Write the contributions}
 
 \subsection{Notation}
 Isabelle/HOL~\cite{isabelle} conforms to everyday mathematical notation for the most part.
@@ -106,15 +110,11 @@ Analogously, we use \lstinline!'a list! to describe lists, which are constructed
 The function \lstinline!set! converts a list into a set.
 For optional values, Isabelle/HOL offers the type \lstinline!option! where a term \lstinline!opt :: 'a option! is either \lstinline!None! or \lstinline!Some a! with \lstinline!a :: 'a!.
 Finally, we remark that \textbf{iff} is equivalent to \lstinline!$=$! on type \lstinline!bool! and \lstinline!$\equiv$! is definitional equality of the meta-logic of Isabelle/HOL, which is called Isabelle/Pure.
-TODO: Add arrows and bracket notation for Pure formulae
-\section{A Semantics for Sets\label{sec:semantics}}
-\begin{lstlisting}
-datatype 'a fm =
-  Atom 'a | Neg ('a fm)
-| And ('a fm) ('a fm) | Or ('a fm) ('a fm)
-\end{lstlisting}
-
-% TODO: Think about introducing notation for single
+\todo[inline]{Add arrows and bracket notation for Pure formulae}
+\section{Syntax and Semantics of MLSS\label{sec:semantics}}
+\subsection{Syntax}
+At the heart of \textbf{MLSS}, we have the type of set terms which includes the empty set and variables as well as the operations union, intersection, set difference, and \lstinline!Single!, which represents a singleton set containing the argument.
+\todo[inline]{Syntax for \lstinline!Single!?}
 \begin{lstlisting}
 datatype 'a pset_term =
   $\emptyset$ | Var 'a | Single ('a pset_term)
@@ -122,70 +122,110 @@ datatype 'a pset_term =
 | 'a pset_term $\sqcap_\text{s}$ 'a pset_term
 | 'a pset_term $-_\text{s}$ 'a pset_term
 \end{lstlisting}
-
+We can combine two set terms to form a set atom by using the membership or the equality operator.
 \begin{lstlisting}
 datatype 'a pset_atom =
   'a pset_term $\in_\text{s}$ 'a pset_term
 | 'a pset_term $\approx_\text{s}$ 'a pset_term
 \end{lstlisting}
+With the above operators we can also represent the subset operator \lstinline!$\sqsubseteq_\text{s}$! and enumerate finite sets as \lstinline!$s \subseteq_\text{s} t$! is equivalent to \lstinline!s $\sqcup_\text{s}$ t $\approx_\text{s}$ t! and a finite set of elements \lstinline!{t$_1$,t$_2$,$\ldots$,t$_k$}! can be expressed by \lstinline!Single t$_1$ $\sqcup_\text{s}$ $\ldots$ $\sqcup_\text{s}$ Single t$_k$!.
 
+The unquantified fragment \textbf{MLSS} of set theory is then formed by combining set atoms with propositional logical connectives.
 \begin{lstlisting}
-type_synonym 'a pset_fm = 'a pset_atom fm
-type_synonym 'a branch = 'a pset_fm list
-\end{lstlisting}
+datatype (atoms: 'a) fm =
+  Atom 'a | Neg ('a fm)
+| And ('a fm) ('a fm) | Or ('a fm) ('a fm)
 
+type_synonym 'a pset_fm = 'a pset_atom fm
+\end{lstlisting}
+Note that Isabelle's datatype package automatically defines a function \lstinline!atoms :: 'a fm $\Rightarrow$ 'a set! that allows us to obtain all set atoms in the formula.
+Similarly, it defines a function \lstinline!set_pset_atom :: 'a pset_atom $\Rightarrow$ 'a set! with which we can extract all the variable names in a set atom.
+We combine these functions in order to define \lstinline!vars_fm! that extracts all the variable names occuring in a set formula.
 \begin{lstlisting}
 definition vars_fm :: 'a pset_fm $\Rightarrow$ 'a set where
   vars_fm $\phi$ $\equiv$ $\bigcup$(set_pset_atom ` atoms $\phi$)
 \end{lstlisting}
-
+In addition to the variable names that appear in a formula, we will later also need to obtain those set terms that occur as subterms in a formula. 
+We first define a function that collects the subterms of a set term.
 \begin{lstlisting}
-definition vars_branch :: 'a branch $\Rightarrow$ 'a set 
-  vars_branch b $\equiv$ $\bigcup$(vars_fm ` set b)
-\end{lstlisting}
-
-
-\begin{lstlisting}
-fun I$_\text{st}$ :: ('a $\Rightarrow$ V) $\Rightarrow$ 'a pset_term $\Rightarrow$ V where
-  I$_\text{st}$ v $\emptyset$
-| I$_\text{st}$ v (Var x) = v x
-| I$_\text{st}$ v (Single s) = vset {I$_\text{st}$ v s}
-| I$_\text{st}$ v (s $\sqcup_\text{s}$ t) = I$_\text{st}$ v s $\sqcup$ I$_\text{st}$ v t 
-| I$_\text{st}$ v (s $\sqcap_\text{s}$ t) = I$_\text{st}$ v s $\sqcap$ I$_\text{st}$ v t 
-| I$_\text{st}$ v (s $-_\text{s}$ t) = I$_\text{st}$ v s $-$ I$_\text{st}$ v t 
-\end{lstlisting}
-
-\begin{lstlisting}
-fun I$_\text{sa}$ :: ('a $\Rightarrow$ V) $\Rightarrow$ 'a pset_atom $\Rightarrow$ V where
-  I$_\text{sa}$ v (s $\in_\text{s}$ t) $\longleftrightarrow$ I$_\text{st}$ v s $\in$ elts (I$_\text{st}$ v t)
-| I$_\text{sa}$ v (s $\approx_\text{s}$ t) $\longleftrightarrow$ I$_\text{st}$ v s = I$_\text{st}$ v t
-\end{lstlisting}
-
-\begin{lstlisting}
-fun subterms :: 'a pset_term $\Rightarrow$ 'a pset_term set
-where
+fun subterms ::
+    'a pset_term $\Rightarrow$ 'a pset_term set where
   subterms $\emptyset$ = {$\emptyset$}
 | subterms (Var x) = {Var x}
-| subterms (s $\sqcup_\text{s}$ t) = {s $\sqcup_\text{s}$ t}
-    $\cup$ subterms s $\cup$ subterms t
-| subterms (s $\sqcap_\text{s}$ t) = {s $\sqcap_\text{s}$ t}
-    $\cup$ subterms s $\cup$ subterms t
-| subterms (s $-_\text{s}$ t) = {s $-\text{s}$ t}
-    $\cup$ subterms s $\cup$ subterms t
-| subterms (Single t) = {Single t} $\cup$ subterms t
+| subterms (s $\sqcup_\text{s}$ t) =
+    {s $\sqcup_\text{s}$ t} $\cup$ subterms s $\cup$ subterms t
+| subterms (s $\sqcap_\text{s}$ t) =
+    {s $\sqcap_\text{s}$ t} $\cup$ subterms s $\cup$ subterms t
+| subterms (s $-_\text{s}$ t) =
+    {s $-_\text{s}$ t} $\cup$ subterms s $\cup$ subterms t
+| subterms (Single t) =
+    {Single t} $\cup$ subterms t
 \end{lstlisting}
-
+The subterms of an atom are then the subterms of those terms that make up the atom.
 \begin{lstlisting}
 fun subterms_atom ::
       'a pset_atom $\Rightarrow$ 'a pset_term set where
-  subterms_atom (s $\in_\text{s}$ t) = subterms s $\cup$ subterms t
-| subterms_atom (s $\approx_\text{s}$ t) = subterms s $\cup$ subterms t
+  subterms_atom (s $\in_\text{s}$ t) =
+    subterms s $\cup$ subterms t
+| subterms_atom (s $\approx_\text{s}$ t) =
+    subterms s $\cup$ subterms t
 \end{lstlisting}
-
+Ultimately, we lift this to formulae by using \lstinline!atoms! again.
 \begin{lstlisting}
 definition subterms_fm ::
     'a pset_fm $\Rightarrow$ 'a pset_term set where
   subterms_fm $\phi$ $\equiv$ $\bigcup$(subterms_atom ` atoms $\phi$)
+\end{lstlisting}
+The last function that we define computes the subformulae of a formula.
+\begin{lstlisting}
+fun subfms :: 'a fm $\Rightarrow$ 'a fm set where
+  subfms (Atom a) = {Atom a}
+| subfms (And p q) =
+    {And p q} $\cup$ subfms p $\cup$ subfms q
+| subfms (Or p q) =
+    {Or p q} $\cup$ subfms p $\cup$ subfms q
+| subfms (Neg q) = {Neg q} $\cup$ subfms q
+\end{lstlisting}
+
+\subsection{Semantics}
+Formulae in \textbf{MLSS} contain arbitrarily nested set terms.
+We account for this arbitrary nesting by basing the semantics on the von Neumann hierarchy $\mathcal{V}$ of sets that are defined inductively as
+  \[
+    \begin{array}{rclr}
+      \mathcal{V}_0 & = & \emptyset, \\
+      \mathcal{V}_{\alpha + 1} & = & \mathcal{P}(\mathcal{V}_\alpha) & \text{for each ordinal $\alpha$}, \\
+      \mathcal{V}_{\lambda} & = & \bigcup_{\mu < \lambda} \mathcal{V}_\mu & \text{for each limit ordinal $\lambda$}, \\
+      \mathcal{V} & = & \bigcup_\alpha \mathcal{V}_\alpha, \\
+    \end{array}
+  \]
+where $\mathcal{P}(S)$ is the powerset of $S$.
+The sets in $\mathcal{V}$ are well-founded meaning that there can be no membership cycle in $\mathcal{V}$.
+
+In Isabelle/HOL, which is simply typed, this definition is not accepted, though.
+A way to work around this limitiation is provided by Lawrence in an AFP entry~\cite{zfc_in_hol_afp}, which adds $\mathcal{V}$ to Isabelle/HOL by way of axiomatisation.
+An article by Lawrence~\cite{zfc_in_hol_afp} provides some further context to this formalisation.
+
+
+\begin{lstlisting}
+fun I$_\text{st}$ :: ('a $\Rightarrow$ V) $\Rightarrow$ 'a pset_term $\Rightarrow$ V where
+  I$_\text{st}$ M $\emptyset$
+| I$_\text{st}$ M (Var x) = M x
+| I$_\text{st}$ M (Single s) = vset {I$_\text{st}$ M s}
+| I$_\text{st}$ M (s $\sqcup_\text{s}$ t) = I$_\text{st}$ M s $\sqcup$ I$_\text{st}$ M t 
+| I$_\text{st}$ M (s $\sqcap_\text{s}$ t) = I$_\text{st}$ M s $\sqcap$ I$_\text{st}$ M t 
+| I$_\text{st}$ M (s $-_\text{s}$ t) = I$_\text{st}$ M s $-$ I$_\text{st}$ M t 
+\end{lstlisting}
+
+\begin{lstlisting}
+fun I$_\text{sa}$ :: ('a $\Rightarrow$ V) $\Rightarrow$ 'a pset_atom $\Rightarrow$ V where
+  I$_\text{sa}$ M (s $\in_\text{s}$ t) $\longleftrightarrow$ I$_\text{st}$ M s $\in$ elts (I$_\text{st}$ M t)
+| I$_\text{sa}$ M (s $\approx_\text{s}$ t) $\longleftrightarrow$ I$_\text{st}$ M s = I$_\text{st}$ M t
+\end{lstlisting}
+
+
+\section{A Tableau Calculus for MLSS}
+\begin{lstlisting}
+type_synonym 'a branch = 'a pset_fm list
 \end{lstlisting}
 
 \begin{lstlisting}
@@ -194,7 +234,12 @@ definition subterms_branch ::
   subterms_branch b $\equiv$ $\bigcup$(subterms_fm ` set b)
 \end{lstlisting}
 
-\section{A Tableau Calculus for MLSS}
+\begin{lstlisting}
+definition vars_branch :: 'a branch $\Rightarrow$ 'a set 
+  vars_branch b $\equiv$ $\bigcup$(vars_fm ` set b)
+\end{lstlisting}
+
+
 Interesting: they forgot one rule.
 
 \section{Completeness of the Calculus}
@@ -206,6 +251,41 @@ definition lin_sat b $\equiv$
 \begin{lstlisting}
 definition sat b $\equiv$
   lin_sat b $\land$ ($\nexists$bs'. fextends bs' b)
+\end{lstlisting}
+
+\begin{lstlisting}
+definition wf_branch b $\equiv$ $\exists$$\phi$. extendss b [$\phi$]
+\end{lstlisting}
+
+\begin{lstlisting}
+definition params :: 'a branch $\Rightarrow$ 'a set where
+  params b $\equiv$ vars_branch b - vars_fm (last b)
+\end{lstlisting}
+
+\begin{lstlisting}
+definition params' :: 'a branch $\Rightarrow$ 'a set where
+  params' b $\equiv$
+    {c $\in$ params b. $\forall$t $\in$ subterms_fm (last b).
+      AT (Var c $\approx_\text{s}$ t) $\notin$ set b $\land$
+      AT (t $\approx_\text{s}$ Var c) $\notin$ set b} 
+\end{lstlisting}
+
+\begin{lstlisting}
+definition subterms_branch' ::
+    'a branch $\Rightarrow$ 'a pset_term set where
+  subterms_branch' b $\equiv$
+    subterms_fm (last b) $\cup$ 
+    Var ` (params b - params' b)
+\end{lstlisting}
+
+\begin{lstlisting}
+definition bgraph $\equiv$ $\ldots$ 
+\end{lstlisting}
+
+\begin{lstlisting}
+definition no_new_subterms b $\equiv$
+  $\forall$t $\in$ subterms_branch b. t $\notin$ Var ` params b
+    $\longrightarrow$ t $\in$ subterms_fm (last b))
 \end{lstlisting}
 
 \subsection{Building a Model: Realisation of a Branch}
@@ -240,7 +320,7 @@ Maybe interesting: technical lemma that allows to obtain the point at which a pa
 Interesting: The model changes because auf new parameters.
 Maybe move this to the chapter on the calculus?
 \subsection{Lifting the Completeness of the Calculus}
-TODO
+\todo[inline]{Do you even lift?}
 
 \section{Future Work}
 Challenges in obtaining an executable specification: membership cycle test unnecessary, fast branch membership test, proof reconstruction.
@@ -248,10 +328,10 @@ Additional constructs such as finiteness and pairs.
 Optimisations for the algorithm.
 
 \section{Conclusion}
-TODO
+\todo[inline]{Conclude}
 
 \begin{acks}
-  TODO
+  \todo[inline]{Acknowledge}
 \end{acks}
 
 \bibliographystyle{ACM-Reference-Format}

@@ -88,6 +88,22 @@ inductive lextends_eq :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" 
 | "\<lbrakk> AT (s \<in>\<^sub>s t) \<in> set b; AF (s' \<in>\<^sub>s t) \<in> set b \<rbrakk>
     \<Longrightarrow> lextends_eq [AF (s \<approx>\<^sub>s s')] b"
 
+fun polarise :: "bool \<Rightarrow> 'a fm \<Rightarrow> 'a fm" where
+  "polarise True \<phi> = \<phi>"
+| "polarise False \<phi> = Neg \<phi>"
+
+lemma lextends_eq_induct'[consumes 1, case_names subst neq]:
+  assumes "lextends_eq b' b"
+  assumes "\<And>t1 t2 t1' t2' p l b. 
+      \<lbrakk> AT (t1 \<approx>\<^sub>s t2) \<in> set b; polarise p (Atom l) \<in> set b;
+       (t1', t2') \<in> {(t1, t2), (t2, t1)}; t1' \<in> tlvl_terms_atom l \<rbrakk>
+      \<Longrightarrow> P [polarise p (Atom (subst_tlvl t1' t2' l))] b"
+  assumes "\<And>s t s' b. \<lbrakk> AT (s \<in>\<^sub>s t) \<in> set b; AF (s' \<in>\<^sub>s t) \<in> set b \<rbrakk> \<Longrightarrow> P [AF (s \<approx>\<^sub>s s')] b"
+  shows "P b' b"
+  using assms(1)
+  apply(induction rule: lextends_eq.induct)
+  using assms by (metis insertI1 insertI2 polarise.simps)+
+
 inductive lextends :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
   "lextends_fm b' b \<Longrightarrow> lextends b' b"
 | "lextends_un b' b \<Longrightarrow> lextends b' b"

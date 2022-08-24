@@ -623,200 +623,59 @@ next
     using lextends_no_new_subterms[OF lextends.intros(6)] by blast+
   note subterms_branch_eq_if_no_new_subterms[OF this]
   with 6 show ?case
-  proof(induction rule: lextends_eq.induct)
-    case eq_left: (1 t1 t2 b l)
-    then have t1_in_subterms_branch: "t1 \<in> subterms_branch b"
-      by (metis AT_eq_subterms_branchD(1))
-    show ?case unfolding P_def
+  proof(induction rule: lextends_eq_induct')
+    case (subst t1 t2 t1' t2' p l b)
+    then have "t1' \<in> subterms_branch b"
+      using AT_eq_subterms_branchD by blast
+    then show ?case unfolding P_def
     proof(safe, goal_cases)
       case (1 c x)
-      with eq_left have "(Var c \<approx>\<^sub>s x) = subst_tlvl t1 t2 l"
+      with subst have [simp]: "p"
+        using P_def by (cases p) (auto simp: params_subterms_def)
+      from 1 subst have "(Var c \<approx>\<^sub>s x) = subst_tlvl t1' t2' l"
         using P_def by (auto simp: params_subterms_def)
-      with 1 eq_left consider
-          (refl) "l = (t1 \<approx>\<^sub>s t1)" "t2 = Var c" "x = Var c"
-        | (t1_left) "l = (Var c \<approx>\<^sub>s t1)" "t2 = x"
-        | (t1_right) "l = (t1 \<approx>\<^sub>s x)" "t2 = Var c"
-        apply(cases "(t1, t2, l)" rule: subst_tlvl.cases)
+      with 1 subst consider
+        (refl) "l = (t1' \<approx>\<^sub>s t1')" "t2' = Var c" "x = Var c"
+        | (t1'_left) "l = (Var c \<approx>\<^sub>s t1')" "t2' = x"
+        | (t1'_right) "l = (t1' \<approx>\<^sub>s x)" "t2' = Var c"
+        apply(cases "(t1', t2', l)" rule: subst_tlvl.cases)
         by (auto split: if_splits)
       then show ?case
         apply(cases)
-        using 1 eq_left P_def t1_in_subterms_branch
-        by (auto simp: subterms_branch_eq_if_no_new_subterms)
+        by (use 1 subst subterms_branch_eq_if_no_new_subterms in \<open>(simp add: P_def; blast)+\<close>)
     next
       case (2 c x)
-      with eq_left have "(x \<approx>\<^sub>s Var c) = subst_tlvl t1 t2 l"
+      with subst have [simp]: "p"
+        using P_def by (cases p) (auto simp: params_subterms_def)
+      from 2 subst have "(x \<approx>\<^sub>s Var c) = subst_tlvl t1' t2' l"
         using P_def by (auto simp: params_subterms_def)
-      with 2 eq_left consider
-          (refl) "l = (t1 \<approx>\<^sub>s t1)" "t2 = Var c" "x = Var c"
-        | (t1_left) "l = (t1 \<approx>\<^sub>s Var c)" "t2 = x"
-        | (t1_right) "l = (x \<approx>\<^sub>s t1)" "t2 = Var c"
-        apply(cases "(t1, t2, l)" rule: subst_tlvl.cases)
+      with 2 subst consider
+        (refl) "l = (t1' \<approx>\<^sub>s t1')" "t2' = Var c" "x = Var c"
+        | (t1_left) "l = (t1' \<approx>\<^sub>s Var c)" "t2' = x"
+        | (t1_right) "l = (x \<approx>\<^sub>s t1')" "t2' = Var c"
+        apply(cases "(t1', t2', l)" rule: subst_tlvl.cases)
         by (auto split: if_splits)
       then show ?case
         apply(cases)
-        using 2 eq_left P_def t1_in_subterms_branch
-        by (simp_all add: in_mono subterms_branch_eq_if_no_new_subterms)
+        by (use 2 subst subterms_branch_eq_if_no_new_subterms in \<open>(simp add: P_def; blast)+\<close>)
     next
       case (3 c x)
-      with eq_left have "(x \<in>\<^sub>s Var c) = subst_tlvl t1 t2 l"
+      with subst have [simp]: "p"
+        using P_def by (cases p) (auto simp: params_subterms_def)
+      from 3 subst have "(x \<in>\<^sub>s Var c) = subst_tlvl t1' t2' l"
         using P_def by (auto simp: params_subterms_def)
-      with 3 eq_left consider
-          (refl) "l = (t1 \<in>\<^sub>s t1)" "t2 = Var c" "x = Var c"
-        | (t1_left) "l = (t1 \<in>\<^sub>s Var c)" "t2 = x"
-        | (t1_right) "l = (x \<in>\<^sub>s t1)" "t2 = Var c"
-        apply(cases "(t1, t2, l)" rule: subst_tlvl.cases)
+      with 3 subst consider
+        (refl) "l = (t1' \<in>\<^sub>s t1')" "t2' = Var c" "x = Var c"
+        | (t1_left) "l = (t1' \<in>\<^sub>s Var c)" "t2' = x"
+        | (t1_right) "l = (x \<in>\<^sub>s t1')" "t2' = Var c"
+        apply(cases "(t1', t2', l)" rule: subst_tlvl.cases)
         by (auto split: if_splits)
       then show ?case
         apply(cases)
-        using 3 eq_left P_def t1_in_subterms_branch
-        by (simp_all add: in_mono subterms_branch_eq_if_no_new_subterms)
+        by (use 3 subst subterms_branch_eq_if_no_new_subterms in \<open>(simp add: P_def; blast)+\<close>)
     qed
   next
-    case eq_left: (2 t1 t2 b l)
-    then have t1_in_subterms_branch: "t1 \<in> subterms_branch b"
-      by (metis AT_eq_subterms_branchD(1))
-    show ?case unfolding P_def
-    proof(safe, goal_cases)
-      case (1 c x)
-      with eq_left have "(Var c \<approx>\<^sub>s x) = subst_tlvl t1 t2 l"
-        using P_def by (auto simp: params_subterms_def)
-      with 1 eq_left consider
-          (refl) "l = (t1 \<approx>\<^sub>s t1)" "t2 = Var c" "x = Var c"
-        | (t1_left) "l = (Var c \<approx>\<^sub>s t1)" "t2 = x"
-        | (t1_right) "l = (t1 \<approx>\<^sub>s x)" "t2 = Var c"
-        apply(cases "(t1, t2, l)" rule: subst_tlvl.cases)
-        by (auto split: if_splits)
-      then show ?case
-        apply(cases)
-        using 1 eq_left P_def t1_in_subterms_branch
-        by (auto simp: subterms_branch_eq_if_no_new_subterms params_subterms_def subsetD)
-    next
-      case (2 c x)
-      with eq_left have "(x \<approx>\<^sub>s Var c) = subst_tlvl t1 t2 l"
-        using P_def by (auto simp: params_subterms_def)
-      with 2 eq_left consider
-          (refl) "l = (t1 \<approx>\<^sub>s t1)" "t2 = Var c" "x = Var c"
-        | (t1_left) "l = (t1 \<approx>\<^sub>s Var c)" "t2 = x"
-        | (t1_right) "l = (x \<approx>\<^sub>s t1)" "t2 = Var c"
-        apply(cases "(t1, t2, l)" rule: subst_tlvl.cases)
-        by (auto split: if_splits)
-      then show ?case
-        apply(cases)
-        using 2 eq_left P_def t1_in_subterms_branch
-        by (simp_all add: in_mono subterms_branch_eq_if_no_new_subterms params_subterms_def subsetD)
-    next
-      case (3 c x)
-      with eq_left have "(x \<in>\<^sub>s Var c) = subst_tlvl t1 t2 l"
-        using P_def by (auto simp: params_subterms_def)
-      with 3 eq_left consider
-          (refl) "l = (t1 \<in>\<^sub>s t1)" "t2 = Var c" "x = Var c"
-        | (t1_left) "l = (t1 \<in>\<^sub>s Var c)" "t2 = x"
-        | (t1_right) "l = (x \<in>\<^sub>s t1)" "t2 = Var c"
-        apply(cases "(t1, t2, l)" rule: subst_tlvl.cases)
-        by (auto split: if_splits)
-      then show ?case
-        apply(cases)
-        using 3 eq_left P_def t1_in_subterms_branch
-        by (simp_all add: in_mono subterms_branch_eq_if_no_new_subterms params_subterms_def subsetD)
-    qed
-  next
-    case eq_right: (3 t1 t2 b l)
-    then have t2_in_subterms_branch: "t2 \<in> subterms_branch b"
-      by (metis AT_eq_subterms_branchD(2))
-    show ?case unfolding P_def
-    proof(safe, goal_cases)
-      case (1 c x)
-      with eq_right have "(Var c \<approx>\<^sub>s x) = subst_tlvl t2 t1 l"
-        using P_def by (auto simp: params_subterms_def)
-      with 1 eq_right consider
-          (refl) "l = (t2 \<approx>\<^sub>s t2)" "t1 = Var c" "x = Var c"
-        | (t1_left) "l = (Var c \<approx>\<^sub>s t2)" "t1 = x"
-        | (t1_right) "l = (t2 \<approx>\<^sub>s x)" "t1 = Var c"
-        apply(cases "(t2, t1, l)" rule: subst_tlvl.cases)
-        by (auto split: if_splits)
-      then show ?case
-        apply(cases)
-        using 1 eq_right P_def t2_in_subterms_branch
-        by (simp_all add: in_mono subterms_branch_eq_if_no_new_subterms)
-    next
-      case (2 c x)
-      with eq_right have "(x \<approx>\<^sub>s Var c) = subst_tlvl t2 t1 l"
-        using P_def by (auto simp: params_subterms_def)
-      with 2 eq_right consider
-          (refl) "l = (t2 \<approx>\<^sub>s t2)" "t1 = Var c" "x = Var c"
-        | (t1_left) "l = (t2 \<approx>\<^sub>s Var c)" "t1 = x"
-        | (t1_right) "l = (x \<approx>\<^sub>s t2)" "t1 = Var c"
-        apply(cases "(t2, t1, l)" rule: subst_tlvl.cases)
-        by (auto split: if_splits)
-      then show ?case
-        apply(cases)
-        using 2 eq_right P_def t2_in_subterms_branch
-        by (simp_all add: in_mono subterms_branch_eq_if_no_new_subterms)
-    next
-      case (3 c x)
-      with eq_right have "(x \<in>\<^sub>s Var c) = subst_tlvl t2 t1 l"
-        using P_def by (auto simp: params_subterms_def)
-      with 3 eq_right consider
-          (refl) "l = (t2 \<in>\<^sub>s t2)" "t1 = Var c" "x = Var c"
-        | (t1_left) "l = (t2 \<in>\<^sub>s Var c)" "t1 = x"
-        | (t1_right) "l = (x \<in>\<^sub>s t2)" "t1 = Var c"
-        apply(cases "(t2, t1, l)" rule: subst_tlvl.cases)
-        by (auto split: if_splits)
-      then show ?case
-        apply(cases)
-        using 3 eq_right P_def t2_in_subterms_branch
-        by (simp_all add: in_mono subterms_branch_eq_if_no_new_subterms)
-    qed
-  next
-    case eq_right: (4 t1 t2 b l)
-    then have t2_in_subterms_branch: "t2 \<in> subterms_branch b"
-      by (metis AT_eq_subterms_branchD(2))
-    show ?case unfolding P_def
-    proof(safe, goal_cases)
-      case (1 c x)
-      with eq_right have "(Var c \<approx>\<^sub>s x) = subst_tlvl t2 t1 l"
-        using P_def by (auto simp: params_subterms_def)
-      with 1 eq_right consider
-          (refl) "l = (t2 \<approx>\<^sub>s t2)" "t1 = Var c" "x = Var c"
-        | (t1_left) "l = (Var c \<approx>\<^sub>s t2)" "t1 = x"
-        | (t1_right) "l = (t2 \<approx>\<^sub>s x)" "t1 = Var c"
-        apply(cases "(t2, t1, l)" rule: subst_tlvl.cases)
-        by (auto split: if_splits)
-      then show ?case
-        apply(cases)
-        using 1 eq_right P_def t2_in_subterms_branch
-        by (simp_all add: subterms_branch_eq_if_no_new_subterms params_subterms_def subsetD)
-    next
-      case (2 c x)
-      with eq_right have "(x \<approx>\<^sub>s Var c) = subst_tlvl t2 t1 l"
-        using P_def by (auto simp: params_subterms_def)
-      with 2 eq_right consider
-          (refl) "l = (t2 \<approx>\<^sub>s t2)" "t1 = Var c" "x = Var c"
-        | (t1_left) "l = (t2 \<approx>\<^sub>s Var c)" "t1 = x"
-        | (t1_right) "l = (x \<approx>\<^sub>s t2)" "t1 = Var c"
-        apply(cases "(t2, t1, l)" rule: subst_tlvl.cases)
-        by (auto split: if_splits)
-      then show ?case
-        apply(cases)
-        using 2 eq_right P_def t2_in_subterms_branch
-        by (simp_all add: subterms_branch_eq_if_no_new_subterms params_subterms_def subsetD)
-    next
-      case (3 c x)
-      with eq_right have "(x \<in>\<^sub>s Var c) = subst_tlvl t2 t1 l"
-        using P_def by (auto simp: params_subterms_def)
-      with 3 eq_right consider
-          (refl) "l = (t2 \<in>\<^sub>s t2)" "t1 = Var c" "x = Var c"
-        | (t1_left) "l = (t2 \<in>\<^sub>s Var c)" "t1 = x"
-        | (t1_right) "l = (x \<in>\<^sub>s t2)" "t1 = Var c"
-        apply(cases "(t2, t1, l)" rule: subst_tlvl.cases)
-        by (auto split: if_splits)
-      then show ?case
-        apply(cases)
-        using 3 eq_right P_def t2_in_subterms_branch
-        by (simp_all add: subterms_branch_eq_if_no_new_subterms params_subterms_def subsetD)
-    qed
-  next
-    case (5 s t b s')
+    case (neq s t s' b)
     then show ?case
       using P_def by (auto simp: params_subterms_def)
   qed

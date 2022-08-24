@@ -25,7 +25,7 @@ lemma satD:
 
 definition "wf_branch b \<equiv> \<exists>\<phi>. extendss b [\<phi>]"
 
-lemma wf_branch_not_Nil[simp]: "wf_branch b \<Longrightarrow> b \<noteq> []"
+lemma wf_branch_not_Nil[simp, intro?]: "wf_branch b \<Longrightarrow> b \<noteq> []"
   unfolding wf_branch_def
   using extendss_suffix suffix_bot.extremum_uniqueI by blast
 
@@ -431,9 +431,8 @@ proof -
   note lextends_params_eq[OF this \<open>b \<noteq> []\<close>] 
   from assms this have "x \<in> params' (b' @ b)" if "x \<in> params' b" for x
     using that
-    apply(induction rule: lextends_un.induct)
-         apply(auto simp: params_subterms_def params'D intro!: params'I)
-    done
+    by (induction rule: lextends_un.induct)
+       (auto simp: params_subterms_def params'D intro!: params'I)
   with lextends_params'_subs[OF \<open>lextends b' b\<close> \<open>b \<noteq> []\<close>] show ?thesis
     by auto
 qed
@@ -448,9 +447,8 @@ proof -
   note lextends_params_eq[OF this \<open>b \<noteq> []\<close>] 
   from assms this have "x \<in> params' (b' @ b)" if "x \<in> params' b" for x
     using that
-    apply(induction rule: lextends_int.induct)
-         apply(auto simp: params_subterms_def params'D intro!: params'I)
-    done
+    by (induction rule: lextends_int.induct)
+       (auto simp: params_subterms_def params'D intro!: params'I)
   with lextends_params'_subs[OF \<open>lextends b' b\<close> \<open>b \<noteq> []\<close>] show ?thesis
     by auto
 qed
@@ -465,9 +463,8 @@ proof -
   note lextends_params_eq[OF this \<open>b \<noteq> []\<close>] 
   from assms this have "x \<in> params' (b' @ b)" if "x \<in> params' b" for x
     using that
-    apply(induction rule: lextends_diff.induct)
-         apply(auto simp: params_subterms_def params'D intro!: params'I)
-    done
+    by (induction rule: lextends_diff.induct)
+       (auto simp: params_subterms_def params'D intro!: params'I)
   with lextends_params'_subs[OF \<open>lextends b' b\<close> \<open>b \<noteq> []\<close>] show ?thesis
     by auto
 qed
@@ -631,9 +628,9 @@ next
     proof(safe, goal_cases)
       case (1 c x)
       with subst have [simp]: "p"
-        using P_def by (cases p) (auto simp: params_subterms_def)
+        by (cases p) (simp add: P_def params_subterms_def; blast)+
       from 1 subst have "(Var c \<approx>\<^sub>s x) = subst_tlvl t1' t2' l"
-        using P_def by (auto simp: params_subterms_def)
+        by (simp add: P_def params_subterms_def; blast)
       with 1 subst consider
         (refl) "l = (t1' \<approx>\<^sub>s t1')" "t2' = Var c" "x = Var c"
         | (t1'_left) "l = (Var c \<approx>\<^sub>s t1')" "t2' = x"
@@ -646,9 +643,9 @@ next
     next
       case (2 c x)
       with subst have [simp]: "p"
-        using P_def by (cases p) (auto simp: params_subterms_def)
+        by (cases p) (simp add: P_def params_subterms_def; blast)+
       from 2 subst have "(x \<approx>\<^sub>s Var c) = subst_tlvl t1' t2' l"
-        using P_def by (auto simp: params_subterms_def)
+        by (simp add: P_def params_subterms_def; blast)
       with 2 subst consider
         (refl) "l = (t1' \<approx>\<^sub>s t1')" "t2' = Var c" "x = Var c"
         | (t1_left) "l = (t1' \<approx>\<^sub>s Var c)" "t2' = x"
@@ -661,9 +658,9 @@ next
     next
       case (3 c x)
       with subst have [simp]: "p"
-        using P_def by (cases p) (auto simp: params_subterms_def)
+        by (cases p) (simp add: P_def params_subterms_def; blast)+
       from 3 subst have "(x \<in>\<^sub>s Var c) = subst_tlvl t1' t2' l"
-        using P_def by (auto simp: params_subterms_def)
+        by (simp add: P_def params_subterms_def; blast)
       with 3 subst consider
         (refl) "l = (t1' \<in>\<^sub>s t1')" "t2' = Var c" "x = Var c"
         | (t1_left) "l = (t1' \<in>\<^sub>s Var c)" "t2' = x"
@@ -677,7 +674,7 @@ next
   next
     case (neq s t s' b)
     then show ?case
-      using P_def by (auto simp: params_subterms_def)
+      using P_def by (simp add: params_subterms_def) blast
   qed
 qed
 
@@ -1616,17 +1613,18 @@ proof -
     using extendss_last_eq by force
   have False if card_gt: "card (params b) > (card (subterms_fm \<phi>))^2"
   proof -
-    define ts where "ts \<equiv> (\<lambda>x. SOME (t1, t2). \<exists>bs b2 b1.
-       extendss b (b2 @ b1) \<and> b2 \<in> bs \<and> fextends_param t1 t2 x bs b1  \<and> extendss b1 [\<phi>])"
+    define ts where "ts \<equiv> (\<lambda>x. SOME t1_t2. \<exists>bs b2 b1.
+       extendss b (b2 @ b1) \<and> b2 \<in> bs \<and> fextends_param (fst t1_t2) (snd t1_t2) x bs b1  \<and> extendss b1 [\<phi>])"
     from \<open>extendss b [\<phi>]\<close> \<open>last b = \<phi>\<close>
-    have "\<exists>t1 t2 bs b2 b1.
-      extendss b (b2 @ b1) \<and> b2 \<in> bs \<and> fextends_param t1 t2 x bs b1 \<and> extendss b1 [\<phi>]"
+    have *: "\<exists>t1_t2 bs b2 b1.
+      extendss b (b2 @ b1) \<and> b2 \<in> bs \<and> fextends_param (fst t1_t2) (snd t1_t2) x bs b1 \<and> extendss b1 [\<phi>]"
       if "x \<in> params b" for x
-      using that Ex_fextends_params_if_in_params[OF \<open>wf_branch b\<close> that] by metis
-    then have ts_wd:
+      using that Ex_fextends_params_if_in_params[OF \<open>wf_branch b\<close> that] by (metis fst_conv snd_conv)
+    have ts_wd:
       "\<exists>bs b2 b1. extendss b (b2 @ b1) \<and> b2 \<in> bs \<and> fextends_param t1 t2 x bs b1 \<and> extendss b1 [\<phi>]"
       if "ts x = (t1, t2)" "x \<in> params b" for t1 t2 x
-      using that unfolding ts_def by (smt (verit, ccfv_SIG) prod.case someI)
+      using exE_some[OF * that(1)[THEN eq_reflection, symmetric, unfolded ts_def], OF that(2)]
+      by simp
     with \<open>last b = \<phi>\<close> \<open>extendss b [\<phi>]\<close> have in_subterms_fm:
       "t1 \<in> subterms_fm \<phi>" "t2 \<in> subterms_fm \<phi>"
       if "ts x = (t1, t2)" "x \<in> params b" for t1 t2 x
@@ -2115,24 +2113,12 @@ next
 next
   case (6 b' b)
   then show ?case
-  proof(induction rule: lextends_eq.induct)
-    case (1 t1 t2 branch l)
-     with this(1,2)[THEN this(5)] show ?case
-      by (cases l) auto
+  proof(induction rule: lextends_eq_induct')
+    case (subst t1 t2 t1' t2' p l b)
+    with this(1,2)[THEN this(6)] show ?case
+      by (cases l; cases p) auto
   next
-    case (2 t1 t2 branch l)
-    with this(1,2)[THEN this(5)] show ?case
-      by (cases l) auto
-  next
-    case (3 t1 t2 branch l)
-    with this(1,2)[THEN this(5)] show ?case
-      by (cases l) auto
-  next
-    case (4 t1 t2 branch l)
-    with this(1,2)[THEN this(5)] show ?case
-      by (cases l) auto
-  next
-    case (5 s t branch s')
+    case (neq s t s' b)
     with this(1,2)[THEN this(4)] show ?case by force
   qed
 qed

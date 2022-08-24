@@ -189,7 +189,7 @@ fun subfms :: 'a fm $\Rightarrow$ 'a fm set where
 
 \subsection{Semantics}
 Formulae in \textbf{MLSS} contain arbitrarily nested set terms.
-We account for this arbitrary nesting by basing the semantics on the von Neumann hierarchy $\mathcal{V}$ of sets that are defined inductively as
+We account for this arbitrary nesting by basing the semantics on the von Neumann hierarchy $\mathcal{V}$ of sets that is defined inductively as
   \[
     \begin{array}{rclr}
       \mathcal{V}_0 & = & \emptyset, \\
@@ -203,25 +203,32 @@ The sets in $\mathcal{V}$ are well-founded meaning that there can be no membersh
 
 In Isabelle/HOL, which is simply typed, this definition is not accepted, though.
 A way to work around this limitiation is provided by Lawrence in an AFP entry~\cite{zfc_in_hol_afp}, which adds $\mathcal{V}$ to Isabelle/HOL by way of axiomatisation.
-An article by Lawrence~\cite{zfc_in_hol_afp} provides some further context to this formalisation.
+An article by Lawrence~\cite{zfc_in_hol} provides some further context to this entry.
+The entry declares a type \lstinline!V! that is equipped with a function \lstinline!elts :: V $\Rightarrow$ V set! that maps a set to its elements.
+Even though we use the typed sets provided by Isabelle/HOL here, \lstinline!elts! actually returns a class.
+Only if the class is small enough, as indicated by the polymorphic predicate \lstinline!small :: 'a set $\Rightarrow$ bool!, it is indeed a set.
+Inversely, this predicate characterises those sets that can be turned into a set of type \lstinline!V! using the polymorphic function \lstinline!vset :: 'a set $\Rightarrow$ V!.
+The type \lstinline!V! comes with all the usual set operations such as equality ($=$), union ($\sqcup$), intersection ($\sqcap$), and difference ($-$).
+The empty set coincides with the ordinal $0$ so we denote it with \lstinline!0 :: V!.
 
-
+Equipped with the above, we define the interpretation function \lstinline!I$_\text{st}$! for set terms that interprets a set term with respect to a valuation function \lstinline!M :: 'a $\Rightarrow$ V! for variable.
 \begin{lstlisting}
 fun I$_\text{st}$ :: ('a $\Rightarrow$ V) $\Rightarrow$ 'a pset_term $\Rightarrow$ V where
-  I$_\text{st}$ M $\emptyset$
+  I$_\text{st}$ M $\emptyset$ = 0
 | I$_\text{st}$ M (Var x) = M x
 | I$_\text{st}$ M (Single s) = vset {I$_\text{st}$ M s}
 | I$_\text{st}$ M (s $\sqcup_\text{s}$ t) = I$_\text{st}$ M s $\sqcup$ I$_\text{st}$ M t 
 | I$_\text{st}$ M (s $\sqcap_\text{s}$ t) = I$_\text{st}$ M s $\sqcap$ I$_\text{st}$ M t 
 | I$_\text{st}$ M (s $-_\text{s}$ t) = I$_\text{st}$ M s $-$ I$_\text{st}$ M t 
 \end{lstlisting}
-
+The interpretation function \lstinline!I$_\text{sa}$! for set atoms is straightforward as well.
 \begin{lstlisting}
 fun I$_\text{sa}$ :: ('a $\Rightarrow$ V) $\Rightarrow$ 'a pset_atom $\Rightarrow$ V where
   I$_\text{sa}$ M (s $\in_\text{s}$ t) $\longleftrightarrow$ I$_\text{st}$ M s $\in$ elts (I$_\text{st}$ M t)
 | I$_\text{sa}$ M (s $\approx_\text{s}$ t) $\longleftrightarrow$ I$_\text{st}$ M s = I$_\text{st}$ M t
 \end{lstlisting}
-
+For formulae, we write \lstinline!M $\models$ $\phi$! for the judgement that $\phi$ holds under the valuation function \lstinline!M!.
+We omit the implementation of $\models$ for brevity.
 
 \section{A Tableau Calculus for MLSS}
 \begin{lstlisting}

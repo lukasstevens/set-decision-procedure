@@ -26,7 +26,7 @@
 \definecolor{isarblue}{HTML}{006699}
 \definecolor{isargreen}{HTML}{009966}
 \lstdefinelanguage{isabelle}{%
-    keywords=[1]{type_synonym,datatype,fun,function,abbreviation,definition,proof,lemma,theorem,corollary},
+    keywords=[1]{type_synonym,datatype,fun,function,abbreviation,definition,proof,lemma,theorem,corollary,inductive},
     keywordstyle=[1]\bfseries\color{isarblue},
     keywords=[2]{where,assumes,shows,and},
     keywordstyle=[2]\bfseries\color{isargreen},
@@ -65,6 +65,27 @@
 % \pdfvariable suppressoptionalinfo \numexpr 1+2+4+8+16+32+64+128+256+512 \relax
 
 \usepackage{todonotes}
+
+% Commands
+\newlength{\trianglewidth}
+\settowidth{\trianglewidth}{\(\triangleleft\)}
+
+\newcommand{\lefttrianglebar}{\mathrel{\tikz[baseline]{\draw (1ex, 0.75ex) -- (0, 1.25ex) -- (0, 0.25ex) -- cycle; \draw (0, 0.75ex) -- (1ex, 0.75ex);}}}
+\newcommand{\lefttriangle}{\mathrel{\tikz[baseline]{\draw (1ex, 0.75ex) -- (0, 1.25ex) -- (0, 0.25ex) -- cycle;}}}
+
+\newcommand{\sextends}{\lefttriangle}
+\newcommand{\fextends}{\lefttrianglebar}
+
+\newcommand{\unionS}{\sqcup_\text{s}}
+\newcommand{\interS}{\sqcap_\text{s}}
+\newcommand{\diffS}{-_\text{s}}
+\newcommand{\inS}{\in_\text{s}}
+\newcommand{\notinS}{\notin_\text{s}}
+\newcommand{\eqS}{\approx_\text{s}}
+\newcommand{\neqS}{{\not\approx}_\text{s}}
+\newcommand{\subseteqS}{\sqsubseteq_\text{s}}
+\newcommand{\Ist}{I$_\text{st}$}
+\newcommand{\Isa}{I$_\text{sa}$}
 
 \begin{document}
 
@@ -118,17 +139,17 @@ At the heart of \textbf{MLSS}, we have the type of set terms which includes the 
 \begin{lstlisting}
 datatype 'a pset_term =
   $\emptyset$ | Var 'a | Single ('a pset_term)
-| 'a pset_term $\sqcup_\text{s}$ 'a pset_term
-| 'a pset_term $\sqcap_\text{s}$ 'a pset_term
-| 'a pset_term $-_\text{s}$ 'a pset_term
+| 'a pset_term $\unionS$ 'a pset_term
+| 'a pset_term $\interS$ 'a pset_term
+| 'a pset_term $\diffS$ 'a pset_term
 \end{lstlisting}
 We can combine two set terms to form a set atom by using the membership or the equality operator.
 \begin{lstlisting}
 datatype 'a pset_atom =
-  'a pset_term $\in_\text{s}$ 'a pset_term
-| 'a pset_term $\approx_\text{s}$ 'a pset_term
+  'a pset_term $\inS$ 'a pset_term
+| 'a pset_term $\eqS$ 'a pset_term
 \end{lstlisting}
-With the above operators we can also represent the subset operator \lstinline!$\sqsubseteq_\text{s}$! and enumerate finite sets as \lstinline!$s \subseteq_\text{s} t$! is equivalent to \lstinline!s $\sqcup_\text{s}$ t $\approx_\text{s}$ t! and a finite set of elements \lstinline!{t$_1$,t$_2$,$\ldots$,t$_k$}! can be expressed by \lstinline!Single t$_1$ $\sqcup_\text{s}$ $\ldots$ $\sqcup_\text{s}$ Single t$_k$!.
+With the above operators we can also represent the subset operator \lstinline!$\subseteqS$! and enumerate finite sets as \lstinline!s $\subseteqS$ t! is equivalent to \lstinline!s $\unionS$ t $\eqS$ t! and a finite set of elements \lstinline!{t$_1$,t$_2$,$\ldots$,t$_k$}! can be expressed by \lstinline!Single t$_1$ $\unionS$ $\ldots$ $\unionS$ Single t$_k$!.
 
 The unquantified fragment \textbf{MLSS} of set theory is then formed by combining set atoms with propositional logical connectives.
 \begin{lstlisting}
@@ -138,6 +159,8 @@ datatype (atoms: 'a) fm =
 
 type_synonym 'a pset_fm = 'a pset_atom fm
 \end{lstlisting}
+We will sometimes drop the \lstinline!Atom! constructor to improve presentation.
+Additionally, we use the abbreviations \lstinline!s $\notinS$ t! and \lstinline!s $\neqS$ t! to denote \lstinline!Neg (Atom (s $\inS$ t))! and \lstinline!Neg (Atom (s $\eqS$ t))!, respectively.
 Note that Isabelle's datatype package automatically defines a function \lstinline!atoms :: 'a fm $\Rightarrow$ 'a set! that allows us to obtain all set atoms in the formula.
 Similarly, it defines a function \lstinline!set_pset_atom :: 'a pset_atom $\Rightarrow$ 'a set! with which we can extract all the variable names in a set atom.
 We combine these functions in order to define \lstinline!vars_fm! that extracts all the variable names occuring in a set formula.
@@ -152,12 +175,12 @@ fun subterms ::
     'a pset_term $\Rightarrow$ 'a pset_term set where
   subterms $\emptyset$ = {$\emptyset$}
 | subterms (Var x) = {Var x}
-| subterms (s $\sqcup_\text{s}$ t) =
-    {s $\sqcup_\text{s}$ t} $\cup$ subterms s $\cup$ subterms t
-| subterms (s $\sqcap_\text{s}$ t) =
-    {s $\sqcap_\text{s}$ t} $\cup$ subterms s $\cup$ subterms t
-| subterms (s $-_\text{s}$ t) =
-    {s $-_\text{s}$ t} $\cup$ subterms s $\cup$ subterms t
+| subterms (s $\unionS$ t) =
+    {s $\unionS$ t} $\cup$ subterms s $\cup$ subterms t
+| subterms (s $\interS$ t) =
+    {s $\interS$ t} $\cup$ subterms s $\cup$ subterms t
+| subterms (s $\diffS$ t) =
+    {s $\diffS$ t} $\cup$ subterms s $\cup$ subterms t
 | subterms (Single t) =
     {Single t} $\cup$ subterms t
 \end{lstlisting}
@@ -165,9 +188,9 @@ The subterms of an atom are then the subterms of those terms that make up the at
 \begin{lstlisting}
 fun subterms_atom ::
       'a pset_atom $\Rightarrow$ 'a pset_term set where
-  subterms_atom (s $\in_\text{s}$ t) =
+  subterms_atom (s $\inS$ t) =
     subterms s $\cup$ subterms t
-| subterms_atom (s $\approx_\text{s}$ t) =
+| subterms_atom (s $\eqS$ t) =
     subterms s $\cup$ subterms t
 \end{lstlisting}
 Ultimately, we lift this to formulae by using \lstinline!atoms! again.
@@ -211,26 +234,29 @@ Inversely, this predicate characterises those sets that can be turned into a set
 The type \lstinline!V! comes with all the usual set operations such as equality ($=$), union ($\sqcup$), intersection ($\sqcap$), and difference ($-$).
 The empty set coincides with the ordinal $0$ so we denote it with \lstinline!0 :: V!.
 
-Equipped with the above, we define the interpretation function \lstinline!I$_\text{st}$! for set terms that interprets a set term with respect to a valuation function \lstinline!M :: 'a $\Rightarrow$ V! for variable.
+Equipped with the above, we define the interpretation function \lstinline!I_$\text{st}$! for set terms that interprets a set term with respect to a valuation function \lstinline!M :: 'a $\Rightarrow$ V! for variable.
 \begin{lstlisting}
-fun I$_\text{st}$ :: ('a $\Rightarrow$ V) $\Rightarrow$ 'a pset_term $\Rightarrow$ V where
-  I$_\text{st}$ M $\emptyset$ = 0
-| I$_\text{st}$ M (Var x) = M x
-| I$_\text{st}$ M (Single s) = vset {I$_\text{st}$ M s}
-| I$_\text{st}$ M (s $\sqcup_\text{s}$ t) = I$_\text{st}$ M s $\sqcup$ I$_\text{st}$ M t 
-| I$_\text{st}$ M (s $\sqcap_\text{s}$ t) = I$_\text{st}$ M s $\sqcap$ I$_\text{st}$ M t 
-| I$_\text{st}$ M (s $-_\text{s}$ t) = I$_\text{st}$ M s $-$ I$_\text{st}$ M t 
+fun &\Ist& :: ('a $\Rightarrow$ V) $\Rightarrow$ 'a pset_term $\Rightarrow$ V where
+  &\Ist& M $\emptyset$ = 0
+| &\Ist& M (Var x) = M x
+| &\Ist& M (Single s) = vset {&\Ist& M s}
+| &\Ist& M (s $\unionS$ t) = &\Ist& M s $\sqcup$ &\Ist& M t 
+| &\Ist& M (s $\interS$ t) = &\Ist& M s $\sqcap$ &\Ist& M t 
+| &\Ist& M (s $\diffS$ t) = &\Ist& M s $-$ &\Ist& M t 
 \end{lstlisting}
 The interpretation function \lstinline!I$_\text{sa}$! for set atoms is straightforward as well.
 \begin{lstlisting}
-fun I$_\text{sa}$ :: ('a $\Rightarrow$ V) $\Rightarrow$ 'a pset_atom $\Rightarrow$ V where
-  I$_\text{sa}$ M (s $\in_\text{s}$ t) $\longleftrightarrow$ I$_\text{st}$ M s $\in$ elts (I$_\text{st}$ M t)
-| I$_\text{sa}$ M (s $\approx_\text{s}$ t) $\longleftrightarrow$ I$_\text{st}$ M s = I$_\text{st}$ M t
+fun &\Isa& :: ('a $\Rightarrow$ V) $\Rightarrow$ 'a pset_atom $\Rightarrow$ bool
+where
+  &\Isa& M (s $\inS$ t) $\longleftrightarrow$ &\Ist& M s $\in$ elts (&\Ist& M t)
+| &\Isa& M (s $\eqS$ t) $\longleftrightarrow$ &\Ist& M s = &\Ist& M t
 \end{lstlisting}
 For formulae, we write \lstinline!M $\models$ $\phi$! for the judgement that $\phi$ holds under the valuation function \lstinline!M!.
 We omit the implementation of $\models$ for brevity.
 
 \section{A Tableau Calculus for MLSS}
+$A \fextends B \sextends C$
+
 \begin{lstlisting}
 type_synonym 'a branch = 'a pset_fm list
 \end{lstlisting}
@@ -244,6 +270,15 @@ definition subterms_branch ::
 \begin{lstlisting}
 definition vars_branch :: 'a branch $\Rightarrow$ 'a set 
   vars_branch b $\equiv$ $\bigcup$(vars_fm ` set b)
+\end{lstlisting}
+
+\begin{lstlisting}
+inductive bclosed :: 'a branch $\Rightarrow$ bool where
+  $\llbracket$ $\phi$ $\in$ set b; Neg $\phi$ $\in$ set b $\rrbracket$ $\Longrightarrow$ bclosed b
+| (t $\inS$ $\emptyset$) $\in$ set b $\Longrightarrow$ bclosed b
+| (t $\neqS$ t) $\in$ set b $\Longrightarrow$ bclosed b
+| $\llbracket$ member_cycle cs; set cs $\subseteq$ set b$\rrbracket$
+  $\Longrightarrow$ bclosed b
 \end{lstlisting}
 
 
@@ -273,8 +308,8 @@ definition params :: 'a branch $\Rightarrow$ 'a set where
 definition params' :: 'a branch $\Rightarrow$ 'a set where
   params' b $\equiv$
     {c $\in$ params b. $\forall$t $\in$ subterms_fm (last b).
-      AT (Var c $\approx_\text{s}$ t) $\notin$ set b $\land$
-      AT (t $\approx_\text{s}$ Var c) $\notin$ set b} 
+      AT (Var c $\eqS$ t) $\notin$ set b $\land$
+      AT (t $\eqS$ Var c) $\notin$ set b} 
 \end{lstlisting}
 
 \begin{lstlisting}

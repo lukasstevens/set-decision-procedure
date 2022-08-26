@@ -11,8 +11,6 @@
 
 \usepackage{xcolor}
 
-\usepackage{academicons}
-
 \usepackage{tikz}
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.16}
@@ -45,6 +43,11 @@
 \makeatletter
 \lst@AddToHook{OnEmptyLine}{\vspace{-0.4\baselineskip}}
 \makeatother
+% This is a hack to allow escaping inside lstinline (https://tex.stackexchange.com/questions/43526/escaping-in-lstinline)
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd{\lsthk@TextStyle}{\let\lst@DefEsc\@empty}{}{}{\errmessage{failed to patch}}
+\makeatother
 
 \usepackage{calc}
 
@@ -67,14 +70,17 @@
 \usepackage{todonotes}
 
 % Commands
+\newcommand{\MLSS}{\textbf{MLSS}}
 \newlength{\trianglewidth}
 \settowidth{\trianglewidth}{\(\triangleleft\)}
 
 \newcommand{\lefttrianglebar}{\mathrel{\tikz[baseline]{\draw (1ex, 0.75ex) -- (0, 1.25ex) -- (0, 0.25ex) -- cycle; \draw (0, 0.75ex) -- (1ex, 0.75ex);}}}
 \newcommand{\lefttriangle}{\mathrel{\tikz[baseline]{\draw (1ex, 0.75ex) -- (0, 1.25ex) -- (0, 0.25ex) -- cycle;}}}
 
-\newcommand{\sextends}{\lefttriangle}
-\newcommand{\fextends}{\lefttrianglebar}
+\newcommand{\sexpands}[2]{#1 $\lefttriangle$ #2}
+\newcommand{\fexpands}[2]{#1 $\lefttrianglebar$ #2}
+\newcommand{\expandss}[2]{#1 $\lefttriangle^*$ #2}
+
 
 \newcommand{\unionS}{\sqcup_\text{s}}
 \newcommand{\interS}{\sqcap_\text{s}}
@@ -86,6 +92,11 @@
 \newcommand{\subseteqS}{\sqsubseteq_\text{s}}
 \newcommand{\Ist}{I$_\text{st}$}
 \newcommand{\Isa}{I$_\text{sa}$}
+
+\newcommand{\fmAnd}[2]{#1 $\boldsymbol{\land}$ #2}
+\newcommand{\fmOr}[2]{#1 $\boldsymbol{\lor}$ #2}
+\newcommand{\fmNeg}[1]{$\boldsymbol{\neg}$ #1}
+\newcommand{\fmAtom}{\textbf{A}}
 
 \begin{document}
 
@@ -134,7 +145,7 @@ Finally, we remark that \textbf{iff} is equivalent to \lstinline!$=$! on type \l
 \todo[inline]{Add arrows and bracket notation for Pure formulae}
 \section{Syntax and Semantics of MLSS\label{sec:semantics}}
 \subsection{Syntax}
-At the heart of \textbf{MLSS}, we have the type of set terms which includes the empty set and variables as well as the operations union, intersection, set difference, and \lstinline!Single!, which represents a singleton set containing the argument.
+At the heart of \MLSS{}, we have the type of set terms which includes the empty set and variables as well as the operations union, intersection, set difference, and \lstinline!Single!, which represents a singleton set containing the argument.
 \todo[inline]{Syntax for \lstinline!Single!?}
 \begin{lstlisting}
 datatype 'a pset_term =
@@ -151,25 +162,28 @@ datatype 'a pset_atom =
 \end{lstlisting}
 With the above operators we can also represent the subset operator \lstinline!$\subseteqS$! and enumerate finite sets as \lstinline!s $\subseteqS$ t! is equivalent to \lstinline!s $\unionS$ t $\eqS$ t! and a finite set of elements \lstinline!{t$_1$,t$_2$,$\ldots$,t$_k$}! can be expressed by \lstinline!Single t$_1$ $\unionS$ $\ldots$ $\unionS$ Single t$_k$!.
 
-The unquantified fragment \textbf{MLSS} of set theory is then formed by combining set atoms with propositional logical connectives.
+The unquantified fragment \MLSS{} of set theory is then formed by combining set atoms, which are injected into formulae with the constructor \lstinline!&\fmAtom&!, with propositional logical connectives.
+\todo[inline]{Cite Nipkow's Linear Quantifier Elimination?}
 \begin{lstlisting}
 datatype (atoms: 'a) fm =
-  Atom 'a | Neg ('a fm)
-| And ('a fm) ('a fm) | Or ('a fm) ('a fm)
+  &\fmAtom& 'a | &\fmNeg{('a fm)}&
+| &\fmAnd{'a fm}{'a fm}& | &\fmOr{'a fm}{'a fm}&
 
 type_synonym 'a pset_fm = 'a pset_atom fm
 \end{lstlisting}
-We will sometimes drop the \lstinline!Atom! constructor to improve presentation.
-Additionally, we use the abbreviations \lstinline!s $\notinS$ t! and \lstinline!s $\neqS$ t! to denote \lstinline!Neg (Atom (s $\inS$ t))! and \lstinline!Neg (Atom (s $\eqS$ t))!, respectively.
-Note that Isabelle's datatype package automatically defines a function \lstinline!atoms :: 'a fm $\Rightarrow$ 'a set! that allows us to obtain all set atoms in the formula.
+We will sometimes drop the \lstinline!Atom! constructor to reduce clutter.
+Additionally, we use the abbreviations \lstinline!s $\notinS$ t! and \lstinline!s $\neqS$ t! to denote \lstinline!&\fmNeg{\fmAtom{} (s $\inS$ t)}&! and \lstinline!&\fmNeg{\fmAtom{} (s $\eqS$ t)}&!, respectively.
+Note that Isabelle's datatype package automatically defines a function \lstinline!atoms :: 'a fm $\Rightarrow$ 'a set! that allows us to obtain all set atoms in a formula.
 Similarly, it defines a function \lstinline!set_pset_atom :: 'a pset_atom $\Rightarrow$ 'a set! with which we can extract all the variable names in a set atom.
 We combine these functions in order to define \lstinline!vars_fm! that extracts all the variable names occuring in a set formula.
+\todo[inline]{Motivation: one rule introduces new variables}
 \begin{lstlisting}
 definition vars_fm :: 'a pset_fm $\Rightarrow$ 'a set where
   vars_fm $\phi$ $\equiv$ $\bigcup$(set_pset_atom ` atoms $\phi$)
 \end{lstlisting}
 In addition to the variable names that appear in a formula, we will later also need to obtain those set terms that occur as subterms in a formula. 
 We first define a function that collects the subterms of a set term.
+\todo[inline]{Motivation: saturating rules don't introduce subterms}
 \begin{lstlisting}
 fun subterms ::
     'a pset_term $\Rightarrow$ 'a pset_term set where
@@ -202,17 +216,18 @@ definition subterms_fm ::
 The last function that we define computes the subformulae of a formula.
 \begin{lstlisting}
 fun subfms :: 'a fm $\Rightarrow$ 'a fm set where
-  subfms (Atom a) = {Atom a}
-| subfms (And p q) =
-    {And p q} $\cup$ subfms p $\cup$ subfms q
-| subfms (Or p q) =
-    {Or p q} $\cup$ subfms p $\cup$ subfms q
-| subfms (Neg q) = {Neg q} $\cup$ subfms q
+  subfms (&\fmAtom& a) = {&\fmAtom& a}
+| subfms (&\fmAnd{p}{q}&) =
+    {&\fmAnd{p}{q}&} $\cup$ subfms p $\cup$ subfms q
+| subfms (&\fmOr{p}{q}&) =
+    {&\fmOr{p}{q}&} $\cup$ subfms p $\cup$ subfms q
+| subfms (&\fmNeg{q}&) = {&\fmNeg{q}&} $\cup$ subfms q
 \end{lstlisting}
 
 \subsection{Semantics}
-Formulae in \textbf{MLSS} contain arbitrarily nested set terms.
+Formulae in \MLSS{} contain arbitrarily nested set terms.
 We account for this arbitrary nesting by basing the semantics on the von Neumann hierarchy $\mathcal{V}$ of sets that is defined inductively as
+\todo[inline]{Simplify definition by deleting cases?}
   \[
     \begin{array}{rclr}
       \mathcal{V}_0 & = & \emptyset, \\
@@ -234,7 +249,7 @@ Inversely, this predicate characterises those sets that can be turned into a set
 The type \lstinline!V! comes with all the usual set operations such as equality ($=$), union ($\sqcup$), intersection ($\sqcap$), and difference ($-$).
 The empty set coincides with the ordinal $0$ so we denote it with \lstinline!0 :: V!.
 
-Equipped with the above, we define the interpretation function \lstinline!I_$\text{st}$! for set terms that interprets a set term with respect to a valuation function \lstinline!M :: 'a $\Rightarrow$ V! for variable.
+Equipped with the above, we define the interpretation function \lstinline!&\Ist&! for set terms that interprets a set term with respect to a valuation function \lstinline!M :: 'a $\Rightarrow$ V! for variable.
 \begin{lstlisting}
 fun &\Ist& :: ('a $\Rightarrow$ V) $\Rightarrow$ 'a pset_term $\Rightarrow$ V where
   &\Ist& M $\emptyset$ = 0
@@ -255,48 +270,67 @@ For formulae, we write \lstinline!M $\models$ $\phi$! for the judgement that $\p
 We omit the implementation of $\models$ for brevity.
 
 \section{A Tableau Calculus for MLSS}
-$A \fextends B \sextends C$
-
+We formalise the tableau calculus for \MLSS{} as described by \citeauthor{new_fast_tableau}~\cite{new_fast_tableau}.
+Inspired by the formalisation of a tableau calculus for Hybrid Logic by \citeauthor{hybrid_logic_afp}~\cite{hybrid_logic_afp}, we simply use a list to represent a branch of the tableau tree.
+Note that formulae are added to the front of the list during branch expansion so \lstinline!last b! for a branch \lstinline!b! is always the formula that we are trying to disprove with the tableau. 
 \begin{lstlisting}
 type_synonym 'a branch = 'a pset_fm list
 \end{lstlisting}
-
+We now lift the functions that extract the variables respectively subterms of formulae to branches.
 \begin{lstlisting}
 definition subterms_branch ::
     'a branch $\Rightarrow$ 'a pset_term set where
   subterms_branch b $\equiv$ $\bigcup$(subterms_fm ` set b)
-\end{lstlisting}
 
-\begin{lstlisting}
 definition vars_branch :: 'a branch $\Rightarrow$ 'a set 
   vars_branch b $\equiv$ $\bigcup$(vars_fm ` set b)
 \end{lstlisting}
-
+In the standard tableau calculus for propositional logic, a branch is called \textit{closed} if it contains both the negation of a formula as well as the formula itself and it is called \textit{open} if it is not closed.
+We extend the notion of closedness with three additional rules; the first two are straightforward while the last one states that a branch is closed when the branch contains a membership cycle \lstinline!s $\inS$ t$_\text{1}$, t$_\text{1}$ $\inS$ t$_\text{2}$, $\ldots$, t$_\text{k}$ $\inS$ s!.
 \begin{lstlisting}
 inductive bclosed :: 'a branch $\Rightarrow$ bool where
-  $\llbracket$ $\phi$ $\in$ set b; Neg $\phi$ $\in$ set b $\rrbracket$ $\Longrightarrow$ bclosed b
+  $\llbracket$ $\phi$ $\in$ set b; &\fmNeg{$\phi$}& $\in$ set b $\rrbracket$ $\Longrightarrow$ bclosed b
 | (t $\inS$ $\emptyset$) $\in$ set b $\Longrightarrow$ bclosed b
 | (t $\neqS$ t) $\in$ set b $\Longrightarrow$ bclosed b
 | $\llbracket$ member_cycle cs; set cs $\subseteq$ set b$\rrbracket$
-  $\Longrightarrow$ bclosed b
+    $\Longrightarrow$ bclosed b
+
+abbreviation bopen b $\equiv$ $\neg$ bclosed b
 \end{lstlisting}
+A tableau is called \textit{closed} if all of its branches are closed.
 
-
-Interesting: they forgot one rule.
-
-\section{Completeness of the Calculus}
+\subsection{Saturating Expansion Rules}
+The calculus considers two kinds of expansion rules: \textit{saturating} and \textit{fulfilling}.
+Whereas fulfilling expansion rules lead to the creation of new branches in the tableau, saturating rules only extend a branch \lstinline!b! with new formulae \lstinline[breaklines=true]!b' = [$\psi_1$,$\ldots$,$\psi_n$]!, which we denote by \lstinline!&\sexpands{b'}{b}&!.
+Furthermore, saturating rules are restricted such that no new subterm may be created by their application.
+For example, the rule
+\begin{center}
+\lstinline!(s $\inS$ t$_\text{1}$) $\in$ set b $\Longrightarrow$ &\sexpands{[s $\inS$ t$_\text{1}$ $\unionS$ t$_\text{2}$]}{b}&!
+\end{center}
+may only be used under the condition
+\begin{center}
+  \lstinline!t$_\text{1}$ $\unionS$ t$_\text{2}$ $\in$ subterms_fm (last b)!.
+\end{center}
+This ensures that repeated application of saturating rules eventually results in a \textit{linearly saturated} branch, i.e.\ a branch where no application of saturating rules would produce new formulae.
+In Isabelle, we express this as follows.
 \begin{lstlisting}
 definition lin_sat b $\equiv$
-  $\forall$b'. lextends b' b $\rightarrow$ set b' $\subseteq$ set b
+  $\forall$b'. &\sexpands{b'}{b}& $\longrightarrow$ set b' $\subseteq$ set b
 \end{lstlisting}
+\todo[inline]{Reference figure and mention missing rule + example}
+
+\subsection{Fulfilling Expansion Rules\label{sec:fulfilling}}
+Since the number of branches doubles each time we apply a fulfilling rule, it is prudent to only apply them to open, linearly saturated branches. 
+To further prevent unnecessary branching, each rule has a \textit{subsumption} condition. 
 
 \begin{lstlisting}
-definition sat b $\equiv$
-  lin_sat b $\land$ ($\nexists$bs'. fextends bs' b)
+definition sat b $\equiv$ lin_sat b $\land$ ($\nexists$bs'. &\fexpands{bs'}{b}&)
 \end{lstlisting}
 
+\section{Completeness of the Calculus}
+
 \begin{lstlisting}
-definition wf_branch b $\equiv$ $\exists$$\phi$. extendss b [$\phi$]
+definition wf_branch b $\equiv$ $\exists$$\phi$. &\expandss{b}{[$\phi$]}&
 \end{lstlisting}
 
 \begin{lstlisting}
@@ -344,9 +378,9 @@ Think about using the notion of coherent (or is this wfbranch?)
 \begin{lstlisting}
 function mlss_proc_branch :: 'a branch $\Rightarrow$ bool where
   $\neg$ lin_sat b $\Longrightarrow$
-  mlss_proc_branch = mlss_proc_branch ((SOME b'. lextends b' b $\land$ set b $\subset$ set (b' @ b)) @ b)
+  mlss_proc_branch = mlss_proc_branch ((SOME b'. &\sexpands{b'}{b}& $\land$ set b $\subset$ set (b' @ b)) @ b)
 |  $\llbracket$ $\neg$ sat b; bopen b; lin_sat b $\rrbracket$ $\Longrightarrow$
-   mlss_proc_branch b = ($\forall$b' $\in$ (SOME bs. fextends bs b). mlss_proc_branch (b' @ b))
+   mlss_proc_branch b = ($\forall$b' $\in$ (SOME bs. &\fexpands{bs}{b}&). mlss_proc_branch (b' @ b))
 | $\llbracket$ lin_sat b; sat b $\rrbracket$ $\Longrightarrow$ mlss_proc_branch b = bclosed b
 | $\llbracket$ lin_sat b; bclosed b $\rrbracket$ $\Longrightarrow$ mlss_proc_branch b = True
 

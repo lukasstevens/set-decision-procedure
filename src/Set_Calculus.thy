@@ -21,7 +21,7 @@ inductive bclosed :: "'a branch \<Rightarrow> bool" where
 
 abbreviation "bopen branch \<equiv> \<not> bclosed branch"
 
-section \<open>Saturating Expansion Rules\<close>
+section \<open>Linear Expansion Rules\<close>
 
 fun tlvl_terms_atom :: "'a pset_atom \<Rightarrow> 'a pset_term set" where
   "tlvl_terms_atom (t1 \<in>\<^sub>s t2) = {t1, t2}"
@@ -33,77 +33,77 @@ fun subst_tlvl :: "'a pset_term \<Rightarrow> 'a pset_term \<Rightarrow> 'a pset
 | "subst_tlvl t1 t2 (s1 \<approx>\<^sub>s s2) =
     (if s1 = t1 then t2 else s1) \<approx>\<^sub>s (if s2 = t1 then t2 else s2)"
 
-inductive sexpands_fm :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
-  "And p q \<in> set b \<Longrightarrow> sexpands_fm [p, q] b"
-| "Neg (Or p q) \<in> set b \<Longrightarrow> sexpands_fm [Neg p, Neg q] b"
-| "\<lbrakk> Or p q \<in> set b; Neg p \<in> set b \<rbrakk> \<Longrightarrow> sexpands_fm [q] b"
-| "\<lbrakk> Or p q \<in> set b; Neg q \<in> set b \<rbrakk> \<Longrightarrow> sexpands_fm [p] b"
-| "\<lbrakk> Neg (And p q) \<in> set b; p \<in> set b \<rbrakk> \<Longrightarrow> sexpands_fm [Neg q] b"
-| "\<lbrakk> Neg (And p q) \<in> set b; q \<in> set b \<rbrakk> \<Longrightarrow> sexpands_fm [Neg p] b"
-| "Neg (Neg p) \<in> set b \<Longrightarrow> sexpands_fm [p] b"
+inductive lexpands_fm :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
+  "And p q \<in> set b \<Longrightarrow> lexpands_fm [p, q] b"
+| "Neg (Or p q) \<in> set b \<Longrightarrow> lexpands_fm [Neg p, Neg q] b"
+| "\<lbrakk> Or p q \<in> set b; Neg p \<in> set b \<rbrakk> \<Longrightarrow> lexpands_fm [q] b"
+| "\<lbrakk> Or p q \<in> set b; Neg q \<in> set b \<rbrakk> \<Longrightarrow> lexpands_fm [p] b"
+| "\<lbrakk> Neg (And p q) \<in> set b; p \<in> set b \<rbrakk> \<Longrightarrow> lexpands_fm [Neg q] b"
+| "\<lbrakk> Neg (And p q) \<in> set b; q \<in> set b \<rbrakk> \<Longrightarrow> lexpands_fm [Neg p] b"
+| "Neg (Neg p) \<in> set b \<Longrightarrow> lexpands_fm [p] b"
 
-inductive sexpands_un :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
-  "AF (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set b \<Longrightarrow> sexpands_un [AF (s \<in>\<^sub>s t1), AF (s \<in>\<^sub>s t2)] b"
+inductive lexpands_un :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
+  "AF (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set b \<Longrightarrow> lexpands_un [AF (s \<in>\<^sub>s t1), AF (s \<in>\<^sub>s t2)] b"
 | "\<lbrakk> AT (s \<in>\<^sub>s t1) \<in> set b; t1 \<squnion>\<^sub>s t2 \<in> subterms_fm (last b) \<rbrakk>
-    \<Longrightarrow> sexpands_un [AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2)] b"
+    \<Longrightarrow> lexpands_un [AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2)] b"
 | "\<lbrakk> AT (s \<in>\<^sub>s t2) \<in> set b; t1 \<squnion>\<^sub>s t2 \<in> subterms_fm (last b) \<rbrakk>
-    \<Longrightarrow> sexpands_un [AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2)] b"
+    \<Longrightarrow> lexpands_un [AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2)] b"
 | "\<lbrakk> AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set b; AF (s \<in>\<^sub>s t1) \<in> set b \<rbrakk>
-    \<Longrightarrow> sexpands_un [AT (s \<in>\<^sub>s t2)] b"
+    \<Longrightarrow> lexpands_un [AT (s \<in>\<^sub>s t2)] b"
 | "\<lbrakk> AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set b; AF (s \<in>\<^sub>s t2) \<in> set b \<rbrakk>
-    \<Longrightarrow> sexpands_un [AT (s \<in>\<^sub>s t1)] b"
+    \<Longrightarrow> lexpands_un [AT (s \<in>\<^sub>s t1)] b"
 | "\<lbrakk> AF (s \<in>\<^sub>s t1) \<in> set b; AF (s \<in>\<^sub>s t2) \<in> set b; t1 \<squnion>\<^sub>s t2 \<in> subterms_fm (last b) \<rbrakk>
-    \<Longrightarrow> sexpands_un [AF (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2)] b"
+    \<Longrightarrow> lexpands_un [AF (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2)] b"
 
-inductive sexpands_int :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
-  "AT (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) \<in> set b \<Longrightarrow> sexpands_int [AT (s \<in>\<^sub>s t1), AT (s \<in>\<^sub>s t2)] b"
+inductive lexpands_int :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
+  "AT (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) \<in> set b \<Longrightarrow> lexpands_int [AT (s \<in>\<^sub>s t1), AT (s \<in>\<^sub>s t2)] b"
 | "\<lbrakk> AF (s \<in>\<^sub>s t1) \<in> set b; t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm (last b) \<rbrakk>
-    \<Longrightarrow> sexpands_int [AF (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2)] b"
+    \<Longrightarrow> lexpands_int [AF (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2)] b"
 | "\<lbrakk> AF (s \<in>\<^sub>s t2) \<in> set b; t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm (last b) \<rbrakk>
-    \<Longrightarrow> sexpands_int [AF (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2)] b"
+    \<Longrightarrow> lexpands_int [AF (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2)] b"
 | "\<lbrakk> AF (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) \<in> set b; AT (s \<in>\<^sub>s t1) \<in> set b \<rbrakk>
-    \<Longrightarrow> sexpands_int [AF (s \<in>\<^sub>s t2)] b"
+    \<Longrightarrow> lexpands_int [AF (s \<in>\<^sub>s t2)] b"
 | "\<lbrakk> AF (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) \<in> set b; AT (s \<in>\<^sub>s t2) \<in> set b \<rbrakk>
-    \<Longrightarrow> sexpands_int [AF (s \<in>\<^sub>s t1)] b"
+    \<Longrightarrow> lexpands_int [AF (s \<in>\<^sub>s t1)] b"
 | "\<lbrakk> AT (s \<in>\<^sub>s t1) \<in> set b; AT (s \<in>\<^sub>s t2) \<in> set b; t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm (last b) \<rbrakk>
-    \<Longrightarrow> sexpands_int [AT (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2)] b"
+    \<Longrightarrow> lexpands_int [AT (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2)] b"
 
-inductive sexpands_diff :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
-  "AT (s \<in>\<^sub>s t1 -\<^sub>s t2) \<in> set b \<Longrightarrow> sexpands_diff [AT (s \<in>\<^sub>s t1), AF (s \<in>\<^sub>s t2)] b"
+inductive lexpands_diff :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
+  "AT (s \<in>\<^sub>s t1 -\<^sub>s t2) \<in> set b \<Longrightarrow> lexpands_diff [AT (s \<in>\<^sub>s t1), AF (s \<in>\<^sub>s t2)] b"
 | "\<lbrakk> AF (s \<in>\<^sub>s t1) \<in> set b; t1 -\<^sub>s t2 \<in> subterms_fm (last b) \<rbrakk>
-    \<Longrightarrow> sexpands_diff [AF (s \<in>\<^sub>s t1 -\<^sub>s t2)] b"
+    \<Longrightarrow> lexpands_diff [AF (s \<in>\<^sub>s t1 -\<^sub>s t2)] b"
 | "\<lbrakk> AT (s \<in>\<^sub>s t2) \<in> set b; t1 -\<^sub>s t2 \<in> subterms_fm (last b) \<rbrakk>
-    \<Longrightarrow> sexpands_diff [AF (s \<in>\<^sub>s t1 -\<^sub>s t2)] b"
+    \<Longrightarrow> lexpands_diff [AF (s \<in>\<^sub>s t1 -\<^sub>s t2)] b"
 | "\<lbrakk> AF (s \<in>\<^sub>s t1 -\<^sub>s t2) \<in> set b; AT (s \<in>\<^sub>s t1) \<in> set b \<rbrakk>
-    \<Longrightarrow> sexpands_diff [AT (s \<in>\<^sub>s t2)] b"
+    \<Longrightarrow> lexpands_diff [AT (s \<in>\<^sub>s t2)] b"
 | "\<lbrakk> AF (s \<in>\<^sub>s t1 -\<^sub>s t2) \<in> set b; AF (s \<in>\<^sub>s t2) \<in> set b \<rbrakk>
-    \<Longrightarrow> sexpands_diff [AF (s \<in>\<^sub>s t1)] b"
+    \<Longrightarrow> lexpands_diff [AF (s \<in>\<^sub>s t1)] b"
 | "\<lbrakk> AT (s \<in>\<^sub>s t1) \<in> set b; AF (s \<in>\<^sub>s t2) \<in> set b; t1 -\<^sub>s t2 \<in> subterms_fm (last b) \<rbrakk>
-    \<Longrightarrow> sexpands_diff [AT (s \<in>\<^sub>s t1 -\<^sub>s t2)] b"
+    \<Longrightarrow> lexpands_diff [AT (s \<in>\<^sub>s t1 -\<^sub>s t2)] b"
 
-inductive sexpands_single :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
-  "Single t1 \<in> subterms_fm (last b) \<Longrightarrow> sexpands_single [AT (t1 \<in>\<^sub>s Single t1)] b"
-| "AT (s \<in>\<^sub>s Single t1) \<in> set b \<Longrightarrow> sexpands_single [AT (s \<approx>\<^sub>s t1)] b"
-| "AF (s \<in>\<^sub>s Single t1) \<in> set b \<Longrightarrow> sexpands_single [AF (s \<approx>\<^sub>s t1)] b"
+inductive lexpands_single :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
+  "Single t1 \<in> subterms_fm (last b) \<Longrightarrow> lexpands_single [AT (t1 \<in>\<^sub>s Single t1)] b"
+| "AT (s \<in>\<^sub>s Single t1) \<in> set b \<Longrightarrow> lexpands_single [AT (s \<approx>\<^sub>s t1)] b"
+| "AF (s \<in>\<^sub>s Single t1) \<in> set b \<Longrightarrow> lexpands_single [AF (s \<approx>\<^sub>s t1)] b"
 
-inductive sexpands_eq :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
+inductive lexpands_eq :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
   "\<lbrakk> AT (t1 \<approx>\<^sub>s t2) \<in> set b; AT l \<in> set b; t1 \<in> tlvl_terms_atom l \<rbrakk>
-    \<Longrightarrow> sexpands_eq [AT (subst_tlvl t1 t2 l)] b"
+    \<Longrightarrow> lexpands_eq [AT (subst_tlvl t1 t2 l)] b"
 | "\<lbrakk> AT (t1 \<approx>\<^sub>s t2) \<in> set b; AF l \<in> set b; t1 \<in> tlvl_terms_atom l \<rbrakk>
-    \<Longrightarrow> sexpands_eq [AF (subst_tlvl t1 t2 l)] b"
+    \<Longrightarrow> lexpands_eq [AF (subst_tlvl t1 t2 l)] b"
 | "\<lbrakk> AT (t1 \<approx>\<^sub>s t2) \<in> set b; AT l \<in> set b; t2 \<in> tlvl_terms_atom l \<rbrakk>
-    \<Longrightarrow> sexpands_eq [AT (subst_tlvl t2 t1 l)] b"
+    \<Longrightarrow> lexpands_eq [AT (subst_tlvl t2 t1 l)] b"
 | "\<lbrakk> AT (t1 \<approx>\<^sub>s t2) \<in> set b; AF l \<in> set b; t2 \<in> tlvl_terms_atom l \<rbrakk>
-    \<Longrightarrow> sexpands_eq [AF (subst_tlvl t2 t1 l)] b"
+    \<Longrightarrow> lexpands_eq [AF (subst_tlvl t2 t1 l)] b"
 | "\<lbrakk> AT (s \<in>\<^sub>s t) \<in> set b; AF (s' \<in>\<^sub>s t) \<in> set b \<rbrakk>
-    \<Longrightarrow> sexpands_eq [AF (s \<approx>\<^sub>s s')] b"
+    \<Longrightarrow> lexpands_eq [AF (s \<approx>\<^sub>s s')] b"
 
 fun polarise :: "bool \<Rightarrow> 'a fm \<Rightarrow> 'a fm" where
   "polarise True \<phi> = \<phi>"
 | "polarise False \<phi> = Neg \<phi>"
 
-lemma sexpands_eq_induct'[consumes 1, case_names subst neq]:
-  assumes "sexpands_eq b' b"
+lemma lexpands_eq_induct'[consumes 1, case_names subst neq]:
+  assumes "lexpands_eq b' b"
   assumes "\<And>t1 t2 t1' t2' p l b. 
       \<lbrakk> AT (t1 \<approx>\<^sub>s t2) \<in> set b; polarise p (Atom l) \<in> set b;
        (t1', t2') \<in> {(t1, t2), (t2, t1)}; t1' \<in> tlvl_terms_atom l \<rbrakk>
@@ -111,19 +111,19 @@ lemma sexpands_eq_induct'[consumes 1, case_names subst neq]:
   assumes "\<And>s t s' b. \<lbrakk> AT (s \<in>\<^sub>s t) \<in> set b; AF (s' \<in>\<^sub>s t) \<in> set b \<rbrakk> \<Longrightarrow> P [AF (s \<approx>\<^sub>s s')] b"
   shows "P b' b"
   using assms(1)
-  apply(induction rule: sexpands_eq.induct)
+  apply(induction rule: lexpands_eq.induct)
   by (metis assms(2-) insertI1 insertI2 polarise.simps)+
 
-inductive sexpands :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
-  "sexpands_fm b' b \<Longrightarrow> sexpands b' b"
-| "sexpands_un b' b \<Longrightarrow> sexpands b' b"
-| "sexpands_int b' b \<Longrightarrow> sexpands b' b"
-| "sexpands_diff b' b \<Longrightarrow> sexpands b' b"
-| "sexpands_single b' b \<Longrightarrow> sexpands b' b"
-| "sexpands_eq b' b \<Longrightarrow> sexpands b' b"
+inductive lexpands :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
+  "lexpands_fm b' b \<Longrightarrow> lexpands b' b"
+| "lexpands_un b' b \<Longrightarrow> lexpands b' b"
+| "lexpands_int b' b \<Longrightarrow> lexpands b' b"
+| "lexpands_diff b' b \<Longrightarrow> lexpands b' b"
+| "lexpands_single b' b \<Longrightarrow> lexpands b' b"
+| "lexpands_eq b' b \<Longrightarrow> lexpands b' b"
 
-lemma sexpands_induct[consumes 1]:
-  assumes "sexpands b' b"
+lemma lexpands_induct[consumes 1]:
+  assumes "lexpands b' b"
   shows "
     (\<And>p q b. And p q \<in> set b \<Longrightarrow> P [p, q] b) \<Longrightarrow>
     (\<And>p q b. Neg (Or p q) \<in> set b \<Longrightarrow> P [Neg p, Neg q] b) \<Longrightarrow>
@@ -159,13 +159,13 @@ lemma sexpands_induct[consumes 1]:
     (\<And>t1 t2 b l. AT (t1 \<approx>\<^sub>s t2) \<in> set b \<Longrightarrow> AF l \<in> set b \<Longrightarrow> t2 \<in> tlvl_terms_atom l \<Longrightarrow> P [AF (subst_tlvl t2 t1 l)] b) \<Longrightarrow>  
     (\<And>s t b s'. AT (s \<in>\<^sub>s t) \<in> set b \<Longrightarrow> AF (s' \<in>\<^sub>s t) \<in> set b \<Longrightarrow> P [AF (s \<approx>\<^sub>s s')] b) \<Longrightarrow> P b' b"
   using assms
-  apply(induction rule: sexpands.induct)
-  subgoal apply(induction rule: sexpands_fm.induct) by metis+
-  subgoal apply(induction rule: sexpands_un.induct) by metis+
-  subgoal apply(induction rule: sexpands_int.induct) by metis+
-  subgoal apply(induction rule: sexpands_diff.induct) by metis+
-  subgoal apply(induction rule: sexpands_single.induct) by metis+
-  subgoal apply(induction rule: sexpands_eq.induct) by metis+
+  apply(induction rule: lexpands.induct)
+  subgoal apply(induction rule: lexpands_fm.induct) by metis+
+  subgoal apply(induction rule: lexpands_un.induct) by metis+
+  subgoal apply(induction rule: lexpands_int.induct) by metis+
+  subgoal apply(induction rule: lexpands_diff.induct) by metis+
+  subgoal apply(induction rule: lexpands_single.induct) by metis+
+  subgoal apply(induction rule: lexpands_eq.induct) by metis+
   done
 
 
@@ -271,7 +271,7 @@ section \<open>Expansion Closure\<close>
 
 inductive expandss :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
   "expandss b b"
-| "sexpands b3 b2 \<Longrightarrow> set b2 \<subset> set (b3 @ b2) \<Longrightarrow> expandss b2 b1 \<Longrightarrow> expandss (b3 @ b2) b1"
+| "lexpands b3 b2 \<Longrightarrow> set b2 \<subset> set (b3 @ b2) \<Longrightarrow> expandss b2 b1 \<Longrightarrow> expandss (b3 @ b2) b1"
 | "fexpands bs b2 \<Longrightarrow> b3 \<in> bs \<Longrightarrow> expandss b2 b1 \<Longrightarrow> expandss (b3 @ b2) b1"
 
 lemma expandss_trans: "expandss b3 b2 \<Longrightarrow> expandss b2 b1 \<Longrightarrow> expandss b3 b1"

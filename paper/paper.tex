@@ -77,7 +77,7 @@
 \newcommand{\lefttrianglebar}{\mathrel{\tikz[baseline]{\draw (1ex, 0.75ex) -- (0, 1.25ex) -- (0, 0.25ex) -- cycle; \draw (0, 0.75ex) -- (1ex, 0.75ex);}}}
 \newcommand{\lefttriangle}{\mathrel{\tikz[baseline]{\draw (1ex, 0.75ex) -- (0, 1.25ex) -- (0, 0.25ex) -- cycle;}}}
 
-\newcommand{\sexpands}[2]{#1 $\lefttriangle$ #2}
+\newcommand{\lexpands}[2]{#1 $\lefttriangle$ #2}
 \newcommand{\fexpands}[2]{#1 $\lefttrianglebar$ #2}
 \newcommand{\expandss}[2]{#1 $\lefttriangle^*$ #2}
 
@@ -183,7 +183,7 @@ definition vars_fm :: 'a pset_fm $\Rightarrow$ 'a set where
 \end{lstlisting}
 In addition to the variable names that appear in a formula, we will later also need to obtain those set terms that occur as subterms in a formula. 
 We first define a function that collects the subterms of a set term.
-\todo[inline]{Motivation: saturating rules don't introduce subterms}
+\todo[inline]{Motivation: linear rules don't introduce subterms}
 \begin{lstlisting}
 fun subterms ::
     'a pset_term $\Rightarrow$ 'a pset_term set where
@@ -247,7 +247,7 @@ Even though we use the typed sets provided by Isabelle/HOL here, \lstinline!elts
 Only if the class is small enough, as indicated by the polymorphic predicate \lstinline!small :: 'a set $\Rightarrow$ bool!, it is indeed a set.
 Inversely, this predicate characterises those sets that can be turned into a set of type \lstinline!V! using the polymorphic function \lstinline!vset :: 'a set $\Rightarrow$ V!.
 The type \lstinline!V! comes with all the usual set operations such as equality ($=$), union ($\sqcup$), intersection ($\sqcap$), and difference ($-$).
-The empty set coincides with the ordinal $0$ so we denote it with \lstinline!0 :: V!.
+The empty set coincides with the ordinal $0$ so it is denoted by \lstinline!0 :: V!.
 
 Equipped with the above, we define the interpretation function \lstinline!&\Ist&! for set terms that interprets a set term with respect to a valuation function \lstinline!M :: 'a $\Rightarrow$ V! for variable.
 \begin{lstlisting}
@@ -285,8 +285,9 @@ definition subterms_branch ::
 definition vars_branch :: 'a branch $\Rightarrow$ 'a set 
   vars_branch b $\equiv$ $\bigcup$(vars_fm ` set b)
 \end{lstlisting}
-In the standard tableau calculus for propositional logic, a branch is called \textit{closed} if it contains both the negation of a formula as well as the formula itself and it is called \textit{open} if it is not closed.
-We extend the notion of closedness with three additional rules; the first two are straightforward while the last one states that a branch is closed when the branch contains a membership cycle \lstinline!s $\inS$ t$_\text{1}$, t$_\text{1}$ $\inS$ t$_\text{2}$, $\ldots$, t$_\text{k}$ $\inS$ s!.
+In the standard tableau calculus for propositional logic, a branch is called \textit{closed} if it contains both the negation of a formula and the formula itself;
+conversely, it is called \textit{open} if it is not closed.
+For MLSS, we extend the notion of closedness with three additional rules; the first two are straightforward while the last one states that a branch is closed when the branch contains a membership cycle \lstinline!s $\inS$ t$_\text{1}$, t$_\text{1}$ $\inS$ t$_\text{2}$, $\ldots$, t$_\text{k}$ $\inS$ s!.
 \begin{lstlisting}
 inductive bclosed :: 'a branch $\Rightarrow$ bool where
   $\llbracket$ $\phi$ $\in$ set b; &\fmNeg{$\phi$}& $\in$ set b $\rrbracket$ $\Longrightarrow$ bclosed b
@@ -299,36 +300,43 @@ abbreviation bopen b $\equiv$ $\neg$ bclosed b
 \end{lstlisting}
 A tableau is called \textit{closed} if all of its branches are closed.
 
-\subsection{Saturating Expansion Rules}
-The calculus considers two kinds of expansion rules: \textit{saturating} and \textit{fulfilling}.
-Whereas fulfilling expansion rules lead to the creation of new branches in the tableau, saturating rules only extend a branch \lstinline!b! with new formulae \lstinline[breaklines=true]!b' = [$\psi_1$,$\ldots$,$\psi_n$]!, which we denote by \lstinline!&\sexpands{b'}{b}&!.
-Furthermore, saturating rules are restricted such that no new subterm may be created by their application.
-For example, the rule
+\subsection{Linear Expansion Rules}
+The calculus considers two kinds of branch expansion rules: \textit{linear} and \textit{branching} rules.
+As the name suggests, branching rules lead to the creation of new branches in the tableau while linear rules only extend a branch \lstinline!b! with new formulae \lstinline[breaklines=true]!b' = [$\psi_1$,$\ldots$,$\psi_n$]!, which we denote by \lstinline!&\lexpands{b'}{b}&!.
+Furthermore, linear rules are restricted such that no new subterm may be created by their application:
+for example, the rule
 \begin{center}
-\lstinline!(s $\inS$ t$_\text{1}$) $\in$ set b $\Longrightarrow$ &\sexpands{[s $\inS$ t$_\text{1}$ $\unionS$ t$_\text{2}$]}{b}&!
+\lstinline!(s $\inS$ t$_\text{1}$) $\in$ set b $\Longrightarrow$ &\lexpands{[s $\inS$ t$_\text{1}$ $\unionS$ t$_\text{2}$]}{b}&!
 \end{center}
 may only be used under the condition
 \begin{center}
   \lstinline!t$_\text{1}$ $\unionS$ t$_\text{2}$ $\in$ subterms_fm (last b)!.
 \end{center}
-This ensures that repeated application of saturating rules eventually results in a \textit{linearly saturated} branch, i.e.\ a branch where no application of saturating rules would produce new formulae.
+\todo[inline]{Explain this restriction in more detail.}
+This ensures that repeated application of linear rules eventually results in a \textit{linearly saturated} branch, i.e.\ a branch where no application of linear rules would produce new formulae.
 In Isabelle, we express this as follows.
 \begin{lstlisting}
 definition lin_sat b $\equiv$
-  $\forall$b'. &\sexpands{b'}{b}& $\longrightarrow$ set b' $\subseteq$ set b
+  $\forall$b'. &\lexpands{b'}{b}& $\longrightarrow$ set b' $\subseteq$ set b
 \end{lstlisting}
 \todo[inline]{Reference figure and mention missing rule + example}
 
-\subsection{Fulfilling Expansion Rules\label{sec:fulfilling}}
-Since the number of branches doubles each time we apply a fulfilling rule, it is prudent to only apply them to open, linearly saturated branches. 
+\subsection{Branching Rules\label{sec:branching}}
+Since the number of branches increases when applying branching rules, it is prudent to only apply them to open, linearly saturated branches.
 To further prevent unnecessary branching, each rule has a \textit{subsumption} condition. 
+Note that even branching rules are restricted such that they never create new subterms, with exception of the last rule which adds a fresh variable.
+\todo[inline]{Reference figure}
+
 
 \begin{lstlisting}
 definition sat b $\equiv$ lin_sat b $\land$ ($\nexists$bs'. &\fexpands{bs'}{b}&)
 \end{lstlisting}
 
 \section{Completeness of the Calculus}
-
+\begin{itemize}
+  \item Basic definitions and graph
+  \item Graph is basically a syntactic model.
+\end{itemize}
 \begin{lstlisting}
 definition wf_branch b $\equiv$ $\exists$$\phi$. &\expandss{b}{[$\phi$]}&
 \end{lstlisting}
@@ -372,13 +380,13 @@ Show the results in Realisation of an Open Branch.
 Only one quite trivial invariant needed 
 
 \section{An Abstract Specification of the Decision Procedure}
-Think about using the notion of coherent (or is this wfbranch?)
+\todo[inline]{Mention coherence lemma?}
 \begin{figure*}
   \centering
 \begin{lstlisting}
 function mlss_proc_branch :: 'a branch $\Rightarrow$ bool where
   $\neg$ lin_sat b $\Longrightarrow$
-  mlss_proc_branch = mlss_proc_branch ((SOME b'. &\sexpands{b'}{b}& $\land$ set b $\subset$ set (b' @ b)) @ b)
+  mlss_proc_branch = mlss_proc_branch ((SOME b'. &\lexpands{b'}{b}& $\land$ set b $\subset$ set (b' @ b)) @ b)
 |  $\llbracket$ $\neg$ sat b; bopen b; lin_sat b $\rrbracket$ $\Longrightarrow$
    mlss_proc_branch b = ($\forall$b' $\in$ (SOME bs. &\fexpands{bs}{b}&). mlss_proc_branch (b' @ b))
 | $\llbracket$ lin_sat b; sat b $\rrbracket$ $\Longrightarrow$ mlss_proc_branch b = bclosed b
@@ -395,6 +403,7 @@ Maybe interesting: technical lemma that allows to obtain the point at which a pa
 \subsection{Soundness}
 Interesting: The model changes because auf new parameters.
 Maybe move this to the chapter on the calculus?
+\todo[inline]{Show \lstinline!memberCycle! case? This requires \lstinline!member_seq!.}
 \subsection{Lifting the Completeness of the Calculus}
 \todo[inline]{Do you even lift?}
 

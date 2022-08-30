@@ -9,6 +9,9 @@
 %\setmathfont{latinmodern-math.otf}
 %\setmathfont[version=bold, FakeBold=2]{latinmodern-math.otf}
 
+% Record brackets
+\usepackage{stmaryrd}
+
 \usepackage{xcolor}
 
 \usepackage{tikz}
@@ -287,7 +290,10 @@ definition vars_branch :: 'a branch $\Rightarrow$ 'a set
 \end{lstlisting}
 In the standard tableau calculus for propositional logic, a branch is called \textit{closed} if it contains both the negation of a formula and the formula itself;
 conversely, it is called \textit{open} if it is not closed.
-For MLSS, we extend the notion of closedness with three additional rules; the first two are straightforward while the last one states that a branch is closed when the branch contains a membership cycle \lstinline!s $\inS$ t$_\text{1}$, t$_\text{1}$ $\inS$ t$_\text{2}$, $\ldots$, t$_\text{k}$ $\inS$ s!.
+For MLSS, we extend the notion of closedness with three additional rules; the first two are straightforward while the last one states that a branch is closed when the branch contains a membership cycle
+\begin{center}
+\lstinline!s $\inS$ t$_\text{1}$, t$_\text{1}$ $\inS$ t$_\text{2}$, $\ldots$, t$_\text{k}$ $\inS$ s!.
+\end{center}
 \begin{lstlisting}
 inductive bclosed :: 'a branch $\Rightarrow$ bool where
   $\llbracket$ $\phi$ $\in$ set b; &\fmNeg{$\phi$}& $\in$ set b $\rrbracket$ $\Longrightarrow$ bclosed b
@@ -333,38 +339,73 @@ definition sat b $\equiv$ lin_sat b $\land$ ($\nexists$bs'. &\fexpands{bs'}{b}&)
 \end{lstlisting}
 
 \section{Completeness of the Calculus}
-\begin{itemize}
-  \item Basic definitions and graph
-  \item Graph is basically a syntactic model.
-\end{itemize}
-\begin{lstlisting}
-definition wf_branch b $\equiv$ $\exists$$\phi$. &\expandss{b}{[$\phi$]}&
-\end{lstlisting}
-
+Once a branch \lstinline!b! is saturated and open at the same time, we are unable to expand the branch further in our calculus.
+Thus, to establish completeness of the calculus, we must construct a model \lstinline!M! such that \lstinline!M $\models$ $\phi$! for all formulae \lstinline!$\phi$ $\in$ set b!.
+Our model is defined in terms of the following three collections.
 \begin{lstlisting}
 definition params :: 'a branch $\Rightarrow$ 'a set where
   params b $\equiv$ vars_branch b - vars_fm (last b)
-\end{lstlisting}
 
-\begin{lstlisting}
 definition params' :: 'a branch $\Rightarrow$ 'a set where
   params' b $\equiv$
     {c $\in$ params b. $\forall$t $\in$ subterms_fm (last b).
       AT (Var c $\eqS$ t) $\notin$ set b $\land$
       AT (t $\eqS$ Var c) $\notin$ set b} 
-\end{lstlisting}
 
-\begin{lstlisting}
 definition subterms_branch' ::
     'a branch $\Rightarrow$ 'a pset_term set where
   subterms_branch' b $\equiv$
     subterms_fm (last b) $\cup$ 
     Var ` (params b - params' b)
 \end{lstlisting}
-
+The goal is to construct a syntactic model that is derived from the membership literals \lstinline!(s $\inS$ t) $\in$ set b!.
+To this end, we construct a graph whose vertices are set terms and there is an edge from \lstinline!s! to \lstinline!t! in the graph if, and only if, \lstinline!(s $\inS$ t) $\in$ set b!.
+Note that we use \citeauthor{graph_theory_afp}'s graph library~\cite{graph_theory_afp} where a graph is represented as a record of vertices, arcs (directed edges), and two functions \lstinline!tail! and \lstinline!head! that map an arc to its source respectively target vertex.
 \begin{lstlisting}
-definition bgraph $\equiv$ $\ldots$ 
+definition bgraph b $\equiv$
+  let vs = Var ` params' b $\cup$ subterms_branch' b
+  in $\llparenthesis$ verts = vs,
+     &$\phantom{\llparenthesis}$& arcs = {(s, t). (s $\inS$ t) $\in$ set b},
+     &$\phantom{\llparenthesis}$& tail = fst, head = snd $\rrparenthesis$
 \end{lstlisting}
+The model is defined in terms of a \textit{realization} function relative to this graph.
+Observe that the vertices are partitioned into two sets, a collection of parameters \lstinline!Var ` params' b! and the rest of the set terms \lstinline!subterms_branch' b!, which are treated differently by the realization.
+Terms in the latter set are evaluated in accordance to the structure of the graph, i.e.\ the realization of a vertex is defined as the union of the realizations of the parent vertices. 
+For the former set, we fix a function \lstinline!I! that assigns the elements \lstinline!x $\in$ Var ` params' b! pairwise distinct sets with cardinality greater than that of the vertices and then return the singleton set \lstinline!vset {I x}!.
+The cardinality constraint ensures that realizations are distinct between those two sets.  
+\begin{lstlisting}
+abbreviation parents G s $\equiv$ {u. u $\rightarrow_\text{G}$ s}
+
+function realize :: 'a pset_term $\Rightarrow$ V where
+  x $\in$ Var ` params' b
+  $\Longrightarrow$ realize x = vset {I x}
+| x $\in$ subterms_branch' b
+  $\Longrightarrow$ realize t =
+  &$\phantom{\Longrightarrow}$&   vset {realize ` parents (bgraph b) s}
+| x $\notin$ verts G $\Longrightarrow$ realize x = 0
+\end{lstlisting}
+Since the function is recursive, we need to ensure that it terminates for it to be well-defined.
+The assumption that \lstinline!b! is open implies that there are no membership cycles and thus \lstinline!bgraph b! is acyclic.
+Together with the fact that \lstinline!bgraph b! is finite, we conclude that we can only recurse a finite number of times until we encounter a vertex that has no parents.
+
+\subsection{Formalising the Key Technical Lemma}
+\begin{lstlisting}
+fun is_literal :: 'a fm $\Rightarrow$ bool where
+  is_literal (&\fmAtom& _) = True
+| is_literal (&\fmNeg{(\fmAtom{} \_)}&) = True
+| is_literal _ = False
+\end{lstlisting}
+\begin{lstlisting}
+lemma
+  assumes wf_branch b
+  assumes c $\in$ params' b
+      and t $\in$ params_subterms b
+  shows (Var c $\eqS$ t) $\notin$ set b
+    and (t $\eqS$ Var c) $\notin$ set b
+    and (t $\inS$ Var c) $\notin$ set b
+\end{lstlisting}
+Only one quite trivial invariant needed 
+
 
 \begin{lstlisting}
 definition no_new_subterms b $\equiv$
@@ -372,12 +413,14 @@ definition no_new_subterms b $\equiv$
     $\longrightarrow$ t $\in$ subterms_fm (last b))
 \end{lstlisting}
 
+\begin{lstlisting}
+definition wf_branch b $\equiv$ $\exists$$\phi$. &\expandss{b}{[$\phi$]}&
+\end{lstlisting}
+
+
 \subsection{Building a Model: Realisation of a Branch}
 Idea: keep this short. The formalisation matches the pen-and-paper proof quite closely.
 Show the results in Realisation of an Open Branch.
-
-\subsection{Formalising the Key Technical Lemma}
-Only one quite trivial invariant needed 
 
 \section{An Abstract Specification of the Decision Procedure}
 \todo[inline]{Mention coherence lemma?}

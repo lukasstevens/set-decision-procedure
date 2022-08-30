@@ -93,15 +93,15 @@ proof(cases t rule: height.cases)
     by auto
 qed simp_all
 
-function realization :: "'a \<Rightarrow> V" where
-  "x \<in> P \<Longrightarrow> realization x = vset {I x}"
-| "t \<in> T \<Longrightarrow> realization t = vset (realization ` parents G t)"
-| "x \<notin> P \<union> T \<Longrightarrow> realization x = 0"
+function realize :: "'a \<Rightarrow> V" where
+  "x \<in> P \<Longrightarrow> realize x = vset {I x}"
+| "t \<in> T \<Longrightarrow> realize t = vset (realize ` parents G t)"
+| "x \<notin> P \<union> T \<Longrightarrow> realize x = 0"
   using P_T_partition_verts by auto
 termination
   by (relation "measure (\<lambda>t. card (ancestors G t))") (simp_all add: card_ancestors_strict_mono)
 
-lemma small_realization_parents[simp, intro!]: "small (realization ` parents G t)"
+lemma small_realization_parents[simp, intro!]: "small (realize ` parents G t)"
   using small_parents by auto
 
 lemma lemma1_1:
@@ -117,21 +117,21 @@ qed (use P_T_partition_verts in auto)
 
 
 lemma dominates_if_mem_realization:
-  assumes "\<forall>x \<in> P. \<forall>y \<in> P \<union> T. x \<noteq> y \<longrightarrow> I x \<noteq> realization y"
+  assumes "\<forall>x \<in> P. \<forall>y \<in> P \<union> T. x \<noteq> y \<longrightarrow> I x \<noteq> realize y"
   assumes "s \<in> P \<union> T" "t \<in> P \<union> T"
-  assumes "realization s \<in> elts (realization t)"
-  obtains s' where "s' \<rightarrow>\<^bsub>G\<^esub> t" "realization s = realization s'"
+  assumes "realize s \<in> elts (realize t)"
+  obtains s' where "s' \<rightarrow>\<^bsub>G\<^esub> t" "realize s = realize s'"
   using assms(2-)
-proof(induction t rule: realization.induct)
+proof(induction t rule: realize.induct)
   case (1 x)
   with assms(1) show ?case 
-    by (metis all_not_in_conv elts_of_set insert_iff mem_not_sym realization.simps(1))
+    by (metis all_not_in_conv elts_of_set insert_iff mem_not_sym realize.simps(1))
 qed auto
 
 lemma lemma1_2':
   assumes "inj_on I P"
-  assumes "\<forall>x \<in> P. \<forall>y \<in> P \<union> T. x \<noteq> y \<longrightarrow> I x \<noteq> realization y"
-  assumes "t1 \<in> P \<union> T" "t2 \<in> P \<union> T" "realization t1 = realization t2"
+  assumes "\<forall>x \<in> P. \<forall>y \<in> P \<union> T. x \<noteq> y \<longrightarrow> I x \<noteq> realize y"
+  assumes "t1 \<in> P \<union> T" "t2 \<in> P \<union> T" "realize t1 = realize t2"
   shows "height t1 \<le> height t2"
 proof -
   from assms(3,4) consider "t1 \<in> P" | "t1 \<in> T" "t2 \<in> P" | "t1 \<in> T" "t2 \<in> T"
@@ -145,13 +145,13 @@ proof -
     then show ?thesis
     proof(cases t1 rule: height.cases)
       case (3 t s)
-      have "small (realization ` parents G t1)"
+      have "small (realize ` parents G t1)"
         by blast+
-      with 2 3 assms(5) have "realization ` parents G t1 = {I t2}"
-        using \<open>small (realization ` parents G t1)\<close> by force
+      with 2 3 assms(5) have "realize ` parents G t1 = {I t2}"
+        using \<open>small (realize ` parents G t1)\<close> by force
       moreover from 3 adj_in_verts P_T_partition_verts have "s \<in> P \<union> T"
         by simp
-      then have "I t2 \<noteq> realization s"
+      then have "I t2 \<noteq> realize s"
         using 2 3 assms(2,3,5) by metis
       ultimately show ?thesis
         using 3 by (metis ex_in_conv imageI insert_iff mem_Collect_eq)
@@ -180,9 +180,9 @@ proof -
           case (nP_Suc s)
           with P_T_partition_verts adj_in_verts(1) have "s \<in> P \<union> T"
             by blast
-          from nP_Suc less.prems(1) have "realization s \<in> elts (realization t1)"
+          from nP_Suc less.prems(1) have "realize s \<in> elts (realize t1)"
             by auto
-          then obtain s' where s': "realization s' = realization s" "s' \<rightarrow>\<^bsub>G\<^esub> t2"
+          then obtain s' where s': "realize s' = realize s" "s' \<rightarrow>\<^bsub>G\<^esub> t2"
             using dominates_if_mem_realization \<open>s \<in> P \<union> T\<close> less.prems assms(2)
             by (metis Un_iff)
           then have "s' \<in> P \<union> T"
@@ -203,16 +203,16 @@ proof -
               case (3 _ u)
               then have "u \<in> P \<union> T"
                 using P_T_partition_verts(2) adj_in_verts(1) by blast
-              with 3 that have "realization u \<in> elts (realization s)"
+              with 3 that have "realize u \<in> elts (realize s)"
                 by auto
-              then obtain u' where "u' \<rightarrow>\<^bsub>G\<^esub> s'" "realization u' = realization u"
+              then obtain u' where "u' \<rightarrow>\<^bsub>G\<^esub> s'" "realize u' = realize u"
                 using dominates_if_mem_realization
                 by (metis \<open>s' \<in> P \<union> T\<close> \<open>u \<in> P \<union> T\<close> assms(2) s'(1))
 
               then show ?thesis
-                using \<open>realization u \<in> elts (realization s)\<close> \<open>s' \<in> P\<close> assms(2) s'(1)
+                using \<open>realize u \<in> elts (realize s)\<close> \<open>s' \<in> P\<close> assms(2) s'(1)
                 by (metis P_T_partition_verts(2)
-                    adj_in_verts(1) elts_of_set mem_not_refl realization.simps(1)
+                    adj_in_verts(1) elts_of_set mem_not_refl realize.simps(1)
                     singletonD small_empty small_insert)
             qed auto
           qed
@@ -228,23 +228,23 @@ qed
 
 lemma lemma1_2:
   assumes "inj_on I P"
-  assumes "\<forall>x \<in> P. \<forall>y \<in> P \<union> T. x \<noteq> y \<longrightarrow> I x \<noteq> realization y"
-  assumes "t1 \<in> P \<union> T" "t2 \<in> P \<union> T" "realization t1 = realization t2"
+  assumes "\<forall>x \<in> P. \<forall>y \<in> P \<union> T. x \<noteq> y \<longrightarrow> I x \<noteq> realize y"
+  assumes "t1 \<in> P \<union> T" "t2 \<in> P \<union> T" "realize t1 = realize t2"
   shows "height t1 = height t2"
   using assms lemma1_2' le_antisym unfolding inj_on_def by metis
 
 lemma lemma1_3:
   assumes "inj_on I P"
-  assumes "\<forall>x \<in> P. \<forall>y \<in> P \<union> T. x \<noteq> y \<longrightarrow> I x \<noteq> realization y"
-  assumes "s \<in> P \<union> T" "t \<in> P \<union> T" "realization s \<in> elts (realization t)"
+  assumes "\<forall>x \<in> P. \<forall>y \<in> P \<union> T. x \<noteq> y \<longrightarrow> I x \<noteq> realize y"
+  assumes "s \<in> P \<union> T" "t \<in> P \<union> T" "realize s \<in> elts (realize t)"
   shows "height s < height t"
 proof -
   from assms dominates_if_mem_realization obtain s' where
-    s': "realization s' = realization s" "s' \<rightarrow>\<^bsub>G\<^esub> t" by metis
+    s': "realize s' = realize s" "s' \<rightarrow>\<^bsub>G\<^esub> t" by metis
   then have "s' \<in> P \<union> T"
     using adj_in_verts P_T_partition_verts by blast
   from assms(2-5) have "t \<in> T"
-    by (metis elts_of_set mem_not_sym realization.cases realization.simps(1) singletonD
+    by (metis elts_of_set mem_not_sym realize.cases realize.simps(1) singletonD
               small_empty small_insert)
   with lemma1_1[OF \<open>s' \<in> P \<union> T\<close>] assms s' have "height s' < height t"
     by auto
@@ -255,8 +255,8 @@ proof -
 qed
 
 lemma card_realization_T_less_card_verts:
-  "t \<in> T \<Longrightarrow> card (elts (realization t)) < card (P \<union> T)"
-proof(induction t rule: realization.induct)
+  "t \<in> T \<Longrightarrow> card (elts (realize t)) < card (P \<union> T)"
+proof(induction t rule: realize.induct)
   case (2 t)
   then have "t \<in> verts G"
     using P_T_partition_verts by simp
@@ -264,21 +264,21 @@ proof(induction t rule: realization.induct)
     using adj_not_same by auto
   from psubset_card_mono[OF _ this] have "card (parents G t) < card (verts G)"
     by simp
-  then have "card (realization ` parents G t) < card (verts G)"
-    using card_image_le[OF finite_parents, where ?f=realization and ?s1=t] by linarith 
+  then have "card (realize ` parents G t) < card (verts G)"
+    using card_image_le[OF finite_parents, where ?f=realize and ?s1=t] by linarith 
   with 2 show ?case
     using P_T_partition_verts(2) by auto
 qed (use P_T_partition_verts in auto)
 
 lemma card_realization_P:
-  "p \<in> P \<Longrightarrow> card (elts (realization p)) = 1"
+  "p \<in> P \<Longrightarrow> card (elts (realize p)) = 1"
   by simp
 
 lemma card_elts_realization_T:
-  assumes "t \<in> T" "x \<in> elts (realization t)"
+  assumes "t \<in> T" "x \<in> elts (realize t)"
   shows "card (elts x) < card (P \<union> T)"
 proof -
-  obtain s where s: "x = realization s" "s \<in> parents G t"
+  obtain s where s: "x = realize s" "s \<in> parents G t"
     using assms by force
   then have "s \<in> P \<union> T"
     using P_T_partition_verts(2) adj_in_verts(1) by blast

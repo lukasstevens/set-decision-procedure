@@ -37,7 +37,7 @@
 \lstset{%
   language=isabelle,
   escapeinside={&}{&},
-  columns=fixed,
+  columns=\lst@ifdisplaystyle{fullflexible}\else{fixed}\fi,,
   extendedchars,
   basewidth={0.5em,0.45em},
   basicstyle=\ttfamily,
@@ -90,8 +90,8 @@
 \newcommand{\diffS}{-_\text{s}}
 \newcommand{\inS}{\in_\text{s}}
 \newcommand{\notinS}{\notin_\text{s}}
-\newcommand{\eqS}{\approx_\text{s}}
-\newcommand{\neqS}{{\not\approx}_\text{s}}
+\newcommand{\eqS}{=_\text{s}}
+\newcommand{\neqS}{\neq_\text{s}}
 \newcommand{\subseteqS}{\sqsubseteq_\text{s}}
 \newcommand{\Ist}{I$_\text{st}$}
 \newcommand{\Isa}{I$_\text{sa}$}
@@ -149,9 +149,9 @@ Finally, we remark that \textbf{iff} is equivalent to \lstinline!$=$! on type \l
 \section{Syntax and Semantics of MLSS\label{sec:semantics}}
 \subsection{Syntax}
 At the heart of \MLSS{}, we have the type of set terms which includes the empty set and variables as well as the operations union, intersection, set difference, and \lstinline!Single!, which represents a singleton set containing the argument.
-\todo[inline]{Syntax for \lstinline!Single!?}
+\todo[inline]{Syntax for \lstinline!Single!?, overloading of \lstinline!vars_term!, \lstinline!vars_atom!}
 \begin{lstlisting}
-datatype 'a pset_term =
+datatype (vars: 'a) pset_term =
   $\emptyset$ | Var 'a | Single ('a pset_term)
 | 'a pset_term $\unionS$ 'a pset_term
 | 'a pset_term $\interS$ 'a pset_term
@@ -159,7 +159,7 @@ datatype 'a pset_term =
 \end{lstlisting}
 We can combine two set terms to form a set atom by using the membership or the equality operator.
 \begin{lstlisting}
-datatype 'a pset_atom =
+datatype (vars: 'a) pset_atom =
   'a pset_term $\inS$ 'a pset_term
 | 'a pset_term $\eqS$ 'a pset_term
 \end{lstlisting}
@@ -177,19 +177,18 @@ type_synonym 'a pset_fm = 'a pset_atom fm
 We will sometimes drop the \lstinline!Atom! constructor to reduce clutter.
 Additionally, we use the abbreviations \lstinline!s $\notinS$ t! and \lstinline!s $\neqS$ t! to denote \lstinline!&\fmNeg{\fmAtom{} (s $\inS$ t)}&! and \lstinline!&\fmNeg{\fmAtom{} (s $\eqS$ t)}&!, respectively.
 Note that Isabelle's datatype package automatically defines a function \lstinline!atoms :: 'a fm $\Rightarrow$ 'a set! that allows us to obtain all set atoms in a formula.
-Similarly, it defines a function \lstinline!set_pset_atom :: 'a pset_atom $\Rightarrow$ 'a set! with which we can extract all the variable names in a set atom.
-We combine these functions in order to define \lstinline!vars_fm! that extracts all the variable names occuring in a set formula.
-\todo[inline]{Motivation: one rule introduces new variables}
+We combine these functions in order to define \lstinline!vars! that extracts all the variable names occuring in a set formula.
+\todo[inline]{Motivation: one rule introduces new variables, Mention vars polymorphic}
 \begin{lstlisting}
-definition vars_fm :: 'a pset_fm $\Rightarrow$ 'a set where
-  vars_fm $\phi$ $\equiv$ $\bigcup$(set_pset_atom ` atoms $\phi$)
+definition vars :: 'a pset_fm $\Rightarrow$ 'a set where
+  vars $\phi$ $\equiv$ $\bigcup$(vars ` atoms $\phi$)
 \end{lstlisting}
 In addition to the variable names that appear in a formula, we will later also need to obtain those set terms that occur as subterms in a formula. 
 We first define a function that collects the subterms of a set term.
 \todo[inline]{Motivation: linear rules don't introduce subterms}
 \begin{lstlisting}
-fun subterms ::
-    'a pset_term $\Rightarrow$ 'a pset_term set where
+fun subterms :: 'a pset_term $\Rightarrow$ 'a pset_term set
+where
   subterms $\emptyset$ = {$\emptyset$}
 | subterms (Var x) = {Var x}
 | subterms (s $\unionS$ t) =
@@ -203,18 +202,16 @@ fun subterms ::
 \end{lstlisting}
 The subterms of an atom are then the subterms of those terms that make up the atom.
 \begin{lstlisting}
-fun subterms_atom ::
-      'a pset_atom $\Rightarrow$ 'a pset_term set where
-  subterms_atom (s $\inS$ t) =
-    subterms s $\cup$ subterms t
-| subterms_atom (s $\eqS$ t) =
-    subterms s $\cup$ subterms t
+fun subterms :: 'a pset_atom $\Rightarrow$ 'a pset_term set
+where
+  subterms (s $\inS$ t) = subterms s $\cup$ subterms t
+| subterms (s $\eqS$ t) = subterms s $\cup$ subterms t
 \end{lstlisting}
 Ultimately, we lift this to formulae by using \lstinline!atoms! again.
 \begin{lstlisting}
-definition subterms_fm ::
+definition subterms ::
     'a pset_fm $\Rightarrow$ 'a pset_term set where
-  subterms_fm $\phi$ $\equiv$ $\bigcup$(subterms_atom ` atoms $\phi$)
+  subterms $\phi$ $\equiv$ $\bigcup$(subterms ` atoms $\phi$)
 \end{lstlisting}
 The last function that we define computes the subformulae of a formula.
 \begin{lstlisting}
@@ -281,12 +278,12 @@ type_synonym 'a branch = 'a pset_fm list
 \end{lstlisting}
 We now lift the functions that extract the variables respectively subterms of formulae to branches.
 \begin{lstlisting}
-definition subterms_branch ::
+definition subterms ::
     'a branch $\Rightarrow$ 'a pset_term set where
-  subterms_branch b $\equiv$ $\bigcup$(subterms_fm ` set b)
+  subterms b $\equiv$ $\bigcup$(subterms ` set b)
 
-definition vars_branch :: 'a branch $\Rightarrow$ 'a set 
-  vars_branch b $\equiv$ $\bigcup$(vars_fm ` set b)
+definition vars :: 'a branch $\Rightarrow$ 'a set 
+  vars b $\equiv$ $\bigcup$(vars ` set b)
 \end{lstlisting}
 In the standard tableau calculus for propositional logic, a branch is called \textit{closed} if it contains both the negation of a formula and the formula itself;
 conversely, it is called \textit{open} if it is not closed.
@@ -316,7 +313,7 @@ for example, the rule
 \end{center}
 may only be used under the condition
 \begin{center}
-  \lstinline!t$_\text{1}$ $\unionS$ t$_\text{2}$ $\in$ subterms_fm (last b)!.
+  \lstinline!t$_\text{1}$ $\unionS$ t$_\text{2}$ $\in$ subterms (last b)!.
 \end{center}
 \todo[inline]{Explain this restriction in more detail.}
 This ensures that repeated application of linear rules eventually results in a \textit{linearly saturated} branch, i.e.\ a branch where no application of linear rules would produce new formulae.
@@ -341,44 +338,45 @@ definition sat b $\equiv$ lin_sat b $\land$ ($\nexists$bs'. &\fexpands{bs'}{b}&)
 \section{Completeness of the Calculus}
 Once a branch \lstinline!b! is saturated and open at the same time, we are unable to expand the branch further in our calculus.
 Thus, to establish completeness of the calculus, we must construct a model \lstinline!M! such that \lstinline!M $\models$ $\phi$! for all formulae \lstinline!$\phi$ $\in$ set b!.
-Our model is defined in terms of the following three collections.
+The model is defined in terms of the following three collections.
+\todo[inline]{explain wits, explain that wits' are those whose value is not fixed by literals in b}
 \begin{lstlisting}
-definition params :: 'a branch $\Rightarrow$ 'a set where
-  params b $\equiv$ vars_branch b - vars_fm (last b)
+definition wits :: 'a branch $\Rightarrow$ 'a set where
+  wits b $\equiv$ vars b - vars (last b)
 
-definition params' :: 'a branch $\Rightarrow$ 'a set where
-  params' b $\equiv$
-    {c $\in$ params b. $\forall$t $\in$ subterms_fm (last b).
+definition wits' :: 'a branch $\Rightarrow$ 'a set where
+  wits' b $\equiv$
+    {c $\in$ wits b. $\forall$t $\in$ subterms (last b).
       AT (Var c $\eqS$ t) $\notin$ set b $\land$
       AT (t $\eqS$ Var c) $\notin$ set b} 
 
 definition subterms_branch' ::
     'a branch $\Rightarrow$ 'a pset_term set where
   subterms_branch' b $\equiv$
-    subterms_fm (last b) $\cup$ 
-    Var ` (params b - params' b)
+    subterms (last b) $\cup$ 
+    Var ` (wits b - wits' b)
 \end{lstlisting}
-The goal is to construct a syntactic model that is derived from the membership literals \lstinline!(s $\inS$ t) $\in$ set b!.
+We aim to construct a syntactic model that is derived from the membership literals \lstinline!(s $\inS$ t) $\in$ set b!.
 To this end, we construct a graph whose vertices are set terms and there is an edge from \lstinline!s! to \lstinline!t! in the graph if, and only if, \lstinline!(s $\inS$ t) $\in$ set b!.
 Note that we use \citeauthor{graph_theory_afp}'s graph library~\cite{graph_theory_afp} where a graph is represented as a record of vertices, arcs (directed edges), and two functions \lstinline!tail! and \lstinline!head! that map an arc to its source respectively target vertex.
 \begin{lstlisting}
 definition bgraph b $\equiv$
-  let vs = Var ` params' b $\cup$ subterms_branch' b
+  let vs = Var ` wits' b $\cup$ subterms_branch' b
   in $\llparenthesis$ verts = vs,
      &$\phantom{\llparenthesis}$& arcs = {(s, t). (s $\inS$ t) $\in$ set b},
      &$\phantom{\llparenthesis}$& tail = fst, head = snd $\rrparenthesis$
 \end{lstlisting}
 The model is defined in terms of a \textit{realization} function relative to this graph.
-Observe that the vertices are partitioned into two sets, a collection of parameters \lstinline!Var ` params' b! and the rest of the set terms \lstinline!subterms_branch' b!, which are treated differently by the realization.
+Observe that the vertices are partitioned into two sets, a collection of witnesses \lstinline!Var ` wits' b! and the rest of the set terms \lstinline!subterms_branch' b!, which are treated differently by the realization.
 Terms in the latter set are evaluated in accordance to the structure of the graph, i.e.\ the realization of a vertex is defined as the union of the realizations of the parent vertices. 
-For the former set, we fix a function \lstinline!I! that assigns the elements \lstinline!x $\in$ Var ` params' b! pairwise distinct sets with cardinality greater than that of the vertices and then return the singleton set \lstinline!vset {I x}!.
-The cardinality constraint ensures that realizations are distinct between those two sets.  
+For the former set, we choose a function \lstinline!I! that assigns the elements \lstinline!x $\in$ Var ` wits' b! pairwise distinct sets with cardinality greater than that of the vertices.
+We can always choose such a function since we assume an infinite universe of variables.
+Then, we return the singleton set \lstinline!vset {I x}!, which, together with the cardinality constraint, ensures that realizations are distinct between those witnesses and the set terms.  
 \begin{lstlisting}
 abbreviation parents G s $\equiv$ {u. u $\rightarrow_\text{G}$ s}
 
 function realize :: 'a pset_term $\Rightarrow$ V where
-  x $\in$ Var ` params' b
-  $\Longrightarrow$ realize x = vset {I x}
+  x $\in$ Var ` wits' b $\Longrightarrow$ realize x = vset {I x}
 | x $\in$ subterms_branch' b
   $\Longrightarrow$ realize t =
   &$\phantom{\Longrightarrow}$&   vset {realize ` parents (bgraph b) s}
@@ -386,7 +384,10 @@ function realize :: 'a pset_term $\Rightarrow$ V where
 \end{lstlisting}
 Since the function is recursive, we need to ensure that it terminates for it to be well-defined.
 The assumption that \lstinline!b! is open implies that there are no membership cycles and thus \lstinline!bgraph b! is acyclic.
-Together with the fact that \lstinline!bgraph b! is finite, we conclude that we can only recurse a finite number of times until we encounter a vertex that has no parents.
+Now, consider the ancestors \lstinline!av! of a vertex \lstinline!v!, which are those vertices from which we can reach \lstinline!v!.
+Due to acyclicity, it holds that the ancestors \lstinline!ap! of a parent \lstinline!p! of \lstinline!v! are a subset of \lstinline!av!.
+They are also a proper subset of \lstinline!av! since \lstinline!p! is an ancestor of \lstinline!v! but not of \lstinline!p! itself.
+Together with the fact that \lstinline!bgraph b! is finite, it follows that the cardinality of the ancestors decreases in each recursive call thus proving the termination of \lstinline!realize!.
 
 \subsection{Formalising the Key Technical Lemma}
 \begin{lstlisting}
@@ -396,10 +397,9 @@ fun is_literal :: 'a fm $\Rightarrow$ bool where
 | is_literal _ = False
 \end{lstlisting}
 \begin{lstlisting}
-lemma
+lemma lemma_2:
   assumes wf_branch b
-  assumes c $\in$ params' b
-      and t $\in$ params_subterms b
+  assumes c $\in$ wits' b and t $\in$ subterms b
   shows (Var c $\eqS$ t) $\notin$ set b
     and (t $\eqS$ Var c) $\notin$ set b
     and (t $\inS$ Var c) $\notin$ set b
@@ -409,8 +409,8 @@ Only one quite trivial invariant needed
 
 \begin{lstlisting}
 definition no_new_subterms b $\equiv$
-  $\forall$t $\in$ subterms_branch b. t $\notin$ Var ` params b
-    $\longrightarrow$ t $\in$ subterms_fm (last b))
+  $\forall$t $\in$ subterms b. t $\notin$ Var ` wits b
+    $\longrightarrow$ t $\in$ subterms (last b))
 \end{lstlisting}
 
 \begin{lstlisting}
@@ -419,8 +419,28 @@ definition wf_branch b $\equiv$ $\exists$$\phi$. &\expandss{b}{[$\phi$]}&
 
 
 \subsection{Building a Model: Realisation of a Branch}
-Idea: keep this short. The formalisation matches the pen-and-paper proof quite closely.
-Show the results in Realisation of an Open Branch.
+Let \lstinline!b! be an open and saturated branch, i.e.\ it holds that \lstinline!sat b $\land$ bopen b!;
+then, the following propositions hold:
+\begin{itemize}
+  \item We have \lstinline!realize s $=$ realize t! if \lstinline!s $\eqS$ t! is in \lstinline!b!.
+  \item We have \lstinline!realize s $\neq$ realize t! if \lstinline!s $\neqS$ t! is in \lstinline!b!.
+  \item We have \lstinline!realize s $\in$ elts (realize t)! if it holds that \lstinline!(s $\inS$ t)! is in \lstinline!b!. 
+  \item We have \lstinline!realize s $\notin$ elts (realize t)! if it holds that \lstinline!(s $\notinS$ t)! is in \lstinline!b!. 
+\end{itemize}
+
+We extend this to the set term operators.
+Let \lstinline!b! be an open and saturated branch.
+\begin{itemize}
+  \item If \lstinline!$\emptyset$ $\in$ subterms b!, then \lstinline!realize $\emptyset$ = 0!.
+  \item Let \lstinline!$\star_\text{s}$ $\in$ {$\unionS$, $\diffS$, $\interS$}!. If \lstinline!s $\star_\text{s}$ t $\in$ subterms b!, then
+    \begin{center}
+    \lstinline!realize (s $\star_\text{s}$ t) = realize s $\star$ realize t!.
+    \end{center}
+  \item If \lstinline!Single t $\in$ subterms b!, then
+    \begin{center}
+    \lstinline!realize (Single t) = vset {realize t}!.
+    \end{center}
+\end{itemize}
 
 \section{An Abstract Specification of the Decision Procedure}
 \todo[inline]{Mention coherence lemma?}
@@ -444,7 +464,7 @@ definition mlss_proc :: 'a pset_fm $\Rightarrow$ bool where
 \subsection{Termination}
 Maybe interesting: technical lemma that allows to obtain the point at which a parameter was introduced.
 \subsection{Soundness}
-Interesting: The model changes because auf new parameters.
+Interesting: The model changes because auf new witnesses.
 Maybe move this to the chapter on the calculus?
 \todo[inline]{Show \lstinline!memberCycle! case? This requires \lstinline!member_seq!.}
 \subsection{Lifting the Completeness of the Calculus}

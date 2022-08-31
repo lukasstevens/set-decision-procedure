@@ -23,9 +23,9 @@ abbreviation "bopen branch \<equiv> \<not> bclosed branch"
 
 section \<open>Linear Expansion Rules\<close>
 
-fun tlvl_terms_atom :: "'a pset_atom \<Rightarrow> 'a pset_term set" where
-  "tlvl_terms_atom (t1 \<in>\<^sub>s t2) = {t1, t2}"
-| "tlvl_terms_atom (t1 \<approx>\<^sub>s t2) = {t1, t2}"
+fun tlvl_terms :: "'a pset_atom \<Rightarrow> 'a pset_term set" where
+  "tlvl_terms (t1 \<in>\<^sub>s t2) = {t1, t2}"
+| "tlvl_terms (t1 \<approx>\<^sub>s t2) = {t1, t2}"
 
 fun subst_tlvl :: "'a pset_term \<Rightarrow> 'a pset_term \<Rightarrow> 'a pset_atom \<Rightarrow> 'a pset_atom" where
   "subst_tlvl t1 t2 (s1 \<in>\<^sub>s s2) =
@@ -44,56 +44,56 @@ inductive lexpands_fm :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" 
 
 inductive lexpands_un :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
   "AF (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set b \<Longrightarrow> lexpands_un [AF (s \<in>\<^sub>s t1), AF (s \<in>\<^sub>s t2)] b"
-| "\<lbrakk> AT (s \<in>\<^sub>s t1) \<in> set b; t1 \<squnion>\<^sub>s t2 \<in> subterms_fm (last b) \<rbrakk>
+| "\<lbrakk> AT (s \<in>\<^sub>s t1) \<in> set b; t1 \<squnion>\<^sub>s t2 \<in> subterms (last b) \<rbrakk>
     \<Longrightarrow> lexpands_un [AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2)] b"
-| "\<lbrakk> AT (s \<in>\<^sub>s t2) \<in> set b; t1 \<squnion>\<^sub>s t2 \<in> subterms_fm (last b) \<rbrakk>
+| "\<lbrakk> AT (s \<in>\<^sub>s t2) \<in> set b; t1 \<squnion>\<^sub>s t2 \<in> subterms (last b) \<rbrakk>
     \<Longrightarrow> lexpands_un [AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2)] b"
 | "\<lbrakk> AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set b; AF (s \<in>\<^sub>s t1) \<in> set b \<rbrakk>
     \<Longrightarrow> lexpands_un [AT (s \<in>\<^sub>s t2)] b"
 | "\<lbrakk> AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set b; AF (s \<in>\<^sub>s t2) \<in> set b \<rbrakk>
     \<Longrightarrow> lexpands_un [AT (s \<in>\<^sub>s t1)] b"
-| "\<lbrakk> AF (s \<in>\<^sub>s t1) \<in> set b; AF (s \<in>\<^sub>s t2) \<in> set b; t1 \<squnion>\<^sub>s t2 \<in> subterms_fm (last b) \<rbrakk>
+| "\<lbrakk> AF (s \<in>\<^sub>s t1) \<in> set b; AF (s \<in>\<^sub>s t2) \<in> set b; t1 \<squnion>\<^sub>s t2 \<in> subterms (last b) \<rbrakk>
     \<Longrightarrow> lexpands_un [AF (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2)] b"
 
 inductive lexpands_int :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
   "AT (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) \<in> set b \<Longrightarrow> lexpands_int [AT (s \<in>\<^sub>s t1), AT (s \<in>\<^sub>s t2)] b"
-| "\<lbrakk> AF (s \<in>\<^sub>s t1) \<in> set b; t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm (last b) \<rbrakk>
+| "\<lbrakk> AF (s \<in>\<^sub>s t1) \<in> set b; t1 \<sqinter>\<^sub>s t2 \<in> subterms (last b) \<rbrakk>
     \<Longrightarrow> lexpands_int [AF (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2)] b"
-| "\<lbrakk> AF (s \<in>\<^sub>s t2) \<in> set b; t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm (last b) \<rbrakk>
+| "\<lbrakk> AF (s \<in>\<^sub>s t2) \<in> set b; t1 \<sqinter>\<^sub>s t2 \<in> subterms (last b) \<rbrakk>
     \<Longrightarrow> lexpands_int [AF (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2)] b"
 | "\<lbrakk> AF (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) \<in> set b; AT (s \<in>\<^sub>s t1) \<in> set b \<rbrakk>
     \<Longrightarrow> lexpands_int [AF (s \<in>\<^sub>s t2)] b"
 | "\<lbrakk> AF (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) \<in> set b; AT (s \<in>\<^sub>s t2) \<in> set b \<rbrakk>
     \<Longrightarrow> lexpands_int [AF (s \<in>\<^sub>s t1)] b"
-| "\<lbrakk> AT (s \<in>\<^sub>s t1) \<in> set b; AT (s \<in>\<^sub>s t2) \<in> set b; t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm (last b) \<rbrakk>
+| "\<lbrakk> AT (s \<in>\<^sub>s t1) \<in> set b; AT (s \<in>\<^sub>s t2) \<in> set b; t1 \<sqinter>\<^sub>s t2 \<in> subterms (last b) \<rbrakk>
     \<Longrightarrow> lexpands_int [AT (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2)] b"
 
 inductive lexpands_diff :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
   "AT (s \<in>\<^sub>s t1 -\<^sub>s t2) \<in> set b \<Longrightarrow> lexpands_diff [AT (s \<in>\<^sub>s t1), AF (s \<in>\<^sub>s t2)] b"
-| "\<lbrakk> AF (s \<in>\<^sub>s t1) \<in> set b; t1 -\<^sub>s t2 \<in> subterms_fm (last b) \<rbrakk>
+| "\<lbrakk> AF (s \<in>\<^sub>s t1) \<in> set b; t1 -\<^sub>s t2 \<in> subterms (last b) \<rbrakk>
     \<Longrightarrow> lexpands_diff [AF (s \<in>\<^sub>s t1 -\<^sub>s t2)] b"
-| "\<lbrakk> AT (s \<in>\<^sub>s t2) \<in> set b; t1 -\<^sub>s t2 \<in> subterms_fm (last b) \<rbrakk>
+| "\<lbrakk> AT (s \<in>\<^sub>s t2) \<in> set b; t1 -\<^sub>s t2 \<in> subterms (last b) \<rbrakk>
     \<Longrightarrow> lexpands_diff [AF (s \<in>\<^sub>s t1 -\<^sub>s t2)] b"
 | "\<lbrakk> AF (s \<in>\<^sub>s t1 -\<^sub>s t2) \<in> set b; AT (s \<in>\<^sub>s t1) \<in> set b \<rbrakk>
     \<Longrightarrow> lexpands_diff [AT (s \<in>\<^sub>s t2)] b"
 | "\<lbrakk> AF (s \<in>\<^sub>s t1 -\<^sub>s t2) \<in> set b; AF (s \<in>\<^sub>s t2) \<in> set b \<rbrakk>
     \<Longrightarrow> lexpands_diff [AF (s \<in>\<^sub>s t1)] b"
-| "\<lbrakk> AT (s \<in>\<^sub>s t1) \<in> set b; AF (s \<in>\<^sub>s t2) \<in> set b; t1 -\<^sub>s t2 \<in> subterms_fm (last b) \<rbrakk>
+| "\<lbrakk> AT (s \<in>\<^sub>s t1) \<in> set b; AF (s \<in>\<^sub>s t2) \<in> set b; t1 -\<^sub>s t2 \<in> subterms (last b) \<rbrakk>
     \<Longrightarrow> lexpands_diff [AT (s \<in>\<^sub>s t1 -\<^sub>s t2)] b"
 
 inductive lexpands_single :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
-  "Single t1 \<in> subterms_fm (last b) \<Longrightarrow> lexpands_single [AT (t1 \<in>\<^sub>s Single t1)] b"
+  "Single t1 \<in> subterms (last b) \<Longrightarrow> lexpands_single [AT (t1 \<in>\<^sub>s Single t1)] b"
 | "AT (s \<in>\<^sub>s Single t1) \<in> set b \<Longrightarrow> lexpands_single [AT (s \<approx>\<^sub>s t1)] b"
 | "AF (s \<in>\<^sub>s Single t1) \<in> set b \<Longrightarrow> lexpands_single [AF (s \<approx>\<^sub>s t1)] b"
 
 inductive lexpands_eq :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
-  "\<lbrakk> AT (t1 \<approx>\<^sub>s t2) \<in> set b; AT l \<in> set b; t1 \<in> tlvl_terms_atom l \<rbrakk>
+  "\<lbrakk> AT (t1 \<approx>\<^sub>s t2) \<in> set b; AT l \<in> set b; t1 \<in> tlvl_terms l \<rbrakk>
     \<Longrightarrow> lexpands_eq [AT (subst_tlvl t1 t2 l)] b"
-| "\<lbrakk> AT (t1 \<approx>\<^sub>s t2) \<in> set b; AF l \<in> set b; t1 \<in> tlvl_terms_atom l \<rbrakk>
+| "\<lbrakk> AT (t1 \<approx>\<^sub>s t2) \<in> set b; AF l \<in> set b; t1 \<in> tlvl_terms l \<rbrakk>
     \<Longrightarrow> lexpands_eq [AF (subst_tlvl t1 t2 l)] b"
-| "\<lbrakk> AT (t1 \<approx>\<^sub>s t2) \<in> set b; AT l \<in> set b; t2 \<in> tlvl_terms_atom l \<rbrakk>
+| "\<lbrakk> AT (t1 \<approx>\<^sub>s t2) \<in> set b; AT l \<in> set b; t2 \<in> tlvl_terms l \<rbrakk>
     \<Longrightarrow> lexpands_eq [AT (subst_tlvl t2 t1 l)] b"
-| "\<lbrakk> AT (t1 \<approx>\<^sub>s t2) \<in> set b; AF l \<in> set b; t2 \<in> tlvl_terms_atom l \<rbrakk>
+| "\<lbrakk> AT (t1 \<approx>\<^sub>s t2) \<in> set b; AF l \<in> set b; t2 \<in> tlvl_terms l \<rbrakk>
     \<Longrightarrow> lexpands_eq [AF (subst_tlvl t2 t1 l)] b"
 | "\<lbrakk> AT (s \<in>\<^sub>s t) \<in> set b; AF (s' \<in>\<^sub>s t) \<in> set b \<rbrakk>
     \<Longrightarrow> lexpands_eq [AF (s \<approx>\<^sub>s s')] b"
@@ -106,7 +106,7 @@ lemma lexpands_eq_induct'[consumes 1, case_names subst neq]:
   assumes "lexpands_eq b' b"
   assumes "\<And>t1 t2 t1' t2' p l b. 
       \<lbrakk> AT (t1 \<approx>\<^sub>s t2) \<in> set b; polarise p (Atom l) \<in> set b;
-       (t1', t2') \<in> {(t1, t2), (t2, t1)}; t1' \<in> tlvl_terms_atom l \<rbrakk>
+       (t1', t2') \<in> {(t1, t2), (t2, t1)}; t1' \<in> tlvl_terms l \<rbrakk>
       \<Longrightarrow> P [polarise p (Atom (subst_tlvl t1' t2' l))] b"
   assumes "\<And>s t s' b. \<lbrakk> AT (s \<in>\<^sub>s t) \<in> set b; AF (s' \<in>\<^sub>s t) \<in> set b \<rbrakk> \<Longrightarrow> P [AF (s \<approx>\<^sub>s s')] b"
   shows "P b' b"
@@ -133,30 +133,30 @@ lemma lexpands_induct[consumes 1]:
     (\<And>p q b. Neg (And p q) \<in> set b \<Longrightarrow> q \<in> set b \<Longrightarrow> P [Neg p] b) \<Longrightarrow>
     (\<And>p q b. Neg (Neg p) \<in> set b \<Longrightarrow> P [p] b) \<Longrightarrow>
     (\<And>s t1 t2 b. AF (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set b \<Longrightarrow> P [AF (s \<in>\<^sub>s t1), AF (s \<in>\<^sub>s t2)] b) \<Longrightarrow>
-    (\<And>s t1 b t2. AT (s \<in>\<^sub>s t1) \<in> set b \<Longrightarrow> t1 \<squnion>\<^sub>s t2 \<in> subterms_fm (last b) \<Longrightarrow> P [AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2)] b) \<Longrightarrow>
-    (\<And>s t2 b t1. AT (s \<in>\<^sub>s t2) \<in> set b \<Longrightarrow> t1 \<squnion>\<^sub>s t2 \<in> subterms_fm (last b) \<Longrightarrow> P [AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2)] b) \<Longrightarrow>
+    (\<And>s t1 b t2. AT (s \<in>\<^sub>s t1) \<in> set b \<Longrightarrow> t1 \<squnion>\<^sub>s t2 \<in> subterms (last b) \<Longrightarrow> P [AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2)] b) \<Longrightarrow>
+    (\<And>s t2 b t1. AT (s \<in>\<^sub>s t2) \<in> set b \<Longrightarrow> t1 \<squnion>\<^sub>s t2 \<in> subterms (last b) \<Longrightarrow> P [AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2)] b) \<Longrightarrow>
     (\<And>s t1 t2 b. AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set b \<Longrightarrow> AF (s \<in>\<^sub>s t1) \<in> set b \<Longrightarrow> P [AT (s \<in>\<^sub>s t2)] b) \<Longrightarrow>
     (\<And>s t1 t2 b. AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set b \<Longrightarrow> AF (s \<in>\<^sub>s t2) \<in> set b \<Longrightarrow> P [AT (s \<in>\<^sub>s t1)] b) \<Longrightarrow>
-    (\<And>s t1 b t2. AF (s \<in>\<^sub>s t1) \<in> set b \<Longrightarrow> AF (s \<in>\<^sub>s t2) \<in> set b \<Longrightarrow> t1 \<squnion>\<^sub>s t2 \<in> subterms_fm (last b) \<Longrightarrow> P [AF (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2)] b) \<Longrightarrow>
+    (\<And>s t1 b t2. AF (s \<in>\<^sub>s t1) \<in> set b \<Longrightarrow> AF (s \<in>\<^sub>s t2) \<in> set b \<Longrightarrow> t1 \<squnion>\<^sub>s t2 \<in> subterms (last b) \<Longrightarrow> P [AF (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2)] b) \<Longrightarrow>
     (\<And>s t1 t2 b. AT (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) \<in> set b \<Longrightarrow> P [AT (s \<in>\<^sub>s t1), AT (s \<in>\<^sub>s t2)] b) \<Longrightarrow>
-    (\<And>s t1 b t2. AF (s \<in>\<^sub>s t1) \<in> set b \<Longrightarrow> t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm (last b) \<Longrightarrow> P [AF (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2)] b) \<Longrightarrow>
-    (\<And>s t2 b t1. AF (s \<in>\<^sub>s t2) \<in> set b \<Longrightarrow> t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm (last b) \<Longrightarrow> P [AF (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2)] b) \<Longrightarrow>
+    (\<And>s t1 b t2. AF (s \<in>\<^sub>s t1) \<in> set b \<Longrightarrow> t1 \<sqinter>\<^sub>s t2 \<in> subterms (last b) \<Longrightarrow> P [AF (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2)] b) \<Longrightarrow>
+    (\<And>s t2 b t1. AF (s \<in>\<^sub>s t2) \<in> set b \<Longrightarrow> t1 \<sqinter>\<^sub>s t2 \<in> subterms (last b) \<Longrightarrow> P [AF (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2)] b) \<Longrightarrow>
     (\<And>s t1 t2 b. AF (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) \<in> set b \<Longrightarrow> AT (s \<in>\<^sub>s t1) \<in> set b \<Longrightarrow> P [AF (s \<in>\<^sub>s t2)] b) \<Longrightarrow>
     (\<And>s t1 t2 b. AF (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2) \<in> set b \<Longrightarrow> AT (s \<in>\<^sub>s t2) \<in> set b \<Longrightarrow> P [AF (s \<in>\<^sub>s t1)] b) \<Longrightarrow>
-    (\<And>s t1 b t2. AT (s \<in>\<^sub>s t1) \<in> set b \<Longrightarrow> AT (s \<in>\<^sub>s t2) \<in> set b \<Longrightarrow> t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm (last b) \<Longrightarrow> P [AT (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2)] b) \<Longrightarrow>
+    (\<And>s t1 b t2. AT (s \<in>\<^sub>s t1) \<in> set b \<Longrightarrow> AT (s \<in>\<^sub>s t2) \<in> set b \<Longrightarrow> t1 \<sqinter>\<^sub>s t2 \<in> subterms (last b) \<Longrightarrow> P [AT (s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2)] b) \<Longrightarrow>
     (\<And>s t1 t2 b. AT (s \<in>\<^sub>s t1 -\<^sub>s t2) \<in> set b \<Longrightarrow> P [AT (s \<in>\<^sub>s t1),  AF (s \<in>\<^sub>s t2)] b) \<Longrightarrow>
-    (\<And>s t1 b t2. AF (s \<in>\<^sub>s t1) \<in> set b \<Longrightarrow> t1 -\<^sub>s t2 \<in> subterms_fm (last b) \<Longrightarrow> P [AF (s \<in>\<^sub>s t1 -\<^sub>s t2)] b) \<Longrightarrow>
-    (\<And>s t2 b t1. AT (s \<in>\<^sub>s t2) \<in> set b \<Longrightarrow> t1 -\<^sub>s t2 \<in> subterms_fm (last b) \<Longrightarrow> P [AF (s \<in>\<^sub>s t1 -\<^sub>s t2)] b) \<Longrightarrow>
+    (\<And>s t1 b t2. AF (s \<in>\<^sub>s t1) \<in> set b \<Longrightarrow> t1 -\<^sub>s t2 \<in> subterms (last b) \<Longrightarrow> P [AF (s \<in>\<^sub>s t1 -\<^sub>s t2)] b) \<Longrightarrow>
+    (\<And>s t2 b t1. AT (s \<in>\<^sub>s t2) \<in> set b \<Longrightarrow> t1 -\<^sub>s t2 \<in> subterms (last b) \<Longrightarrow> P [AF (s \<in>\<^sub>s t1 -\<^sub>s t2)] b) \<Longrightarrow>
     (\<And>s t1 t2 b. AF (s \<in>\<^sub>s t1 -\<^sub>s t2) \<in> set b \<Longrightarrow> AT (s \<in>\<^sub>s t1) \<in> set b \<Longrightarrow> P [AT (s \<in>\<^sub>s t2)] b) \<Longrightarrow>
     (\<And>s t1 t2 b. AF (s \<in>\<^sub>s t1 -\<^sub>s t2) \<in> set b \<Longrightarrow> AF (s \<in>\<^sub>s t2) \<in> set b \<Longrightarrow> P [AF (s \<in>\<^sub>s t1)] b) \<Longrightarrow>
-    (\<And>s t1 b t2. AT (s \<in>\<^sub>s t1) \<in> set b \<Longrightarrow> AF (s \<in>\<^sub>s t2) \<in> set b \<Longrightarrow> t1 -\<^sub>s t2 \<in> subterms_fm (last b) \<Longrightarrow> P [AT (s \<in>\<^sub>s t1 -\<^sub>s t2)] b) \<Longrightarrow>
-    (\<And>t1 b. Single t1 \<in> subterms_fm (last b) \<Longrightarrow> P [AT (t1 \<in>\<^sub>s Single t1)] b) \<Longrightarrow>
+    (\<And>s t1 b t2. AT (s \<in>\<^sub>s t1) \<in> set b \<Longrightarrow> AF (s \<in>\<^sub>s t2) \<in> set b \<Longrightarrow> t1 -\<^sub>s t2 \<in> subterms (last b) \<Longrightarrow> P [AT (s \<in>\<^sub>s t1 -\<^sub>s t2)] b) \<Longrightarrow>
+    (\<And>t1 b. Single t1 \<in> subterms (last b) \<Longrightarrow> P [AT (t1 \<in>\<^sub>s Single t1)] b) \<Longrightarrow>
     (\<And>s t1 b. AT (s \<in>\<^sub>s Single t1) \<in> set b \<Longrightarrow> P [AT (s \<approx>\<^sub>s t1)] b) \<Longrightarrow>
     (\<And>s t1 b. AF (s \<in>\<^sub>s Single t1) \<in> set b \<Longrightarrow> P [AF (s \<approx>\<^sub>s t1)] b) \<Longrightarrow>
-    (\<And>t1 t2 b l. AT (t1 \<approx>\<^sub>s t2) \<in> set b \<Longrightarrow> AT l \<in> set b \<Longrightarrow> t1 \<in> tlvl_terms_atom l \<Longrightarrow> P [AT (subst_tlvl t1 t2 l)] b) \<Longrightarrow>
-    (\<And>t1 t2 b l. AT (t1 \<approx>\<^sub>s t2) \<in> set b \<Longrightarrow> AF l \<in> set b \<Longrightarrow> t1 \<in> tlvl_terms_atom l \<Longrightarrow> P [AF (subst_tlvl t1 t2 l)] b) \<Longrightarrow>
-    (\<And>t1 t2 b l. AT (t1 \<approx>\<^sub>s t2) \<in> set b \<Longrightarrow> AT l \<in> set b \<Longrightarrow> t2 \<in> tlvl_terms_atom l \<Longrightarrow> P [AT (subst_tlvl t2 t1 l)] b) \<Longrightarrow>
-    (\<And>t1 t2 b l. AT (t1 \<approx>\<^sub>s t2) \<in> set b \<Longrightarrow> AF l \<in> set b \<Longrightarrow> t2 \<in> tlvl_terms_atom l \<Longrightarrow> P [AF (subst_tlvl t2 t1 l)] b) \<Longrightarrow>  
+    (\<And>t1 t2 b l. AT (t1 \<approx>\<^sub>s t2) \<in> set b \<Longrightarrow> AT l \<in> set b \<Longrightarrow> t1 \<in> tlvl_terms l \<Longrightarrow> P [AT (subst_tlvl t1 t2 l)] b) \<Longrightarrow>
+    (\<And>t1 t2 b l. AT (t1 \<approx>\<^sub>s t2) \<in> set b \<Longrightarrow> AF l \<in> set b \<Longrightarrow> t1 \<in> tlvl_terms l \<Longrightarrow> P [AF (subst_tlvl t1 t2 l)] b) \<Longrightarrow>
+    (\<And>t1 t2 b l. AT (t1 \<approx>\<^sub>s t2) \<in> set b \<Longrightarrow> AT l \<in> set b \<Longrightarrow> t2 \<in> tlvl_terms l \<Longrightarrow> P [AT (subst_tlvl t2 t1 l)] b) \<Longrightarrow>
+    (\<And>t1 t2 b l. AT (t1 \<approx>\<^sub>s t2) \<in> set b \<Longrightarrow> AF l \<in> set b \<Longrightarrow> t2 \<in> tlvl_terms l \<Longrightarrow> P [AF (subst_tlvl t2 t1 l)] b) \<Longrightarrow>  
     (\<And>s t b s'. AT (s \<in>\<^sub>s t) \<in> set b \<Longrightarrow> AF (s' \<in>\<^sub>s t) \<in> set b \<Longrightarrow> P [AF (s \<approx>\<^sub>s s')] b) \<Longrightarrow> P b' b"
   using assms
   apply(induction rule: lexpands.induct)
@@ -179,22 +179,22 @@ inductive fexpands_noparam :: "'a branch set \<Rightarrow> 'a branch \<Rightarro
 | "\<lbrakk> Neg (And p q) \<in> set b;
      Neg p \<notin> set b; p \<notin> set b \<rbrakk>
     \<Longrightarrow> fexpands_noparam {[Neg p], [p]} b"
-| "\<lbrakk> AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set b; t1 \<squnion>\<^sub>s t2 \<in> subterms_fm (last b);
+| "\<lbrakk> AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set b; t1 \<squnion>\<^sub>s t2 \<in> subterms (last b);
      AT (s \<in>\<^sub>s t1) \<notin> set b; AF (s \<in>\<^sub>s t1) \<notin> set b \<rbrakk>
     \<Longrightarrow> fexpands_noparam {[AT (s \<in>\<^sub>s t1)], [AF (s \<in>\<^sub>s t1)]} b"
-| "\<lbrakk> AT (s \<in>\<^sub>s t1) \<in> set b; t1 \<sqinter>\<^sub>s t2 \<in> subterms_fm (last b);
+| "\<lbrakk> AT (s \<in>\<^sub>s t1) \<in> set b; t1 \<sqinter>\<^sub>s t2 \<in> subterms (last b);
      AT (s \<in>\<^sub>s t2) \<notin> set b; AF (s \<in>\<^sub>s t2) \<notin> set b \<rbrakk>
     \<Longrightarrow> fexpands_noparam {[AT (s \<in>\<^sub>s t2)], [AF (s \<in>\<^sub>s t2)]} b"
-| "\<lbrakk> AT (s \<in>\<^sub>s t1) \<in> set b; t1 -\<^sub>s t2 \<in> subterms_fm (last b);
+| "\<lbrakk> AT (s \<in>\<^sub>s t1) \<in> set b; t1 -\<^sub>s t2 \<in> subterms (last b);
      AT (s \<in>\<^sub>s t2) \<notin> set b; AF (s \<in>\<^sub>s t2) \<notin> set b \<rbrakk>
     \<Longrightarrow> fexpands_noparam {[AT (s \<in>\<^sub>s t2)], [AF (s \<in>\<^sub>s t2)]} b"
 
 inductive fexpands_param ::
   "'a pset_term \<Rightarrow> 'a pset_term \<Rightarrow> 'a \<Rightarrow> 'a branch set \<Rightarrow> 'a branch \<Rightarrow> bool" for t1 t2 x where
-  "\<lbrakk> AF (t1 \<approx>\<^sub>s t2) \<in> set b; t1 \<in> subterms_fm (last b); t2 \<in> subterms_fm (last b);
+  "\<lbrakk> AF (t1 \<approx>\<^sub>s t2) \<in> set b; t1 \<in> subterms (last b); t2 \<in> subterms (last b);
      \<nexists>x. AT (x \<in>\<^sub>s t1) \<in> set b \<and> AF (x \<in>\<^sub>s t2) \<in> set b;
      \<nexists>x. AT (x \<in>\<^sub>s t2) \<in> set b \<and> AF (x \<in>\<^sub>s t1) \<in> set b;
-     x \<notin> vars_branch b \<rbrakk>
+     x \<notin> vars b \<rbrakk>
     \<Longrightarrow> fexpands_param t1 t2 x {[AT (Var x \<in>\<^sub>s t1), AF (Var x \<in>\<^sub>s t2)],
                                [AT (Var x \<in>\<^sub>s t2), AF (Var x \<in>\<^sub>s t1)]} b"
 
@@ -204,10 +204,10 @@ lemma fexpands_paramD:
   assumes "fexpands_param t1 t2 x bs' b"
   shows "bs' = {[AT (pset_term.Var x \<in>\<^sub>s t1), AF (pset_term.Var x \<in>\<^sub>s t2)],
                [AT (pset_term.Var x \<in>\<^sub>s t2), AF (pset_term.Var x \<in>\<^sub>s t1)]}"
-        "AF (t1 \<approx>\<^sub>s t2) \<in> set b" "t1 \<in> subterms_fm (last b)" "t2 \<in> subterms_fm (last b)"
+        "AF (t1 \<approx>\<^sub>s t2) \<in> set b" "t1 \<in> subterms (last b)" "t2 \<in> subterms (last b)"
         "\<nexists>x. AT (x \<in>\<^sub>s t1) \<in> set b \<and> AF (x \<in>\<^sub>s t2) \<in> set b"
         "\<nexists>x. AT (x \<in>\<^sub>s t2) \<in> set b \<and> AF (x \<in>\<^sub>s t1) \<in> set b"
-        "x \<notin> vars_branch b"
+        "x \<notin> vars b"
   using fexpands_param.cases[OF assms] by metis+
 
 inductive fexpands :: "'a branch set \<Rightarrow> 'a branch \<Rightarrow> bool" where
@@ -227,7 +227,7 @@ next
   then show ?case
   proof(induction rule: fexpands_param.induct)
     case (1 b)
-    from \<open>x \<notin> vars_branch b\<close>
+    from \<open>x \<notin> vars b\<close>
     have "AT (Var x \<in>\<^sub>s t1) \<notin> set b" "AF (Var x \<in>\<^sub>s t1) \<notin> set b"
       unfolding vars_branch_def by auto
     with 1 show ?case

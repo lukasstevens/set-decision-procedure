@@ -185,7 +185,7 @@ definition vars :: 'a pset_fm $\Rightarrow$ 'a set where
 \end{lstlisting}
 In addition to the variable names that appear in a formula, we will later also need to obtain those set terms that occur as subterms in a formula. 
 We first define a function that collects the subterms of a set term.
-\todo[inline]{Motivation: linear rules don't introduce subterms}
+\todo[inline]{Motivation: linear rules don't introduce subterms, \lstinline!subterms b $\approx$ subterms (last b)!}
 \begin{lstlisting}
 fun subterms :: 'a pset_term $\Rightarrow$ 'a pset_term set
 where
@@ -287,7 +287,7 @@ definition vars :: 'a branch $\Rightarrow$ 'a set
 \end{lstlisting}
 In the standard tableau calculus for propositional logic, a branch is called \textit{closed} if it contains both the negation of a formula and the formula itself;
 conversely, it is called \textit{open} if it is not closed.
-For MLSS, we extend the notion of closedness with three additional rules; the first two are straightforward while the last one states that a branch is closed when the branch contains a membership cycle
+For \MLSS{}, we extend the notion of closedness with three additional rules; the first two are straightforward while the last one states that a branch is closed when the branch contains a membership cycle
 \begin{center}
 \lstinline!s $\inS$ t$_\text{1}$, t$_\text{1}$ $\inS$ t$_\text{2}$, $\ldots$, t$_\text{k}$ $\inS$ s!.
 \end{center}
@@ -350,26 +350,26 @@ definition wits' :: 'a branch $\Rightarrow$ 'a set where
       AT (Var c $\eqS$ t) $\notin$ set b $\land$
       AT (t $\eqS$ Var c) $\notin$ set b} 
 
-definition subterms_branch' ::
+definition subterms' ::
     'a branch $\Rightarrow$ 'a pset_term set where
-  subterms_branch' b $\equiv$
+  subterms' b $\equiv$
     subterms (last b) $\cup$ 
     Var ` (wits b - wits' b)
 \end{lstlisting}
 We aim to construct a syntactic model that is derived from the membership literals \lstinline!(s $\inS$ t) $\in$ set b!.
-To this end, we construct a graph whose vertices are set terms and there is an edge from \lstinline!s! to \lstinline!t! in the graph if, and only if, \lstinline!(s $\inS$ t) $\in$ set b!.
+To this end, we construct a graph whose vertices are set terms and there is an edge from \lstinline!s! to \lstinline!t! in the graph if, and only if, \lstinline!s $\inS$ t! is in \lstinline!b!.
 Note that we use \citeauthor{graph_theory_afp}'s graph library~\cite{graph_theory_afp} where a graph is represented as a record of vertices, arcs (directed edges), and two functions \lstinline!tail! and \lstinline!head! that map an arc to its source respectively target vertex.
 \begin{lstlisting}
 definition bgraph b $\equiv$
-  let vs = Var ` wits' b $\cup$ subterms_branch' b
+  let vs = Var ` wits' b $\cup$ subterms' b
   in $\llparenthesis$ verts = vs,
      &$\phantom{\llparenthesis}$& arcs = {(s, t). (s $\inS$ t) $\in$ set b},
      &$\phantom{\llparenthesis}$& tail = fst, head = snd $\rrparenthesis$
 \end{lstlisting}
 The model is defined in terms of a \textit{realization} function relative to this graph.
-Observe that the vertices are partitioned into two sets, a collection of witnesses \lstinline!Var ` wits' b! and the rest of the set terms \lstinline!subterms_branch' b!, which are treated differently by the realization.
+Observe that the vertices are partitioned into two sets, a collection of witnesses \lstinline!Var ` wits' b! and the rest of the set terms \lstinline!subterms' b!, which are treated differently by the realization.
 Terms in the latter set are evaluated in accordance to the structure of the graph, i.e.\ the realization of a vertex is defined as the union of the realizations of the parent vertices. 
-For the former set, we choose a function \lstinline!I! that assigns the elements \lstinline!x $\in$ Var ` wits' b! pairwise distinct sets with cardinality greater than that of the vertices.
+For the former set, we choose a function \lstinline!I! that assigns the witnesses in \lstinline!Var ` wits' b! pairwise distinct sets with cardinality greater than that of the vertices.
 We can always choose such a function since we assume an infinite universe of variables.
 Then, we return the singleton set \lstinline!vset {I x}!, which, together with the cardinality constraint, ensures that realizations are distinct between those witnesses and the set terms.  
 \begin{lstlisting}
@@ -377,7 +377,7 @@ abbreviation parents G s $\equiv$ {u. u $\rightarrow_\text{G}$ s}
 
 function realize :: 'a pset_term $\Rightarrow$ V where
   x $\in$ Var ` wits' b $\Longrightarrow$ realize x = vset {I x}
-| x $\in$ subterms_branch' b
+| x $\in$ subterms' b
   $\Longrightarrow$ realize t =
   &$\phantom{\Longrightarrow}$&   vset {realize ` parents (bgraph b) s}
 | x $\notin$ verts G $\Longrightarrow$ realize x = 0
@@ -396,6 +396,8 @@ fun is_literal :: 'a fm $\Rightarrow$ bool where
 | is_literal (&\fmNeg{(\fmAtom{} \_)}&) = True
 | is_literal _ = False
 \end{lstlisting}
+
+\todo[inline]{Rename \lstinline!lemma_2!}
 \begin{lstlisting}
 lemma lemma_2:
   assumes wf_branch b
@@ -418,21 +420,39 @@ definition wf_branch b $\equiv$ $\exists$$\phi$. &\expandss{b}{[$\phi$]}&
 \end{lstlisting}
 
 
-\subsection{Building a Model: Realisation of a Branch}
-Let \lstinline!b! be an open and saturated branch, i.e.\ it holds that \lstinline!sat b $\land$ bopen b!;
-then, the following propositions hold:
-\begin{itemize}
-  \item We have \lstinline!realize s $=$ realize t! if \lstinline!s $\eqS$ t! is in \lstinline!b!.
+\subsection{Realisation of an Open Branch}
+Remember that for completeness, we need to show that the realization function for an open and saturated branch \lstinline!b! actually constitutes a model for all formualae in the branch.
+We start by verifying that the realization function models all literals in the branch; more formally, the following propositions hold: 
+\begin{enumerate}[label=(\roman*)]
+  \item\label{it:at_mem} We have \lstinline!realize s $\in$ elts (realize t)! if it holds that \lstinline!s $\inS$ t! is in \lstinline!b!. 
+  \item\label{it:at_eq} We have \lstinline!realize s $=$ realize t! if \lstinline!s $\eqS$ t! is in \lstinline!b!.
   \item We have \lstinline!realize s $\neq$ realize t! if \lstinline!s $\neqS$ t! is in \lstinline!b!.
-  \item We have \lstinline!realize s $\in$ elts (realize t)! if it holds that \lstinline!(s $\inS$ t)! is in \lstinline!b!. 
-  \item We have \lstinline!realize s $\notin$ elts (realize t)! if it holds that \lstinline!(s $\notinS$ t)! is in \lstinline!b!. 
-\end{itemize}
+  \item We have \lstinline!realize s $\notin$ elts (realize t)! if it holds that \lstinline!s $\notinS$ t! is in \lstinline!b!. 
+\end{enumerate}
+To illustrate the usefulness of \lstinline!lemma_2!, we prove Proposition~\ref{it:at_eq}.
+The proofs of all propositions translate well into Isabelle so we refer to the original paper~\cite{new_fast_tableau} for the remaining proofs. 
+\begin{proof}[Proof of Proposition~\ref{it:at_eq}]
+  Assume that \lstinline!s $\eqS$ t! is in \lstinline!b!.
+  If there exists a \lstinline!c $\in$ wits' b! where \lstinline!s = Var c! or \lstinline!t = Var c!, we arrive at a contradiction due to \lstinline!lemma_2!.
+  Therefore, both \lstinline!s $\in$ subterms' b! and \lstinline!t $\inS$ subterms' b! must hold.
+  Now, assume for contradiction that \lstinline!realize s $\neq$ realize t! which implies that \lstinline!elts (realize s) $\neq$ elts (realize t)!.
+  Without loss of generality --- the other case is symmetric ---, we obtain an \lstinline!a! such that \lstinline!a $\in$ elts (realize s)! and \lstinline!a $\notin$ elts (realize t)!. 
+  Furthermore, we obtain \lstinline!u! such that \lstinline!a! is the realization of \lstinline!u!;
+  that is, we have \lstinline!a = realize u!.
+  Since \lstinline!s $\in$ subterms' b!, the definition of \lstinline!realize! gives us that \lstinline!u $\rightarrow_\text{bgraph b}$ s! holds, which, in turn, yields that \lstinline!u $\inS$ s! must be in \lstinline!b!.
+  Together with the assumption \lstinline!(s $\eqS$ t) $\in$ b! and the openness of \lstinline!b!, it follows that \lstinline!u $\inS$ t! must also be in \lstinline!b!.
+  But then we have
+\begin{lstlisting}[columns=fixed]
+realize u $\in$ elts (realize t)
+      = a $\in$ elts (realize t)
+\end{lstlisting}
+  using Proposition~\ref{it:at_mem}, which stands in contradiction to the assumption \lstinline!a $\notin$ elts (realize t)!.
+\end{proof}
 
-We extend this to the set term operators.
-Let \lstinline!b! be an open and saturated branch.
-\begin{itemize}
-  \item If \lstinline!$\emptyset$ $\in$ subterms b!, then \lstinline!realize $\emptyset$ = 0!.
-  \item Let \lstinline!$\star_\text{s}$ $\in$ {$\unionS$, $\diffS$, $\interS$}!. If \lstinline!s $\star_\text{s}$ t $\in$ subterms b!, then
+The results on literals can now be lowered to set terms.
+\begin{enumerate}[label=(\alph*)]
+  \item\label{it:empty} If \lstinline!$\emptyset$ $\in$ subterms b!, then \lstinline!realize $\emptyset$ = 0!.
+  \item\label{it:op} Let \lstinline!$\star_\text{s}$ $\in$ {$\unionS$, $\diffS$, $\interS$}!. If the term \lstinline!s $\star_\text{s}$ t! occurs in \lstinline!subterms b!, then
     \begin{center}
     \lstinline!realize (s $\star_\text{s}$ t) = realize s $\star$ realize t!.
     \end{center}
@@ -440,7 +460,15 @@ Let \lstinline!b! be an open and saturated branch.
     \begin{center}
     \lstinline!realize (Single t) = vset {realize t}!.
     \end{center}
-\end{itemize}
+\end{enumerate}
+\begin{proof}[Proof of Proposition~\ref{it:empty}]
+  Since \lstinline!b! is open, we know \lstinline!s $\inS$ $\emptyset$! is not in \lstinline!b! for any \lstinline!s!, implying that the term \lstinline!$\emptyset$! has no parents in \lstinline!bgraph b!.
+  Moreover, the assumption \lstinline!$\emptyset$ $\in$ subterms b! can be strengthened to \lstinline!$\emptyset$ $\in$ subterms' b! as the term \lstinline!$\emptyset$! is not a witness. 
+  Ultimately, we obtain \lstinline!realize $\emptyset$ = 0! by definition of \lstinline!realize!.
+\end{proof}
+\begin{proof}[Proof of Proposition~\ref{it:op} for \lstinline!$\star_text{s}$ = $\diffS$!]
+  Test
+\end{proof}
 
 \section{An Abstract Specification of the Decision Procedure}
 \todo[inline]{Mention coherence lemma?}
@@ -448,10 +476,10 @@ Let \lstinline!b! be an open and saturated branch.
   \centering
 \begin{lstlisting}
 function mlss_proc_branch :: 'a branch $\Rightarrow$ bool where
-  $\neg$ lin_sat b $\Longrightarrow$
-  mlss_proc_branch = mlss_proc_branch ((SOME b'. &\lexpands{b'}{b}& $\land$ set b $\subset$ set (b' @ b)) @ b)
-|  $\llbracket$ $\neg$ sat b; bopen b; lin_sat b $\rrbracket$ $\Longrightarrow$
-   mlss_proc_branch b = ($\forall$b' $\in$ (SOME bs. &\fexpands{bs}{b}&). mlss_proc_branch (b' @ b))
+  $\neg$ lin_sat b
+  $\Longrightarrow$ mlss_proc_branch = mlss_proc_branch ((SOME b'. &\lexpands{b'}{b}& $\land$ set b $\subset$ set (b' @ b)) @ b)
+| $\llbracket$ $\neg$ sat b; bopen b; lin_sat b $\rrbracket$
+  $\Longrightarrow$ mlss_proc_branch b = ($\forall$b' $\in$ (SOME bs. &\fexpands{bs}{b}&). mlss_proc_branch (b' @ b))
 | $\llbracket$ lin_sat b; sat b $\rrbracket$ $\Longrightarrow$ mlss_proc_branch b = bclosed b
 | $\llbracket$ lin_sat b; bclosed b $\rrbracket$ $\Longrightarrow$ mlss_proc_branch b = True
 

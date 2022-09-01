@@ -83,6 +83,8 @@ lemma vars_fm_vars_branchI:
 
 section \<open>Subformulae and Subterms\<close>
 
+subsection \<open>Subformulae\<close>
+
 fun subfms :: "'a fm \<Rightarrow> 'a fm set"  where
   "subfms (Atom a) = {Atom a}"
 | "subfms (And p q) = {And p q} \<union> subfms p \<union> subfms q"
@@ -96,6 +98,31 @@ lemma subfms_branch_simps:
   "subfms_branch [] = {}"
   "subfms_branch (x # xs) = subfms x \<union> subfms_branch xs"
   unfolding subfms_branch_def by auto
+
+lemma subfms_refl[simp]: "p \<in> subfms p"
+  by (cases p) auto
+
+lemma subfmsI:
+  "a \<in> subfms p \<Longrightarrow> a \<in> subfms (And p q)"
+  "a \<in> subfms q \<Longrightarrow> a \<in> subfms (And p q)"
+  "a \<in> subfms p \<Longrightarrow> a \<in> subfms (Or p q)"
+  "a \<in> subfms q \<Longrightarrow> a \<in> subfms (Or p q)"
+  "a \<in> subfms p \<Longrightarrow> a \<in> subfms (Neg p)"
+  by auto
+
+lemma subfms_trans: "q \<in> subfms p \<Longrightarrow> p \<in> subfms r \<Longrightarrow> q \<in> subfms r"
+  by (induction r) auto
+
+lemma subfmsD:
+  "And p q \<in> subfms \<phi> \<Longrightarrow> p \<in> subfms \<phi>"
+  "And p q \<in> subfms \<phi> \<Longrightarrow> q \<in> subfms \<phi>"
+  "Or p q \<in> subfms \<phi> \<Longrightarrow> p \<in> subfms \<phi>"
+  "Or p q \<in> subfms \<phi> \<Longrightarrow> q \<in> subfms \<phi>"
+  "Neg p \<in> subfms \<phi> \<Longrightarrow> p \<in> subfms \<phi>"
+  using subfmsI subfms_refl subfms_trans by metis+
+
+
+subsection \<open>Subterms\<close>
 
 consts subterms :: "'a \<Rightarrow> 'b set"
 
@@ -176,31 +203,6 @@ lemma subterms_branchD:
   "Single t \<in> subterms_branch b \<Longrightarrow> t \<in> subterms_branch b"
   unfolding subterms_branch_def using subterms_fmD by fast+
 
-lemma subfms_refl[simp]: "p \<in> subfms p"
-  by (cases p) auto
-
-lemma subfmsI:
-  "a \<in> subfms p \<Longrightarrow> a \<in> subfms (And p q)"
-  "a \<in> subfms q \<Longrightarrow> a \<in> subfms (And p q)"
-  "a \<in> subfms p \<Longrightarrow> a \<in> subfms (Or p q)"
-  "a \<in> subfms q \<Longrightarrow> a \<in> subfms (Or p q)"
-  "a \<in> subfms p \<Longrightarrow> a \<in> subfms (Neg p)"
-  by auto
-
-lemma subfms_trans: "q \<in> subfms p \<Longrightarrow> p \<in> subfms r \<Longrightarrow> q \<in> subfms r"
-  by (induction r) auto
-
-lemma subfmsD:
-  "And p q \<in> subfms \<phi> \<Longrightarrow> p \<in> subfms \<phi>"
-  "And p q \<in> subfms \<phi> \<Longrightarrow> q \<in> subfms \<phi>"
-  "Or p q \<in> subfms \<phi> \<Longrightarrow> p \<in> subfms \<phi>"
-  "Or p q \<in> subfms \<phi> \<Longrightarrow> q \<in> subfms \<phi>"
-  "Neg p \<in> subfms \<phi> \<Longrightarrow> p \<in> subfms \<phi>"
-  using subfmsI subfms_refl subfms_trans by metis+
-
-abbreviation pset_atoms_branch :: "'a fm list \<Rightarrow> 'a set" where
-  "pset_atoms_branch b \<equiv> \<Union>(atoms ` set b)"
-
 lemma subterms_term_subterms_branch_trans:
   "s \<in> subterms_term t \<Longrightarrow> t \<in> subterms_branch b \<Longrightarrow> s \<in> subterms_branch b"
   unfolding subterms_branch_def using subterms_term_subterms_fm_trans by blast
@@ -225,29 +227,8 @@ lemma AF_eq_subterms_branchD:
   shows "s \<in> subterms b" "t \<in> subterms b"
   using assms unfolding subterms_branch_def by force+
 
-lemma mem_pset_atoms_branch_subterms_branchD:
-  assumes "(t1 \<in>\<^sub>s t2) \<in> pset_atoms_branch b"
-  shows "t1 \<in> subterms b" "t2 \<in> subterms b"
-proof -
-  from assms obtain \<phi> where phi: "\<phi> \<in> set b" "(t1 \<in>\<^sub>s t2) \<in> atoms \<phi>"
-    by blast
-  from this(2) have "t1 \<in> subterms \<phi> \<and> t2 \<in> subterms \<phi>"
-    by (induction \<phi>) (auto simp: subterms_branch_def)
-  with phi show "t1 \<in> subterms b" "t2 \<in> subterms b"
-    unfolding subterms_branch_def by blast+
-qed
 
-lemma eq_pset_atoms_branch_subterms_branchD:
-  assumes "(t1 \<approx>\<^sub>s t2) \<in> pset_atoms_branch b"
-  shows "t1 \<in> subterms b" "t2 \<in> subterms b"
-proof -
-  from assms obtain \<phi> where phi: "\<phi> \<in> set b" "(t1 \<approx>\<^sub>s t2) \<in> atoms \<phi>"
-    by blast
-  from this(2) have "t1 \<in> subterms \<phi> \<and> t2 \<in> subterms \<phi>"
-    by (induction \<phi>) (auto simp: subterms_branch_def)
-  with phi show "t1 \<in> subterms b" "t2 \<in> subterms b"
-    unfolding subterms_branch_def by blast+
-qed
+subsection \<open>Interactions between Subterms and Subformulae\<close>
 
 lemma Un_vars_term_subterms_term_eq_vars_term:
   "\<Union>(vars_term ` subterms t) = vars_term t"
@@ -323,6 +304,37 @@ lemma subterms_term_subterms_atom_Atom_trans:
 lemma subterms_branch_subterms_subterms_fm_trans:
   "b \<noteq> [] \<Longrightarrow> x \<in> subterms_term t \<Longrightarrow> t \<in> subterms_fm (last b) \<Longrightarrow> x \<in> subterms_branch b"
   using subterms_branch_def subterms_term_subterms_fm_trans by fastforce
+
+
+subsection \<open>Set Atoms in a Branch\<close>
+
+abbreviation pset_atoms_branch :: "'a fm list \<Rightarrow> 'a set" where
+  "pset_atoms_branch b \<equiv> \<Union>(atoms ` set b)"
+
+lemma mem_pset_atoms_branch_subterms_branchD:
+  assumes "(t1 \<in>\<^sub>s t2) \<in> pset_atoms_branch b"
+  shows "t1 \<in> subterms b" "t2 \<in> subterms b"
+proof -
+  from assms obtain \<phi> where phi: "\<phi> \<in> set b" "(t1 \<in>\<^sub>s t2) \<in> atoms \<phi>"
+    by blast
+  from this(2) have "t1 \<in> subterms \<phi> \<and> t2 \<in> subterms \<phi>"
+    by (induction \<phi>) (auto simp: subterms_branch_def)
+  with phi show "t1 \<in> subterms b" "t2 \<in> subterms b"
+    unfolding subterms_branch_def by blast+
+qed
+
+lemma eq_pset_atoms_branch_subterms_branchD:
+  assumes "(t1 \<approx>\<^sub>s t2) \<in> pset_atoms_branch b"
+  shows "t1 \<in> subterms b" "t2 \<in> subterms b"
+proof -
+  from assms obtain \<phi> where phi: "\<phi> \<in> set b" "(t1 \<approx>\<^sub>s t2) \<in> atoms \<phi>"
+    by blast
+  from this(2) have "t1 \<in> subterms \<phi> \<and> t2 \<in> subterms \<phi>"
+    by (induction \<phi>) (auto simp: subterms_branch_def)
+  with phi show "t1 \<in> subterms b" "t2 \<in> subterms b"
+    unfolding subterms_branch_def by blast+
+qed
+
 
 section \<open>Finiteness\<close>
 

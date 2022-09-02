@@ -426,8 +426,8 @@ We start by verifying that the realization function models all literals in the b
 \begin{enumerate}[label=(\roman*)]
   \item\label{it:at_mem} We have \lstinline!realize s $\in$ elts (realize t)! if it holds that \lstinline!s $\inS$ t! is in \lstinline!b!. 
   \item\label{it:at_eq} We have \lstinline!realize s $=$ realize t! if \lstinline!s $\eqS$ t! is in \lstinline!b!.
-  \item We have \lstinline!realize s $\neq$ realize t! if \lstinline!s $\neqS$ t! is in \lstinline!b!.
-  \item We have \lstinline!realize s $\notin$ elts (realize t)! if it holds that \lstinline!s $\notinS$ t! is in \lstinline!b!. 
+  \item\label{it:af_eq} We have \lstinline!realize s $\neq$ realize t! if \lstinline!s $\neqS$ t! is in \lstinline!b!.
+  \item\label{it:af_mem} We have \lstinline!realize s $\notin$ elts (realize t)! if it holds that \lstinline!s $\notinS$ t! is in \lstinline!b!. 
 \end{enumerate}
 To illustrate the usefulness of \lstinline!lemma_2!, we prove Proposition~\ref{it:at_eq}.
 The proofs of all propositions translate well into Isabelle so we refer to the original paper~\cite{new_fast_tableau} for the remaining proofs. 
@@ -436,15 +436,17 @@ The proofs of all propositions translate well into Isabelle so we refer to the o
   If there exists a \lstinline!c $\in$ wits' b! where \lstinline!s = Var c! or \lstinline!t = Var c!, we arrive at a contradiction due to \lstinline!lemma_2!.
   Therefore, both \lstinline!s $\in$ subterms' b! and \lstinline!t $\inS$ subterms' b! must hold.
   Now, assume for contradiction that \lstinline!realize s $\neq$ realize t! which implies that \lstinline!elts (realize s) $\neq$ elts (realize t)!.
-  Without loss of generality --- the other case is symmetric ---, we obtain an \lstinline!a! such that \lstinline!a $\in$ elts (realize s)! and \lstinline!a $\notin$ elts (realize t)!. 
-  Furthermore, we obtain \lstinline!u! such that \lstinline!a! is the realization of \lstinline!u!;
-  that is, we have \lstinline!a = realize u!.
-  Since \lstinline!s $\in$ subterms' b!, the definition of \lstinline!realize! gives us that \lstinline!u $\rightarrow_\text{bgraph b}$ s! holds, which, in turn, yields that \lstinline!u $\inS$ s! must be in \lstinline!b!.
+  Without loss of generality --- the other case is symmetric ---, we obtain an \lstinline!a! such that
+\begin{lstlisting}
+  a $\in$ elts (realize s) $\land$ a $\notin$ elts (realize t). 
+\end{lstlisting}
+  Considering the fact that \lstinline!s $\in$ subterms' b! and the definition of \lstinline!realize!, we obtain an \lstinline!u! such that \lstinline!a = realize u! and \lstinline!u $\rightarrow_\text{bgraph b}$ s!.
+  This, in turn, yields that \lstinline!u $\inS$ s! must be in \lstinline!b!.
   Together with the assumption \lstinline!(s $\eqS$ t) $\in$ b! and the openness of \lstinline!b!, it follows that \lstinline!u $\inS$ t! must also be in \lstinline!b!.
   But then we have
 \begin{lstlisting}[columns=fixed]
-realize u $\in$ elts (realize t)
-      = a $\in$ elts (realize t)
+  realize u $\in$ elts (realize t)
+        = a $\in$ elts (realize t)
 \end{lstlisting}
   using Proposition~\ref{it:at_mem}, which stands in contradiction to the assumption \lstinline!a $\notin$ elts (realize t)!.
 \end{proof}
@@ -466,8 +468,36 @@ The results on literals can now be lowered to set terms.
   Moreover, the assumption \lstinline!$\emptyset$ $\in$ subterms b! can be strengthened to \lstinline!$\emptyset$ $\in$ subterms' b! as the term \lstinline!$\emptyset$! is not a witness. 
   Ultimately, we obtain \lstinline!realize $\emptyset$ = 0! by definition of \lstinline!realize!.
 \end{proof}
-\begin{proof}[Proof of Proposition~\ref{it:op} for \lstinline!$\star_text{s}$ = $\diffS$!]
-  Test
+\begin{proof}[Proof of Proposition~\ref{it:op} for $\star_\texttt{s} = -_\texttt{s}$]
+  For equality, it suffices to prove subset inclusion in both directions.
+
+  \textbf{Direction $\subseteq$. } Fix some \lstinline!e! in \lstinline!elts (realize (s $\diffS$ t))!.
+  Again, we obtain an \lstinline!u! where \lstinline!e = realize u! and \lstinline!u $\rightarrow_\text{bgraph b}$ (s $\diffS$ t)!.
+  We therefore have \lstinline!(u $\inS$ s $\diffS$ t) $\in$ set b! which, due to \lstinline!b! being saturated, implies that \lstinline!u $\inS$ s! is in \lstinline!b! while \lstinline!u $\inS$ t! is not.
+  By applying Proposition~\ref{it:at_mem} and~\ref{it:af_mem} we obtain
+\begin{lstlisting}
+  realize u $\in$ realize s $\land$ realize u $\notin$ realize t
+\end{lstlisting}
+  and together with \lstinline!e = realize u! we arrive at the goal 
+\begin{lstlisting}
+  e $\in$ elts (realize s - realize t).
+\end{lstlisting}
+
+\textbf{Direction $\supseteq$. } Let \lstinline[columns=fullflexible]!e $\in$ elts (realize s - realize t)! for some fixed \lstinline!e!.
+  As before, we obtain an \lstinline!u! such that \lstinline!e! is the realization of \lstinline!u!, i.e.\ \lstinline!e = realization u!, and
+\begin{lstlisting}
+  u $\rightarrow_\text{bgraph b}$ s $\land$ u $\nrightarrow_\text{bgraph b}$ t.
+\end{lstlisting}
+  An immediate consequence is that \lstinline!u $\inS$ s! is in \lstinline!b!.
+  Moreover, we claim that \lstinline!u $\notinS$ t! is also in \lstinline!b!.
+  To see that this is true, recall that \lstinline!b! is saturated and thus the subsumption condition of rule TODO needs to hold.
+  This implies that either \lstinline!u $\inS$ t! or \lstinline!u $\notinS$ t! is in \lstinline!b! but the latter being in \lstinline!b! would be a contradiction to \lstinline!u $\nrightarrow_\text{bgraph b}$ t! meaning that the former must hold.
+  Ultimately, we infer that \lstinline!u $\in$ s $\diffS$ t! is in \lstinline!b! by invoking saturation again.
+  The last step is to apply Proposition~\ref{it:at_mem} in order to obtain the goal
+  \begin{lstlisting}
+    realize u $\in$ elts (realize (s $\diffS$ t))
+  = e $\in$ elts (realize (s $\diffS$ t)).
+  \end{lstlisting}
 \end{proof}
 
 \section{An Abstract Specification of the Decision Procedure}

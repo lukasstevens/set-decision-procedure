@@ -1443,53 +1443,53 @@ qed
 
 lemma realization_Diff:
   assumes "sat b"
-  assumes "t1 -\<^sub>s t2 \<in> subterms b"
-  shows "realize (t1 -\<^sub>s t2) = realize t1 - realize t2"
+  assumes "s -\<^sub>s t \<in> subterms b"
+  shows "realize (s -\<^sub>s t) = realize s - realize t"
   using assms
 proof -
-  from assms have mem_subterms_fm: "t1 -\<^sub>s t2 \<in> subterms (last b)"
+  from assms have mem_subterms_fm: "s -\<^sub>s t \<in> subterms (last b)"
     using mem_subterms_fm_last_if_mem_subterms_branch[OF wf_branch]
     by simp
-  have "elts (realize (t1 -\<^sub>s t2)) \<subseteq> elts (realize t1 - realize t2)"
+  have "elts (realize (s -\<^sub>s t)) \<subseteq> elts (realize s - realize t)"
   proof
-    fix e assume "e \<in> elts (realize (t1 -\<^sub>s t2))"
-    then obtain s where s: "e = realize s" "s \<rightarrow>\<^bsub>bgraph b\<^esub> (t1 -\<^sub>s t2)"
+    fix e assume "e \<in> elts (realize (s -\<^sub>s t))"
+    then obtain u where u: "e = realize u" "u \<rightarrow>\<^bsub>bgraph b\<^esub> (s -\<^sub>s t)"
       using dominates_if_mem_realization mem_subterms_fm[THEN subterms'_if_subterms_fm_last]
       by auto
-    then have "AT (s \<in>\<^sub>s t1 -\<^sub>s t2) \<in> set b"
+    then have "AT (u \<in>\<^sub>s s -\<^sub>s t) \<in> set b"
       unfolding bgraph_def Let_def by auto
     with \<open>sat b\<close> lexpands_diff.intros(1)[OF this, THEN lexpands.intros(4)]
-    have "AT (s \<in>\<^sub>s t1) \<in> set b" "AF (s \<in>\<^sub>s t2) \<in> set b"
+    have "AT (u \<in>\<^sub>s s) \<in> set b" "AF (u \<in>\<^sub>s t) \<in> set b"
       unfolding sat_def using lin_satD by force+
-    with s show "e \<in> elts (realize t1 - realize t2)"
+    with u show "e \<in> elts (realize s - realize t)"
       using \<open>sat b\<close> realization_if_AT_mem realization_if_AF_mem
       by auto
   qed
-  moreover have "elts (realize t1 - realize t2) \<subseteq> elts (realize (t1 -\<^sub>s t2))"
+  moreover have "elts (realize s - realize t) \<subseteq> elts (realize (s -\<^sub>s t))"
   proof
-    fix e assume "e \<in> elts (realize t1 - realize t2)"
-    then obtain s where s:
-      "e = realize s" "s \<rightarrow>\<^bsub>bgraph b\<^esub> t1" "\<not> s \<rightarrow>\<^bsub>bgraph b\<^esub> t2"
+    fix e assume "e \<in> elts (realize s - realize t)"
+    then obtain u where u:
+      "e = realize u" "u \<rightarrow>\<^bsub>bgraph b\<^esub> s" "\<not> u \<rightarrow>\<^bsub>bgraph b\<^esub> t"
       using dominates_if_mem_realization
       using subterms_fmD(5,6)[OF mem_subterms_fm, THEN subterms'_if_subterms_fm_last]
       by (auto split: if_splits)
-    then have "AT (s \<in>\<^sub>s t1) \<in> set b"
+    then have "AT (u \<in>\<^sub>s s) \<in> set b"
       unfolding bgraph_def Let_def by auto
-    moreover have "AF (s \<in>\<^sub>s t2) \<in> set b"
+    moreover have "AF (u \<in>\<^sub>s t) \<in> set b"
     proof -
-      from \<open>sat b\<close> have "AT (s \<in>\<^sub>s t2) \<in> set b \<or> AF (s \<in>\<^sub>s t2) \<in> set b"
-        unfolding sat_def using fexpands_noparam.intros(5)[OF \<open>AT (s \<in>\<^sub>s t1) \<in> set b\<close> mem_subterms_fm]
+      from \<open>sat b\<close> have "AT (u \<in>\<^sub>s t) \<in> set b \<or> AF (u \<in>\<^sub>s t) \<in> set b"
+        unfolding sat_def using fexpands_noparam.intros(5)[OF \<open>AT (u \<in>\<^sub>s s) \<in> set b\<close> mem_subterms_fm]
         using fexpands.intros(1) by blast
-      moreover from s(3) have False if "AT (s \<in>\<^sub>s t2) \<in> set b"
+      moreover from u(3) have False if "AT (u \<in>\<^sub>s t) \<in> set b"
         using that unfolding Let_def bgraph_def by (auto simp: arcs_ends_def arc_to_ends_def)
-      ultimately show "AF (s \<in>\<^sub>s t2) \<in> set b"
+      ultimately show "AF (u \<in>\<^sub>s t) \<in> set b"
         by blast
     qed
-    ultimately have "AT (s \<in>\<^sub>s t1 -\<^sub>s t2) \<in> set b"
+    ultimately have "AT (u \<in>\<^sub>s s -\<^sub>s t) \<in> set b"
       using \<open>sat b\<close> lexpands_diff.intros(6)[OF _ _ mem_subterms_fm, THEN lexpands.intros(4)]
       unfolding sat_def by (fastforce simp: lin_satD)
-    from realization_if_AT_mem[OF this] show "e \<in> elts (realize (t1 -\<^sub>s t2))"
-      unfolding \<open>e = realize s\<close>
+    from realization_if_AT_mem[OF this] show "e \<in> elts (realize (s -\<^sub>s t))"
+      unfolding \<open>e = realize u\<close>
       using mem_subterms_fm[THEN subterms'_if_subterms_fm_last] by simp
   qed
   ultimately show ?thesis by blast

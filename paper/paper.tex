@@ -20,9 +20,6 @@
 
 \usepackage{enumitem}
 
-\setlength{\abovecaptionskip}{0pt}
-\setlength{\textfloatsep}{18pt plus 2pt minus 4pt}
-
 \usepackage{listings}
 \definecolor{isarblue}{HTML}{006699}
 \definecolor{isargreen}{HTML}{009966}
@@ -74,16 +71,16 @@
 
 % Commands
 \newcommand{\MLSS}{\textbf{MLSS}}
+
 \newlength{\trianglewidth}
 \settowidth{\trianglewidth}{\(\triangleleft\)}
-
 \newcommand{\lefttrianglebar}{\mathrel{\tikz[baseline]{\draw (1ex, 0.75ex) -- (0, 1.25ex) -- (0, 0.25ex) -- cycle; \draw (0, 0.75ex) -- (1ex, 0.75ex);}}}
 \newcommand{\lefttriangle}{\mathrel{\tikz[baseline]{\draw (1ex, 0.75ex) -- (0, 1.25ex) -- (0, 0.25ex) -- cycle;}}}
 
 \newcommand{\lexpands}[2]{#1 $\lefttriangle$ #2}
 \newcommand{\fexpands}[2]{#1 $\lefttrianglebar$ #2}
+\newcommand{\fexpandsW}[2]{#1 $\lefttrianglebar_\text{v}$ #2}
 \newcommand{\expandss}[2]{#1 $\lefttriangle^*$ #2}
-
 
 \newcommand{\unionS}{\sqcup_\text{s}}
 \newcommand{\interS}{\sqcap_\text{s}}
@@ -243,6 +240,7 @@ In Isabelle/HOL, which is simply typed, this definition is not accepted, though.
 A way to work around this limitiation is provided by Lawrence in an AFP entry~\cite{zfc_in_hol_afp}, which adds $\mathcal{V}$ to Isabelle/HOL by way of axiomatisation.
 An article by Lawrence~\cite{zfc_in_hol} provides some further context to this entry.
 The entry declares a type \lstinline!V! that is equipped with a function \lstinline!elts :: V $\Rightarrow$ V set! that maps a set to its elements.
+\todo[inline]{Use itemize for different functions}
 Even though we use the typed sets provided by Isabelle/HOL here, \lstinline!elts! actually returns a class.
 Only if the class is small enough, as indicated by the polymorphic predicate \lstinline!small :: 'a set $\Rightarrow$ bool!, it is indeed a set.
 Inversely, this predicate characterises those sets that can be turned into a set of type \lstinline!V! using the polymorphic function \lstinline!vset :: 'a set $\Rightarrow$ V!.
@@ -388,6 +386,7 @@ Now, consider the ancestors \lstinline!av! of a vertex \lstinline!v!, which are 
 Due to acyclicity, it holds that the ancestors \lstinline!ap! of a parent \lstinline!p! of \lstinline!v! are a subset of \lstinline!av!.
 They are also a proper subset of \lstinline!av! since \lstinline!p! is an ancestor of \lstinline!v! but not of \lstinline!p! itself.
 Together with the fact that \lstinline!bgraph b! is finite, it follows that the cardinality of the ancestors decreases in each recursive call thus proving the termination of \lstinline!realize!.
+\todo[inline]{Überleitung}
 
 \subsection{Formalising the Key Technical Lemma}
 \begin{lstlisting}
@@ -451,14 +450,14 @@ The proofs of all propositions translate well into Isabelle so we refer to the o
   using Proposition~\ref{it:at_mem}, which stands in contradiction to the assumption \lstinline!a $\notin$ elts (realize t)!.
 \end{proof}
 
-The results on literals can now be lowered to set terms.
+\noindent The results on literals can now be lowered to set terms.
 \begin{enumerate}[label=(\alph*)]
   \item\label{it:empty} If \lstinline!$\emptyset$ $\in$ subterms b!, then \lstinline!realize $\emptyset$ = 0!.
   \item\label{it:op} Let \lstinline!$\star_\text{s}$ $\in$ {$\unionS$, $\diffS$, $\interS$}!. If the term \lstinline!s $\star_\text{s}$ t! occurs in \lstinline!subterms b!, then
     \begin{center}
     \lstinline!realize (s $\star_\text{s}$ t) = realize s $\star$ realize t!.
     \end{center}
-  \item If \lstinline!Single t $\in$ subterms b!, then
+  \item\label{it:single} If \lstinline!Single t $\in$ subterms b!, then
     \begin{center}
     \lstinline!realize (Single t) = vset {realize t}!.
     \end{center}
@@ -472,7 +471,10 @@ The results on literals can now be lowered to set terms.
   For equality, it suffices to prove subset inclusion in both directions.
 
   \textbf{Direction $\subseteq$. } Fix some \lstinline!e! in \lstinline!elts (realize (s $\diffS$ t))!.
-  Again, we obtain an \lstinline!u! where \lstinline!e = realize u! and \lstinline!u $\rightarrow_\text{bgraph b}$ (s $\diffS$ t)!.
+  Again, we obtain an \lstinline!u! with 
+\begin{lstlisting}
+  e = realize u $\land$ u $\rightarrow_\text{bgraph b}$ (s $\diffS$ t).
+\end{lstlisting}
   We therefore have \lstinline!(u $\inS$ s $\diffS$ t) $\in$ set b! which, due to \lstinline!b! being saturated, implies that \lstinline!u $\inS$ s! is in \lstinline!b! while \lstinline!u $\inS$ t! is not.
   By applying Proposition~\ref{it:at_mem} and~\ref{it:af_mem} we obtain
 \begin{lstlisting}
@@ -496,9 +498,87 @@ The results on literals can now be lowered to set terms.
   The last step is to apply Proposition~\ref{it:at_mem} in order to obtain the goal
   \begin{lstlisting}
     realize u $\in$ elts (realize (s $\diffS$ t))
-  = e $\in$ elts (realize (s $\diffS$ t)).
+    &\textover[r]{=}{realize}& e $\in$ elts (realize (s $\diffS$ t)).
   \end{lstlisting}
 \end{proof}
+
+\noindent The final step towards obtaining a proper model is to connect the realization function to the semantics as defined in Section~\ref{sec:semantics}.
+For set terms, we can use the Propositions~\ref{it:empty}--\ref{it:single} to prove the lemma below by induction.
+\begin{lstlisting}
+lemma
+  assumes t $\in$ subterms b
+  shows &\Ist& ($\lambda$x. realize (Var x)) t = realize t
+\end{lstlisting}
+Lifting the above result to formulae yields the coherence of \lstinline!b! as the original paper~\cite{new_fast_tableau} calls it.
+The proof is a tedious but straightforward induction on the the size of the formulae.
+\begin{lstlisting}
+lemma coherence:
+  assumes $\phi$ $\in$ set b
+  shows ($\lambda$x. realize (Var x)) $\models$ $\phi$
+\end{lstlisting}
+The coherence property finishes the proof of completeness of the calculus since it gives us a model for every formula in an open and saturated branch.
+
+\section{Soundness of the Calculus}
+Two aspects determine the soundness of the calculus: a closed branch must be unsatisfiable and all expansion rules must maintain satisfiability.
+We can express the former aspect in Isabelle as follows.
+\begin{lstlisting}[belowskip=0pt]
+lemma
+  assumes bclosed b shows $\exists$$\phi$ $\in$ set b. M $\not\models$ $\phi$
+\end{lstlisting}
+\begin{proof}
+  Assume for contradiction that \lstinline!b! is closed but we have a model, i.e.\ it holds that \lstinline!$\forall$$\phi$ $\in$ set b. M $\models$ $\phi$!.
+  We perform a case analysis on \lstinline!bclosed b!.
+  It is clear that, for any \lstinline!s!, neither does \lstinline!M! model \lstinline!s $\in$ $\emptyset$! nor \lstinline!s $\neqS$ s!.
+  Furthermore, no model can satisfy both \lstinline!$\phi$! and \lstinline!&\fmNeg{$\phi$}&! at the same time.
+  This leaves us with the case where \lstinline!b! contains a membership cycle
+\begin{lstlisting}
+  t$_\text{0}$ $\inS$ t$_\text{1}$, t$_\text{1}$ $\inS$ t$_\text{2}$, $\ldots$, t$_\text{k}$ $\inS$ t$_\text{0}$.
+\end{lstlisting}
+  By assumption, each atom of the membership cycle holds under the model \lstinline!M!; in other words, we have
+\begin{lstlisting}
+  &\Ist& M t$_\text{i}$ $\in$ elts (&\Ist& M t$_\text{i + 1 mod k + 1}$)
+\end{lstlisting}
+  for each \lstinline!i $\in$ {0,$\ldots$,k}!.
+  Therefore, the transitive closure of the membership relation \lstinline!{(x, y). x $\in$ elts y}! contains a cycle. 
+  This, however, is a contradiction since the membership relation of \lstinline!V! is well-founded (see Section~\ref{sec:semantics}) and well-foundedness is closed under transitive closure.
+\end{proof}
+
+\noindent We are left with showing that both linear and branching expansion rules preserve satisfiability.
+As for the linear rules, a straightforward proof by rule induction suffices to obtain the lemma below.
+\begin{lstlisting}
+lemma
+  assumes &\lexpands{b'}{b}& and $\phi$ $\in$ set b'
+  assumes $\bigwedge$$\psi$. $\psi$ $\in$ set b $\Longrightarrow$ M $\models$ $\psi$
+  shows M $\models$ $\phi$
+\end{lstlisting}
+The same would also hold for branching rules if it were not for the last rule that adds additional variables.
+Those variables need to be assigned specific values as we will see in the proof below.
+\begin{lstlisting}[belowskip=0pt]
+lemma
+  assumes &\fexpandsW{bs'}{b}&
+  assumes $\bigwedge$$\psi$. $\psi$ $\in$ set b $\Longrightarrow$ M $\models$ $\psi$
+  shows $\exists$M'. $\exists$b' $\in$ bs'.
+          $\forall$$\psi$ $\in$ set (b' @ b). M' $\models$ $\psi$
+\end{lstlisting}
+\begin{proof}
+  Since the last branching rule is applied here, it holds that
+\begin{lstlisting}
+  bs' = {[Var x $\inS$ s, Var x $\notinS$ t],
+         [Var x $\inS$ t, Var x $\notinS$ s]}
+\end{lstlisting}
+  for some fresh variable \lstinline!x!, i.e.\ \lstinline!x $\notin$ vars b! and in particular \lstinline!x $\notin$ vars s! as well as \lstinline!x $\notin$ vars t!.
+  Another consequence of applying the last rule is that \lstinline!s $\neqS$ t! is in \lstinline!b!, which, because \lstinline!M! is a model, implies that \lstinline!&\Ist& M s $\neq$ &\Ist& M t!.
+  This inequality manifests itself through some \lstinline!y! with
+\begin{lstlisting}
+  &\phantom{$\lor$}& y $\in$ elts (&\Ist& M s) $\land$ y $\notin$ elts (&\Ist& M t)
+  $\lor$ y $\in$ elts (&\Ist& M t) $\land$ y $\notin$ elts (&\Ist& M s).
+\end{lstlisting}
+  We now update the assignment \lstinline!M! such that it maps \lstinline!x! to \lstinline!y! to obtain the assignment \lstinline!M'!.
+  Note that values of both \lstinline!s! and \lstinline!t! are unchanged under this update as \lstinline!x $\notin$ vars s! and \lstinline!x $\notin$ vars t!.
+  Together with the our assumption about \lstinline!y!, we infer that 
+\end{proof}
+
+\section{Upper Bounding the Cardinality of a Branch}
 
 \section{An Abstract Specification of the Decision Procedure}
 \todo[inline]{Mention coherence lemma?}
@@ -516,7 +596,7 @@ function mlss_proc_branch :: 'a branch $\Rightarrow$ bool where
 definition mlss_proc :: 'a pset_fm $\Rightarrow$ bool where
   mlss_proc $\phi$ $\equiv$ mlss_proc_branch [$\phi$]
 \end{lstlisting}
-\caption{Definition of the function \lstinline|mlss_proc_branch| and \lstinline|mlss_proc|.}
+\caption{Definition of the functions \lstinline|mlss_proc_branch| and \lstinline|mlss_proc|.}
 \end{figure*}
 
 \subsection{Termination}

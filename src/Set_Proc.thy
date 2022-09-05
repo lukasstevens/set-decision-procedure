@@ -221,6 +221,9 @@ lemma subterms'_if_subterms_fm_last:
   "t \<in> subterms (last b) \<Longrightarrow> t \<in> subterms' b"
   by (simp add: subterms'_def)
 
+
+subsection \<open>\<open>no_new_subterms\<close>\<close>
+
 definition "no_new_subterms b \<equiv>
    \<forall>t \<in> subterms b. t \<notin> Var ` wits b \<longrightarrow> t \<in> subterms (last b)"
 
@@ -328,6 +331,9 @@ lemma expandss_no_new_subterms:
 lemmas subterms_branch_subterms_fm_lastI =
   subterms_branch_subterms_subterms_fm_trans[OF _ subterms_refl]
 
+
+subsection \<open>\<open>wits_subterms\<close>\<close>
+
 (* TODO: consider renaming this, change into abbreviation *)
 definition wits_subterms :: "'a branch \<Rightarrow> 'a pset_term set" where
   "wits_subterms b \<equiv> Var ` wits b \<union> subterms (last b)"
@@ -358,7 +364,9 @@ lemma wits_subterms_eq_subterms':
   by (auto simp: wits'D(1))
 
 
-section \<open>Proof of Lemma 2\<close>
+section \<open>Completeness of the Calculus\<close>
+
+subsection \<open>Proof of Lemma 2\<close>
 
 fun is_literal :: "'a fm \<Rightarrow> bool" where
   "is_literal (Atom _) = True"
@@ -843,7 +851,7 @@ proof -
 qed
 
 
-section \<open>Realization of an Open Branch\<close>
+subsection \<open>Realization of an Open Branch\<close>
 
 lemma mem_subterms_fm_last_if_mem_subterms_branch:
   assumes "wf_branch b"
@@ -1540,6 +1548,283 @@ lemmas realization_simps =
 
 end
 
+subsection \<open>Coherence\<close>
+
+lemma (in open_branch) I\<^sub>s\<^sub>t_realization_eq_realization:
+  assumes "sat b" "t \<in> subterms b"
+  shows "I\<^sub>s\<^sub>t (\<lambda>x. realize (Var x)) t = realize t"
+  using assms
+  by (induction t) (force simp: realization_simps dest: subterms_branchD)+
+
+lemma (in open_branch) coherence:
+  assumes "sat b" "\<phi> \<in> set b"
+  shows "interp I\<^sub>s\<^sub>a (\<lambda>x. realize (Var x)) \<phi>"
+  using assms
+proof(induction "size \<phi>" arbitrary: \<phi> rule: less_induct)
+  case less
+  then show ?case
+  proof(cases \<phi>)
+    case (Atom a)
+    then show ?thesis
+    proof(cases a)
+      case (Elem s t)
+      with Atom less have "s \<in> subterms b" "t \<in> subterms b"
+        using AT_mem_subterms_branchD by blast+
+      with Atom Elem less show ?thesis
+        using I\<^sub>s\<^sub>t_realization_eq_realization[OF \<open>sat b\<close>] realization_if_AT_mem by auto
+    next
+      case (Equal s t)
+      with Atom less have "s \<in> subterms b" "t \<in> subterms b"
+        using AT_eq_subterms_branchD by blast+
+      with Atom Equal less satD(1)[OF \<open>sat b\<close>] show ?thesis
+        using I\<^sub>s\<^sub>t_realization_eq_realization[OF \<open>sat b\<close>] realization_if_AT_eq by auto
+    qed
+  next
+    case (And \<phi>1 \<phi>2)
+    with \<open>\<phi> \<in> set b\<close> \<open>sat b\<close>[THEN satD(1), THEN lin_satD] have "\<phi>1 \<in> set b" "\<phi>2 \<in> set b"
+      using lexpands_fm.intros(1)[THEN lexpands.intros(1)] by fastforce+
+    with And less show ?thesis by simp
+  next
+    case (Or \<phi>1 \<phi>2)
+    with \<open>\<phi> \<in> set b\<close> \<open>sat b\<close>[THEN satD(2)] have "\<phi>1 \<in> set b \<or> Neg \<phi>1 \<in> set b"
+      using fexpands_noparam.intros(1)[THEN fexpands.intros(1)]
+      by blast
+    with less Or \<open>sat b\<close>[THEN satD(1), THEN lin_satD] have "\<phi>1 \<in> set b \<or> \<phi>2 \<in> set b"
+      using lexpands_fm.intros(3)[THEN lexpands.intros(1)] by fastforce
+    with Or less show ?thesis
+      by force
+  next
+    case (Neg \<phi>')
+    show ?thesis
+    proof(cases \<phi>')
+      case (Atom a)
+      then show ?thesis
+      proof(cases a)
+        case (Elem s t)
+        with Atom Neg less have "s \<in> subterms b" "t \<in> subterms b"
+          using AF_mem_subterms_branchD by blast+
+        with Neg Atom Elem less show ?thesis
+          using I\<^sub>s\<^sub>t_realization_eq_realization realization_if_AF_mem \<open>sat b\<close> by auto
+      next
+        case (Equal s t)
+        with Atom Neg less have "s \<in> subterms b" "t \<in> subterms b"
+          using AF_eq_subterms_branchD by blast+
+        with Neg Atom Equal less show ?thesis
+          using I\<^sub>s\<^sub>t_realization_eq_realization realization_if_AF_eq \<open>sat b\<close> by auto
+      qed
+    next
+      case (And \<phi>1 \<phi>2)
+      with Neg \<open>sat b\<close>[THEN satD(2)] less have "\<phi>1 \<in> set b \<or> Neg \<phi>1 \<in> set b"
+        using fexpands_noparam.intros(2)[THEN fexpands.intros(1)] by blast
+      with \<open>sat b\<close>[THEN satD(1), THEN lin_satD] Neg And less
+      have "Neg \<phi>2 \<in> set b \<or> Neg \<phi>1 \<in> set b"
+        using lexpands_fm.intros(5)[THEN lexpands.intros(1)] by fastforce
+      with Neg And less show ?thesis by force
+    next
+      case (Or \<phi>1 \<phi>2)
+      with \<open>\<phi> \<in> set b\<close> Neg \<open>sat b\<close>[THEN satD(1), THEN lin_satD]
+      have "Neg \<phi>1 \<in> set b" "Neg \<phi>2 \<in> set b"
+        using lexpands_fm.intros(2)[THEN lexpands.intros(1)] by fastforce+
+      moreover have "size (Neg \<phi>1) < size \<phi>" "size (Neg \<phi>2) < size \<phi>"
+        using Neg Or by simp_all
+      ultimately show ?thesis using Neg Or less by force
+    next
+      case Neg': (Neg \<phi>'')
+      with \<open>\<phi> \<in> set b\<close> Neg \<open>sat b\<close>[THEN satD(1), THEN lin_satD] have "\<phi>'' \<in> set b"
+        using lexpands_fm.intros(7)[THEN lexpands.intros(1)] by fastforce+
+      with Neg Neg' less show ?thesis by simp
+    qed
+  qed
+qed
+
+
+section \<open>Soundness of the Calculus\<close>
+
+subsection \<open>Soundness of Closedness\<close>
+
+lemmas wf_trancl_elts_rel = wf_trancl[OF foundation]
+
+lemma trancl_elts_rel_not_refl: "(x, x) \<notin> {(x, y). x \<in> elts y}\<^sup>+"
+  using wf_trancl_elts_rel by auto
+
+lemma mem_trancl_elts_rel_if_member_seq:
+  assumes "member_seq s cs t"
+  assumes "cs \<noteq> []"
+  assumes "\<forall>a \<in> set cs. I\<^sub>s\<^sub>a M a"
+  shows "(I\<^sub>s\<^sub>t M s, I\<^sub>s\<^sub>t M t) \<in> {(x, y). x \<in> elts y}\<^sup>+"
+  using assms
+proof(induction rule: member_seq.induct)
+  case (2 s s' u cs t)
+  show ?case
+  proof(cases cs)
+    case Nil
+    with 2 show ?thesis by auto
+  next
+    case (Cons c cs')
+    with 2 have "(I\<^sub>s\<^sub>t M u, I\<^sub>s\<^sub>t M t) \<in> {(x, y). x \<in> elts y}\<^sup>+"
+      by simp
+    moreover from 2 have "I\<^sub>s\<^sub>a M (s \<in>\<^sub>s u)"
+      by simp
+    ultimately show ?thesis
+      by (simp add: trancl_into_trancl2)
+  qed
+qed simp_all
+
+lemma not_interp_if_bclosed:
+  assumes "bclosed b"
+  shows "\<exists>\<phi> \<in> set b. \<not> interp I\<^sub>s\<^sub>a M \<phi>"
+  using assms
+proof -
+  have False if "\<forall>\<phi> \<in> set b. interp I\<^sub>s\<^sub>a M \<phi>"
+    using assms that
+  proof(induction rule: bclosed.induct)
+    case (memberCycle cs b)
+    then have "\<forall>a \<in> set cs. I\<^sub>s\<^sub>a M a"
+      unfolding Atoms_def by fastforce
+    from memberCycle obtain s where "member_seq s cs s"
+      using member_cycle.elims(2) by blast
+    with memberCycle \<open>\<forall>a \<in> set cs. I\<^sub>s\<^sub>a M a\<close> have "(I\<^sub>s\<^sub>t M s, I\<^sub>s\<^sub>t M s) \<in> {(x, y). x \<in> elts y}\<^sup>+"
+      using mem_trancl_elts_rel_if_member_seq member_cycle.simps(2) by blast  
+    with trancl_elts_rel_not_refl show ?case
+      by blast
+  qed (use interp.simps(4) in \<open>fastforce+\<close>)
+  then show ?thesis
+    by blast
+qed
+
+
+subsection \<open>Soundness of the Expansion Rules\<close>
+
+lemma lexpands_interp:
+  assumes "lexpands b' b"
+  assumes "\<phi> \<in> set b'"
+  assumes "\<And>\<psi>. \<psi> \<in> set b \<Longrightarrow> interp I\<^sub>s\<^sub>a M \<psi>"
+  shows "interp I\<^sub>s\<^sub>a M \<phi>"
+  using assms
+proof(induction rule: lexpands.induct)
+  case (1 b' b)
+  then show ?case
+    by (induction rule: lexpands_fm.induct)
+       (metis empty_iff empty_set interp.simps(2,3,4) set_ConsD)+
+next
+  case (2 b' b)
+  then show ?case
+  proof(induction rule: lexpands_un.induct)
+    case (4 s t1 t2 branch)
+    with this(1)[THEN this(4)] show ?case
+      by force
+  next
+    case (5 s t1 t2 branch)
+    with this(1)[THEN this(4)] show ?case
+      by force
+  qed force+
+next
+  case (3 b' b)
+  then show ?case
+  proof(induction rule: lexpands_int.induct)
+    case (4 s t1 t2 branch)
+    with this(1)[THEN this(4)] show ?case
+      by force
+  next
+    case (5 s t1 t2 branch)
+    with this(1)[THEN this(4)] show ?case
+      by force
+  qed force+
+next
+  case (4 b' b)
+  then show ?case
+  proof(induction rule: lexpands_diff.induct)
+    case (4 s t1 t2 branch)
+    with this(1)[THEN this(4)] show ?case by force
+  next
+    case (5 s t1 t2 branch)
+    with this(1)[THEN this(4)] show ?case by force
+  qed force+
+next
+  case (5 b' b)
+  then show ?case
+    by (induction rule: lexpands_single.induct) force+
+next
+  case (6 b' b)
+  then show ?case
+  proof(induction rule: lexpands_eq_induct')
+    case (subst t1 t2 t1' t2' p l b)
+    with this(1,2)[THEN this(6)] show ?case
+      by (cases l; cases p) auto
+  next
+    case (neq s t s' b)
+    with this(1,2)[THEN this(4)] show ?case by force
+  qed
+qed
+
+lemma fexpands_noparam_interp:
+  assumes "fexpands_noparam bs' b"
+  assumes "\<And>\<psi>. \<psi> \<in> set b \<Longrightarrow> interp I\<^sub>s\<^sub>a M \<psi>"
+  shows "\<exists>b' \<in> bs'. \<forall>\<psi> \<in> set b'. interp I\<^sub>s\<^sub>a M \<psi>"
+  using assms
+  by (induction rule: fexpands_noparam.induct) force+
+
+lemma I\<^sub>s\<^sub>t_upd_eq_if_not_mem_vars_term:
+  assumes "x \<notin> vars t"
+  shows "I\<^sub>s\<^sub>t (M(x := y)) t = I\<^sub>s\<^sub>t M t"
+  using assms by (induction t) auto
+
+lemma I\<^sub>s\<^sub>a_upd_eq_if_not_mem_vars_atom:
+  assumes "x \<notin> vars a"
+  shows "I\<^sub>s\<^sub>a (M(x := y)) a = I\<^sub>s\<^sub>a M a"
+  using assms
+  by (cases a) (auto simp: I\<^sub>s\<^sub>t_upd_eq_if_not_mem_vars_term)
+
+lemma interp_upd_eq_if_not_mem_vars_fm:
+  assumes "x \<notin> vars \<phi>"
+  shows "interp I\<^sub>s\<^sub>a (M(x := y)) \<phi> = interp I\<^sub>s\<^sub>a M \<phi>"
+  using assms
+  by (induction \<phi>) (auto simp: I\<^sub>s\<^sub>a_upd_eq_if_not_mem_vars_atom)
+
+lemma fexpands_param_interp:
+  assumes "fexpands_param s t x bs' b"
+  assumes "\<And>\<psi>. \<psi> \<in> set b \<Longrightarrow> interp I\<^sub>s\<^sub>a M \<psi>"
+  shows "\<exists>M. \<exists>b' \<in> bs'. \<forall>\<psi> \<in> set (b' @ b). interp I\<^sub>s\<^sub>a M \<psi>"
+  using assms
+proof (induction rule: fexpands_param.induct)
+  let ?bs'="{[AT (Var x \<in>\<^sub>s s), AF (Var x \<in>\<^sub>s t)],
+             [AT (Var x \<in>\<^sub>s t), AF (Var x \<in>\<^sub>s s)]}"
+  case (1 b)
+  with this(1)[THEN this(7)] have "I\<^sub>s\<^sub>t M s \<noteq> I\<^sub>s\<^sub>t M t"
+    by auto
+  then obtain y where y:
+    "y \<in> elts (I\<^sub>s\<^sub>t M s) \<and> y \<notin> elts (I\<^sub>s\<^sub>t M t) \<or>
+     y \<in> elts (I\<^sub>s\<^sub>t M t) \<and> y \<notin> elts (I\<^sub>s\<^sub>t M s)"
+    by (metis V_equalityI)
+  have "x \<notin> vars s" "x \<notin> vars t"
+    using 1 by (auto simp: vars_fm_vars_branchI)
+  then have "I\<^sub>s\<^sub>t (M(x := y)) s = I\<^sub>s\<^sub>t M s" "I\<^sub>s\<^sub>t (M(x := y)) t = I\<^sub>s\<^sub>t M t"
+    using I\<^sub>s\<^sub>t_upd_eq_if_not_mem_vars_term by metis+
+  then have "\<exists>b' \<in> ?bs'. \<forall>\<psi> \<in> set b'. interp I\<^sub>s\<^sub>a (M(x := y)) \<psi>"
+    using 1 y by auto
+  moreover have "\<forall>\<psi> \<in> set b. interp I\<^sub>s\<^sub>a (M(x := y)) \<psi>"
+    using "1"(7) \<open>x \<notin> vars b\<close> interp_upd_eq_if_not_mem_vars_fm
+    by (metis vars_fm_vars_branchI)
+  ultimately show ?case
+    by auto (metis fun_upd_same)+
+qed
+
+lemma fexpands_interp:
+  assumes "fexpands bs' b"
+  assumes "\<And>\<psi>. \<psi> \<in> set b \<Longrightarrow> interp I\<^sub>s\<^sub>a M \<psi>"
+  shows "\<exists>M. \<exists>b' \<in> bs'. \<forall>\<psi> \<in> set (b' @ b). interp I\<^sub>s\<^sub>a M \<psi>"
+  using assms
+proof(induction rule: fexpands.induct)
+  case (1 bs' b)
+  with fexpands_noparam_interp[OF this(1)] have "\<exists>b' \<in> bs'. \<forall>\<psi> \<in> set b'. interp I\<^sub>s\<^sub>a M \<psi>"
+    by blast
+  with 1 show ?case
+    by auto
+next
+  case (2 t1 t2 x bs b)
+  then show ?case using fexpands_param_interp by metis
+qed
+
 
 section \<open>Upper Bounding the Cardinality of a Branch\<close>
 
@@ -1669,7 +1954,7 @@ lemma card_subterms_branch_ub_if_wf_branch:
   by (simp add: assms card_Un_disjoint card_image_le finite_wits finite_subterms_fm
                 wits_subterms_last_disjnt)
 
-lemma card_Atoms_branch_if_wf_branch:
+lemma card_literals_branch_if_wf_branch:
   assumes "wf_branch b"
   shows "card {a \<in> set b. is_literal a}
        \<le> 2 * (2 * (card (subterms (last b)) + card (wits b))^2)"
@@ -1817,7 +2102,7 @@ proof -
     using card_Un_disjoint finite_Un
     by (metis (no_types, lifting) List.finite_set disjoint_iff mem_Collect_eq)
   also have "\<dots> \<le> 2 * card (subfms (last b)) + 4 * (?csts + card (wits b))^2"
-    using assms card_Atoms_branch_if_wf_branch card_not_literal_branch_if_wf_branch
+    using assms card_literals_branch_if_wf_branch card_not_literal_branch_if_wf_branch
     by fastforce
   also have "\<dots> \<le> 2 * card (subfms (last b)) + 4 * (?csts + ?csts^2)^2"
     using assms card_wits_ub_if_wf_branch by auto
@@ -1880,7 +2165,7 @@ proof -
     proof(cases "sat b")
       case False
       then consider
-        b' where  "\<not> lin_sat b" "lexpands b' b" "set b \<subset> set (b' @ b)"|
+        b' where  "\<not> lin_sat b" "lexpands b' b" "set b \<subset> set (b' @ b)" |
         bs' where "lin_sat b" "\<not> sat b" "fexpands bs' b" "bs' \<noteq> {}"
                   "\<forall>b' \<in> bs'. set b \<subset> set (b' @ b)"
         unfolding sat_def lin_sat_def
@@ -1907,16 +2192,8 @@ qed
 definition mlss_proc :: "'a pset_fm \<Rightarrow> bool" where
   "mlss_proc \<phi> \<equiv> mlss_proc_branch [\<phi>]"
 
-
-subsection \<open>Completeness\<close>
-
-lemma (in open_branch) I\<^sub>s\<^sub>t_realization_eq_realization:
-  assumes "sat b" "t \<in> subterms b"
-  shows "I\<^sub>s\<^sub>t (\<lambda>x. realize (Var x)) t = realize t"
-  using assms
-  by (induction t) (force simp: realization_simps dest: subterms_branchD)+
-
 lemma mlss_proc_branch_complete:
+  fixes b :: "'a branch"
   assumes "wf_branch b"
   assumes "\<not> mlss_proc_branch b"
   assumes "infinite (UNIV :: 'a set)"
@@ -1957,91 +2234,8 @@ proof -
       by (simp add: mlss_proc_branch.psimps)
     interpret open_branch b
       apply(unfold_locales) using 3 assms(3) \<open>bopen b\<close> by auto
-    define M where "M \<equiv> (\<lambda>x. realize (Var x))"
-    have "interp I\<^sub>s\<^sub>a M \<phi>" if "\<phi> \<in> set b" for \<phi>
-      using that
-    proof(induction "size \<phi>" arbitrary: \<phi> rule: less_induct)
-      case less
-      then show ?case
-      proof(cases \<phi>)
-        case (Atom a)
-        then show ?thesis
-        proof(cases a)
-          case (Elem s t)
-          with Atom less have "s \<in> subterms b" "t \<in> subterms b"
-            using AT_mem_subterms_branchD by blast+
-          with Atom Elem less show ?thesis
-            unfolding M_def
-            using I\<^sub>s\<^sub>t_realization_eq_realization[OF \<open>sat b\<close>] realization_if_AT_mem by auto
-        next
-          case (Equal s t)
-          with Atom less have "s \<in> subterms b" "t \<in> subterms b"
-            using AT_eq_subterms_branchD by blast+
-          with Atom Equal less satD(1)[OF \<open>sat b\<close>] show ?thesis
-            unfolding M_def
-            using I\<^sub>s\<^sub>t_realization_eq_realization[OF \<open>sat b\<close>] realization_if_AT_eq by auto
-        qed
-      next
-        case (And \<phi>1 \<phi>2)
-        with \<open>\<phi> \<in> set b\<close> \<open>sat b\<close>[THEN satD(1), THEN lin_satD] have "\<phi>1 \<in> set b" "\<phi>2 \<in> set b"
-          using lexpands_fm.intros(1)[THEN lexpands.intros(1)] by fastforce+
-        with And less show ?thesis by simp
-      next
-        case (Or \<phi>1 \<phi>2)
-        with \<open>\<phi> \<in> set b\<close> \<open>sat b\<close>[THEN satD(2)] have "\<phi>1 \<in> set b \<or> Neg \<phi>1 \<in> set b"
-          using fexpands_noparam.intros(1)[THEN fexpands.intros(1)]
-          by blast
-        with less Or \<open>sat b\<close>[THEN satD(1), THEN lin_satD] have "\<phi>1 \<in> set b \<or> \<phi>2 \<in> set b"
-          using lexpands_fm.intros(3)[THEN lexpands.intros(1)] by fastforce
-        with Or less show ?thesis
-          by force
-      next
-        case (Neg \<phi>')
-        show ?thesis
-        proof(cases \<phi>')
-          case (Atom a)
-          then show ?thesis
-          proof(cases a)
-            case (Elem s t)
-            with Atom Neg less have "s \<in> subterms b" "t \<in> subterms b"
-              using AF_mem_subterms_branchD by blast+
-            with Neg Atom Elem less show ?thesis
-              unfolding M_def
-              using I\<^sub>s\<^sub>t_realization_eq_realization realization_if_AF_mem \<open>sat b\<close> by auto
-          next
-            case (Equal s t)
-            with Atom Neg less have "s \<in> subterms b" "t \<in> subterms b"
-              using AF_eq_subterms_branchD by blast+
-            with Neg Atom Equal less show ?thesis
-              unfolding M_def
-              using I\<^sub>s\<^sub>t_realization_eq_realization realization_if_AF_eq \<open>sat b\<close> by auto
-          qed
-        next
-          case (And \<phi>1 \<phi>2)
-          with Neg \<open>sat b\<close>[THEN satD(2)] less have "\<phi>1 \<in> set b \<or> Neg \<phi>1 \<in> set b"
-            using fexpands_noparam.intros(2)[THEN fexpands.intros(1)] by blast
-          with \<open>sat b\<close>[THEN satD(1), THEN lin_satD] Neg And less
-          have "Neg \<phi>2 \<in> set b \<or> Neg \<phi>1 \<in> set b"
-            using lexpands_fm.intros(5)[THEN lexpands.intros(1)] by fastforce
-          with Neg And less show ?thesis by force
-        next
-          case (Or \<phi>1 \<phi>2)
-          with \<open>\<phi> \<in> set b\<close> Neg \<open>sat b\<close>[THEN satD(1), THEN lin_satD]
-          have "Neg \<phi>1 \<in> set b" "Neg \<phi>2 \<in> set b"
-            using lexpands_fm.intros(2)[THEN lexpands.intros(1)] by fastforce+
-          moreover have "size (Neg \<phi>1) < size \<phi>" "size (Neg \<phi>2) < size \<phi>"
-            using Neg Or by simp_all
-          ultimately show ?thesis using Neg Or less by force
-        next
-          case Neg': (Neg \<phi>'')
-          with \<open>\<phi> \<in> set b\<close> Neg \<open>sat b\<close>[THEN satD(1), THEN lin_satD] have "\<phi>'' \<in> set b"
-            using lexpands_fm.intros(7)[THEN lexpands.intros(1)] by fastforce+
-          with Neg Neg' less show ?thesis by simp
-        qed
-      qed
-    qed
-    then show ?case
-      using last_in_set wf_branch by force
+    from coherence[OF \<open>sat b\<close> last_in_set] show ?case
+      using wf_branch wf_branch_not_Nil by blast
   next
     case (4 b)
     then show ?case by (simp add: mlss_proc_branch.psimps)
@@ -2055,191 +2249,6 @@ theorem mlss_proc_complete:
   using assms mlss_proc_branch_complete[of "[\<phi>]"]
   unfolding mlss_proc_def wf_branch_def
   using expandss.intros(1) by auto
-
-
-subsection \<open>Soundness\<close>
-
-lemma lexpands_interp:
-  assumes "lexpands b' b"
-  assumes "\<psi> \<in> set b'"
-  assumes "\<And>\<psi>. \<psi> \<in> set b \<Longrightarrow> interp I\<^sub>s\<^sub>a M \<psi>"
-  shows "interp I\<^sub>s\<^sub>a M \<psi>"
-  using assms
-proof(induction rule: lexpands.induct)
-  case (1 b' b)
-  then show ?case
-    apply(induction rule: lexpands_fm.induct)
-       apply (metis empty_iff empty_set interp.simps(2,3,4) set_ConsD)+
-    done
-next
-  case (2 b' b)
-  then show ?case
-  proof(induction rule: lexpands_un.induct)
-    case (4 s t1 t2 branch)
-    with this(1)[THEN this(4)] show ?case
-      by force
-  next
-    case (5 s t1 t2 branch)
-    with this(1)[THEN this(4)] show ?case
-      by force
-  qed force+
-next
-  case (3 b' b)
-  then show ?case
-  proof(induction rule: lexpands_int.induct)
-    case (4 s t1 t2 branch)
-    with this(1)[THEN this(4)] show ?case
-      by force
-  next
-    case (5 s t1 t2 branch)
-    with this(1)[THEN this(4)] show ?case
-      by force
-  qed force+
-next
-  case (4 b' b)
-  then show ?case
-  proof(induction rule: lexpands_diff.induct)
-    case (4 s t1 t2 branch)
-    with this(1)[THEN this(4)] show ?case by force
-  next
-    case (5 s t1 t2 branch)
-    with this(1)[THEN this(4)] show ?case by force
-  qed force+
-next
-  case (5 b' b)
-  then show ?case
-    by (induction rule: lexpands_single.induct) force+
-next
-  case (6 b' b)
-  then show ?case
-  proof(induction rule: lexpands_eq_induct')
-    case (subst t1 t2 t1' t2' p l b)
-    with this(1,2)[THEN this(6)] show ?case
-      by (cases l; cases p) auto
-  next
-    case (neq s t s' b)
-    with this(1,2)[THEN this(4)] show ?case by force
-  qed
-qed
-
-lemma fexpands_noparam_interp:
-  assumes "fexpands_noparam bs' b"
-  assumes "\<And>\<psi>. \<psi> \<in> set b \<Longrightarrow> interp I\<^sub>s\<^sub>a M \<psi>"
-  shows "\<exists>b' \<in> bs'. \<forall>\<psi> \<in> set b'. interp I\<^sub>s\<^sub>a M \<psi>"
-  using assms
-  by (induction rule: fexpands_noparam.induct) force+
-
-lemma I\<^sub>s\<^sub>t_upd_eq_if_not_mem_vars_term:
-  assumes "x \<notin> vars t"
-  shows "I\<^sub>s\<^sub>t (M(x := y)) t = I\<^sub>s\<^sub>t M t"
-  using assms by (induction t) auto
-
-lemma I\<^sub>s\<^sub>a_upd_eq_if_not_mem_vars_atom:
-  assumes "x \<notin> vars a"
-  shows "I\<^sub>s\<^sub>a (M(x := y)) a = I\<^sub>s\<^sub>a M a"
-  using assms
-  by (cases a) (auto simp: I\<^sub>s\<^sub>t_upd_eq_if_not_mem_vars_term)
-
-lemma interp_upd_eq_if_not_mem_vars_fm:
-  assumes "x \<notin> vars \<phi>"
-  shows "interp I\<^sub>s\<^sub>a (M(x := y)) \<phi> = interp I\<^sub>s\<^sub>a M \<phi>"
-  using assms
-  by (induction \<phi>) (auto simp: I\<^sub>s\<^sub>a_upd_eq_if_not_mem_vars_atom)
-
-lemma fexpands_param_interp:
-  assumes "fexpands_param t1 t2 x bs' b"
-  assumes "\<And>\<psi>. \<psi> \<in> set b \<Longrightarrow> interp I\<^sub>s\<^sub>a M \<psi>"
-  shows "\<exists>M. \<exists>b' \<in> bs'. \<forall>\<psi> \<in> set (b' @ b). interp I\<^sub>s\<^sub>a M \<psi>"
-  using assms
-proof (induction rule: fexpands_param.induct)
-  let ?bs'="{[AT (pset_term.Var x \<in>\<^sub>s t1), AF (pset_term.Var x \<in>\<^sub>s t2)],
-             [AT (pset_term.Var x \<in>\<^sub>s t2), AF (pset_term.Var x \<in>\<^sub>s t1)]}"
-  case (1 b)
-  with this(1)[THEN this(7)] have "I\<^sub>s\<^sub>t M t1 \<noteq> I\<^sub>s\<^sub>t M t2"
-    by (auto)
-  then obtain y where y:
-    "y \<in> elts (I\<^sub>s\<^sub>t M t1) \<and> y \<notin> elts (I\<^sub>s\<^sub>t M t2) \<or>
-     y \<in> elts (I\<^sub>s\<^sub>t M t2) \<and> y \<notin> elts (I\<^sub>s\<^sub>t M t1)"
-    by (metis V_equalityI)
-  have "x \<notin> vars t1" "x \<notin> vars t2"
-    using 1 by (auto simp: vars_fm_vars_branchI)
-  then have "I\<^sub>s\<^sub>t (M(x := y)) t1 = I\<^sub>s\<^sub>t M t1" "I\<^sub>s\<^sub>t (M(x := y)) t2 = I\<^sub>s\<^sub>t M t2"
-    using I\<^sub>s\<^sub>t_upd_eq_if_not_mem_vars_term by metis+
-  then have "\<exists>b' \<in> ?bs'. \<forall>\<psi> \<in> set b'. interp I\<^sub>s\<^sub>a (M(x := y)) \<psi>"
-    using 1 y by auto
-  moreover have "\<forall>\<psi> \<in> set b. interp I\<^sub>s\<^sub>a (M(x := y)) \<psi>"
-    using "1"(7) \<open>x \<notin> vars b\<close> interp_upd_eq_if_not_mem_vars_fm
-    by (metis vars_fm_vars_branchI)
-  ultimately show ?case
-    by auto (metis fun_upd_same)+
-qed
-
-lemma fexpands_interp:
-  assumes "fexpands bs' b"
-  assumes "\<And>\<psi>. \<psi> \<in> set b \<Longrightarrow> interp I\<^sub>s\<^sub>a M \<psi>"
-  shows "\<exists>M. \<exists>b' \<in> bs'. \<forall>\<psi> \<in> set (b' @ b). interp I\<^sub>s\<^sub>a M \<psi>"
-  using assms
-proof(induction rule: fexpands.induct)
-  case (1 bs' b)
-  with fexpands_noparam_interp[OF this(1)] have "\<exists>b' \<in> bs'. \<forall>\<psi> \<in> set b'. interp I\<^sub>s\<^sub>a M \<psi>"
-    by blast
-  with 1 show ?case
-    by auto
-next
-  case (2 t1 t2 x bs b)
-  then show ?case using fexpands_param_interp by metis
-qed
-
-lemma wf_trancl_elts_rel: "wf ({(x, y). x \<in> elts y}\<^sup>+)"
-  using foundation wf_trancl by blast
-
-lemma trancl_elts_rel_not_refl: "(x, x) \<notin> {(x, y). x \<in> elts y}\<^sup>+"
-  using wf_trancl_elts_rel by auto
-
-lemma mem_trancl_elts_rel_if_member_seq:
-  assumes "member_seq s cs t"
-  assumes "cs \<noteq> []"
-  assumes "\<forall>a \<in> set cs. I\<^sub>s\<^sub>a M a"
-  shows "(I\<^sub>s\<^sub>t M s, I\<^sub>s\<^sub>t M t) \<in> {(x, y). x \<in> elts y}\<^sup>+"
-  using assms
-proof(induction rule: member_seq.induct)
-  case (2 s s' u cs t)
-  show ?case
-  proof(cases cs)
-    case Nil
-    with 2 show ?thesis by auto
-  next
-    case (Cons c cs')
-    with 2 have "(I\<^sub>s\<^sub>t M u, I\<^sub>s\<^sub>t M t) \<in> {(x, y). x \<in> elts y}\<^sup>+"
-      by simp
-    moreover from 2 have "I\<^sub>s\<^sub>a M (s \<in>\<^sub>s u)"
-      by simp
-    ultimately show ?thesis
-      by (simp add: trancl_into_trancl2)
-  qed
-qed simp_all
-
-lemma not_interp_if_bclosed:
-  assumes "bclosed b'"
-  shows "\<exists>\<psi> \<in> set b'. \<not> interp I\<^sub>s\<^sub>a M \<psi>"
-  using assms
-proof -
-  have False if "\<forall>\<psi> \<in> set b'. interp I\<^sub>s\<^sub>a M \<psi>"
-    using assms that
-  proof(induction rule: bclosed.induct)
-    case (memberCycle cs b)
-    then have "\<forall>a \<in> set cs. I\<^sub>s\<^sub>a M a"
-      unfolding Atoms_def by fastforce
-    from memberCycle obtain s where "member_seq s cs s"
-      using member_cycle.elims(2) by blast
-    with memberCycle \<open>\<forall>a \<in> set cs. I\<^sub>s\<^sub>a M a\<close> have "(I\<^sub>s\<^sub>t M s, I\<^sub>s\<^sub>t M s) \<in> {(x, y). x \<in> elts y}\<^sup>+"
-      using mem_trancl_elts_rel_if_member_seq member_cycle.simps(2) by blast  
-    with trancl_elts_rel_not_refl show ?case
-      by blast
-  qed (use interp.simps(4) in \<open>fastforce+\<close>)
-  then show ?thesis
-    by blast
-qed
 
 lemma mlss_proc_branch_sound:
   assumes "wf_branch b"

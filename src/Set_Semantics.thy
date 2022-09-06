@@ -311,31 +311,6 @@ subsection \<open>Set Atoms in a Branch\<close>
 abbreviation pset_atoms_branch :: "'a fm list \<Rightarrow> 'a set" where
   "pset_atoms_branch b \<equiv> \<Union>(atoms ` set b)"
 
-lemma mem_pset_atoms_branch_subterms_branchD:
-  assumes "(t1 \<in>\<^sub>s t2) \<in> pset_atoms_branch b"
-  shows "t1 \<in> subterms b" "t2 \<in> subterms b"
-proof -
-  from assms obtain \<phi> where phi: "\<phi> \<in> set b" "(t1 \<in>\<^sub>s t2) \<in> atoms \<phi>"
-    by blast
-  from this(2) have "t1 \<in> subterms \<phi> \<and> t2 \<in> subterms \<phi>"
-    by (induction \<phi>) (auto simp: subterms_branch_def)
-  with phi show "t1 \<in> subterms b" "t2 \<in> subterms b"
-    unfolding subterms_branch_def by blast+
-qed
-
-lemma eq_pset_atoms_branch_subterms_branchD:
-  assumes "(t1 \<approx>\<^sub>s t2) \<in> pset_atoms_branch b"
-  shows "t1 \<in> subterms b" "t2 \<in> subterms b"
-proof -
-  from assms obtain \<phi> where phi: "\<phi> \<in> set b" "(t1 \<approx>\<^sub>s t2) \<in> atoms \<phi>"
-    by blast
-  from this(2) have "t1 \<in> subterms \<phi> \<and> t2 \<in> subterms \<phi>"
-    by (induction \<phi>) (auto simp: subterms_branch_def)
-  with phi show "t1 \<in> subterms b" "t2 \<in> subterms b"
-    unfolding subterms_branch_def by blast+
-qed
-
-
 section \<open>Finiteness\<close>
 
 lemma finite_vars_term: "finite (vars_term t)"

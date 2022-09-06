@@ -266,6 +266,7 @@ where
 \end{lstlisting}
 For formulae, we write \lstinline!M $\models$ $\phi$! for the judgement that $\phi$ holds under the valuation function \lstinline!M!.
 We omit the implementation of $\models$ for brevity.
+\todo[inline]{Add implementation? Add satisfiability!}
 
 \section{A Tableau Calculus for MLSS}
 We formalise the tableau calculus for \MLSS{} as described by \citeauthor{new_fast_tableau}~\cite{new_fast_tableau}.
@@ -300,6 +301,7 @@ inductive bclosed :: 'a branch $\Rightarrow$ bool where
 abbreviation bopen b $\equiv$ $\neg$ bclosed b
 \end{lstlisting}
 A tableau is called \textit{closed} if all of its branches are closed.
+\todo[inline]{Move closed}
 
 \subsection{Linear Expansion Rules}
 The calculus considers two kinds of branch expansion rules: \textit{linear} and \textit{branching} rules.
@@ -516,13 +518,13 @@ lemma coherence:
   assumes $\phi$ $\in$ set b
   shows ($\lambda$x. realize (Var x)) $\models$ $\phi$
 \end{lstlisting}
-The coherence property finishes the proof of completeness of the calculus since it gives us a model for every formula in an open and saturated branch.
+The coherence property finishes the proof of completeness of the calculus as it gives us a model for every formula in an open and saturated branch.
 
 \section{Soundness of the Calculus}
 Two aspects determine the soundness of the calculus: a closed branch must be unsatisfiable and all expansion rules must maintain satisfiability.
 We can express the former aspect in Isabelle as follows.
 \begin{lstlisting}[belowskip=0pt]
-lemma
+lemma bclosed_sound:
   assumes bclosed b shows $\exists$$\phi$ $\in$ set b. M $\not\models$ $\phi$
 \end{lstlisting}
 \begin{proof}
@@ -546,27 +548,28 @@ lemma
 \noindent We are left with showing that both linear and branching expansion rules preserve satisfiability.
 As for the linear rules, a straightforward proof by rule induction suffices to obtain the lemma below.
 \begin{lstlisting}
-lemma
+lemma lexpands_sound:
   assumes &\lexpands{b'}{b}& and $\phi$ $\in$ set b'
   assumes $\bigwedge$$\psi$. $\psi$ $\in$ set b $\Longrightarrow$ M $\models$ $\psi$
   shows M $\models$ $\phi$
 \end{lstlisting}
-The same would also hold for branching rules if it were not for the last rule that adds additional variables.
-Those variables need to be assigned specific values as we will see in the proof below.
+A similar argument would work for the branching rules if it were not for the last rule adding new variables.
+Those variables need to be assigned specific values, hence modifying the model, as we will see in the proof below.
 \begin{lstlisting}[belowskip=0pt]
-lemma
-  assumes &\fexpandsW{bs'}{b}&
+lemma fexpands_sound:
+  assumes &\fexpands{bs'}{b}&
   assumes $\bigwedge$$\psi$. $\psi$ $\in$ set b $\Longrightarrow$ M $\models$ $\psi$
   shows $\exists$M'. $\exists$b' $\in$ bs'.
           $\forall$$\psi$ $\in$ set (b' @ b). M' $\models$ $\psi$
 \end{lstlisting}
 \begin{proof}
-  Since the last branching rule is applied here, it holds that
+  We perform a case analysis on the derivation \lstinline!&\fexpands{bs'}{b}&!.
+  As all cases but that of the last rule are straightforward, we only consider this last case where we have 
 \begin{lstlisting}
   bs' = {[Var x $\inS$ s, Var x $\notinS$ t],
          [Var x $\inS$ t, Var x $\notinS$ s]}
 \end{lstlisting}
-  for some fresh variable \lstinline!x!, i.e.\ \lstinline!x $\notin$ vars b! and in particular \lstinline!x $\notin$ vars s! as well as \lstinline!x $\notin$ vars t!.
+  for some fresh variable \lstinline!x!, i.e.\ \lstinline!x $\notin$ vars b! and in particular \lstinline!x $\notin$ vars s $\cup$ vars t!.
   Another consequence of applying the last rule is that \lstinline!s $\neqS$ t! is in \lstinline!b!, which, because \lstinline!M! is a model, implies that \lstinline!&\Ist& M s $\neq$ &\Ist& M t!.
   This inequality manifests itself through some \lstinline!y! with
 \begin{lstlisting}
@@ -575,13 +578,34 @@ lemma
 \end{lstlisting}
   We now update the assignment \lstinline!M! such that it maps \lstinline!x! to \lstinline!y! to obtain the assignment \lstinline!M'!.
   Note that values of both \lstinline!s! and \lstinline!t! are unchanged under this update as \lstinline!x $\notin$ vars s! and \lstinline!x $\notin$ vars t!.
-  Together with the our assumption about \lstinline!y!, we infer that 
+  Considering our assumption about \lstinline!y! and the fact that \lstinline!&\Ist& M' (Var x) = y!, we infer that
+\begin{lstlisting}
+  $\exists$b' $\in$ bs'. $\forall$$\psi$ $\in$ set b'. M' $\models$ $\psi$.
+\end{lstlisting}
+  In other words, due to the disjunction, it holds that \lstinline!M'! is a model for one \lstinline!b' $\in$ bs!.
+  Thus, we are left with proving that \lstinline!M'! is a model for \lstinline!b!.
+  This is indeed the case since the assumption \lstinline!M $\models$ $\psi$! is equivalent to \lstinline!M' $\models$ $\psi$! for all \lstinline!$\psi$ $\in$ set b! given that \lstinline!x! is fresh with respect to b.
 \end{proof}
 
 \section{Upper Bounding the Cardinality of a Branch}
+Soundness and completeness of the calculus are the building blocks with which we establish partial correctness of Algorithm~\ref{fig:alg}.
+Consequently, we still need to give a termination proof of Algorithm~\ref{fig:alg} to obtain total correctness of the algorithm.
+The core of our argument is that the number of distinct formulae in a branch that can be derived with the expansion rules is finite.
+In particular, we claim that the number of distinct formulae has the following upper bound.
+\begin{lstlisting}
+  &\phantom{$\leq$}& card (set b)
+  &\textover{$=$}{$\leq$}& card {$\psi$ $\in$ set b. $\neg$ is_literal $\psi$} +
+  &\phantom{$\leq$}& card {$\psi$ $\in$ set b. is_literal $\psi$}
+  $\leq$ 2 * card (subfms (last b)) +
+  &\phantom{$\leq$}& card {$\psi$ $\in$ set b. is_literal $\psi$}
+  $\leq$ 2 * card (subfms (last b)) +
+  &\phantom{$\leq$}& 16 * (card (subterms (last b)))$^4$
+\end{lstlisting}
+We justify both inequalities separately, starting with the first one whose justification hinges on an invariant:
+Its justification hinges on the invariant that the only new subformulae introduced by the expansion rules introduce
+
 
 \section{An Abstract Specification of the Decision Procedure}
-\todo[inline]{Mention coherence lemma?}
 \begin{figure*}
   \centering
 \begin{lstlisting}
@@ -596,17 +620,8 @@ function mlss_proc_branch :: 'a branch $\Rightarrow$ bool where
 definition mlss_proc :: 'a pset_fm $\Rightarrow$ bool where
   mlss_proc $\phi$ $\equiv$ mlss_proc_branch [$\phi$]
 \end{lstlisting}
-\caption{Definition of the functions \lstinline|mlss_proc_branch| and \lstinline|mlss_proc|.}
+\caption{Definition of the functions \lstinline|mlss_proc_branch| and \lstinline|mlss_proc|.\label{fig:alg}}
 \end{figure*}
-
-\subsection{Termination}
-Maybe interesting: technical lemma that allows to obtain the point at which a parameter was introduced.
-\subsection{Soundness}
-Interesting: The model changes because auf new witnesses.
-Maybe move this to the chapter on the calculus?
-\todo[inline]{Show \lstinline!memberCycle! case? This requires \lstinline!member_seq!.}
-\subsection{Lifting the Completeness of the Calculus}
-\todo[inline]{Do you even lift?}
 
 \section{Future Work}
 Challenges in obtaining an executable specification: membership cycle test unnecessary, fast branch membership test, proof reconstruction.

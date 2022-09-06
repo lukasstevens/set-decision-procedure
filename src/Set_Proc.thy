@@ -1670,7 +1670,7 @@ proof(induction rule: member_seq.induct)
   qed
 qed simp_all
 
-lemma not_interp_if_bclosed:
+lemma bclosed_sound:
   assumes "bclosed b"
   shows "\<exists>\<phi> \<in> set b. \<not> interp I\<^sub>s\<^sub>a M \<phi>"
   using assms
@@ -1695,7 +1695,7 @@ qed
 
 subsection \<open>Soundness of the Expansion Rules\<close>
 
-lemma lexpands_interp:
+lemma lexpands_sound:
   assumes "lexpands b' b"
   assumes "\<phi> \<in> set b'"
   assumes "\<And>\<psi>. \<psi> \<in> set b \<Longrightarrow> interp I\<^sub>s\<^sub>a M \<psi>"
@@ -1757,7 +1757,7 @@ next
   qed
 qed
 
-lemma fexpands_noparam_interp:
+lemma fexpands_noparam_sound:
   assumes "fexpands_noparam bs' b"
   assumes "\<And>\<psi>. \<psi> \<in> set b \<Longrightarrow> interp I\<^sub>s\<^sub>a M \<psi>"
   shows "\<exists>b' \<in> bs'. \<forall>\<psi> \<in> set b'. interp I\<^sub>s\<^sub>a M \<psi>"
@@ -1781,7 +1781,7 @@ lemma interp_upd_eq_if_not_mem_vars_fm:
   using assms
   by (induction \<phi>) (auto simp: I\<^sub>s\<^sub>a_upd_eq_if_not_mem_vars_atom)
 
-lemma fexpands_param_interp:
+lemma fexpands_param_sound:
   assumes "fexpands_param s t x bs' b"
   assumes "\<And>\<psi>. \<psi> \<in> set b \<Longrightarrow> interp I\<^sub>s\<^sub>a M \<psi>"
   shows "\<exists>M. \<exists>b' \<in> bs'. \<forall>\<psi> \<in> set (b' @ b). interp I\<^sub>s\<^sub>a M \<psi>"
@@ -1809,20 +1809,20 @@ proof (induction rule: fexpands_param.induct)
     by auto (metis fun_upd_same)+
 qed
 
-lemma fexpands_interp:
+lemma fexpands_sound:
   assumes "fexpands bs' b"
   assumes "\<And>\<psi>. \<psi> \<in> set b \<Longrightarrow> interp I\<^sub>s\<^sub>a M \<psi>"
   shows "\<exists>M. \<exists>b' \<in> bs'. \<forall>\<psi> \<in> set (b' @ b). interp I\<^sub>s\<^sub>a M \<psi>"
   using assms
 proof(induction rule: fexpands.induct)
   case (1 bs' b)
-  with fexpands_noparam_interp[OF this(1)] have "\<exists>b' \<in> bs'. \<forall>\<psi> \<in> set b'. interp I\<^sub>s\<^sub>a M \<psi>"
+  with fexpands_noparam_sound[OF this(1)] have "\<exists>b' \<in> bs'. \<forall>\<psi> \<in> set b'. interp I\<^sub>s\<^sub>a M \<psi>"
     by blast
   with 1 show ?case
     by auto
 next
   case (2 t1 t2 x bs b)
-  then show ?case using fexpands_param_interp by metis
+  then show ?case using fexpands_param_sound by metis
 qed
 
 
@@ -1889,13 +1889,13 @@ qed
 
 lemma card_wits_ub_if_wf_branch:
   assumes "wf_branch b"
-  shows "card (wits b) \<le> (card (subterms (last b)))^2"
+  shows "card (wits b) \<le> (card (subterms (last b)))\<^sup>2"
 proof -
   from assms obtain \<phi> where "expandss b [\<phi>]"
     unfolding wf_branch_def by blast
   with wf_branch_not_Nil[OF assms] have [simp]: "last b = \<phi>"
     using expandss_last_eq by force
-  have False if card_gt: "card (wits b) > (card (subterms \<phi>))^2"
+  have False if card_gt: "card (wits b) > (card (subterms \<phi>))\<^sup>2"
   proof -
     define ts where "ts \<equiv> (\<lambda>x. SOME t1_t2. \<exists>bs b2 b1.
        expandss b (b2 @ b1) \<and> b2 \<in> bs \<and> fexpands_param (fst t1_t2) (snd t1_t2) x bs b1  \<and> expandss b1 [\<phi>])"
@@ -1920,7 +1920,7 @@ proof -
         by (intro subrelI) (metis imageE mem_Sigma_iff)
       then have "card (ts ` wits b) \<le> card (subterms \<phi> \<times> subterms \<phi>)"
         by (intro card_mono) (simp_all add: finite_subterms_fm)
-      moreover have "card (subterms \<phi> \<times> subterms \<phi>) = (card (subterms \<phi>))^2"
+      moreover have "card (subterms \<phi> \<times> subterms \<phi>) = (card (subterms \<phi>))\<^sup>2"
         unfolding card_cartesian_product by algebra
       ultimately show "\<not> inj_on ts (wits b)"
         using card_gt by (metis card_image linorder_not_less)
@@ -1950,14 +1950,14 @@ qed
 lemma card_subterms_branch_ub_if_wf_branch:
   assumes "wf_branch b"
   shows "card (subterms b) \<le> card (subterms (last b)) + card (wits b)"
-  using subterms_branch_eq_if_wf_branch[OF assms, unfolded wits_subterms_def]
+  unfolding subterms_branch_eq_if_wf_branch[OF assms, unfolded wits_subterms_def]
   by (simp add: assms card_Un_disjoint card_image_le finite_wits finite_subterms_fm
                 wits_subterms_last_disjnt)
 
 lemma card_literals_branch_if_wf_branch:
   assumes "wf_branch b"
   shows "card {a \<in> set b. is_literal a}
-       \<le> 2 * (2 * (card (subterms (last b)) + card (wits b))^2)"
+       \<le> 2 * (2 * (card (subterms (last b)) + card (wits b))\<^sup>2)"
 proof -
   have "card {a \<in> set b. is_literal a}
       \<le> card (pset_atoms_branch b) + card (pset_atoms_branch b)" (is "card ?A \<le> _")
@@ -1991,7 +1991,7 @@ proof -
     unfolding subterms_branch_def
     by force
   have "card (pset_atoms_branch b)
-    \<le> (card (subterms b))^2 + (card (subterms b))^2"
+    \<le> (card (subterms b))\<^sup>2 + (card (subterms b))\<^sup>2"
   proof -
     from finite_subterms_branch have "finite (subterms b \<times> subterms b)"
       using finite_cartesian_product by auto
@@ -2000,14 +2000,14 @@ proof -
     moreover have "inj_on (case_prod Elem) A" "inj_on (case_prod Equal) A"
       for A :: "('a pset_term \<times> 'a pset_term) set"
       unfolding inj_on_def by auto
-    ultimately have "card ?Els = (card (subterms b))^2" "card ?Eqs = (card (subterms b))^2"
+    ultimately have "card ?Els = (card (subterms b))\<^sup>2" "card ?Eqs = (card (subterms b))\<^sup>2"
       using card_image[where ?A="subterms b \<times> subterms b"] card_cartesian_product
       unfolding power2_eq_square by metis+
     with card_mono[OF _ \<open>pset_atoms_branch b \<subseteq> ?Els \<union> ?Eqs\<close>] show ?thesis
       using \<open>finite ?Els\<close> \<open>finite ?Eqs\<close>
       by (metis card_Un_le finite_UnI sup.boundedE sup_absorb2)
   qed
-  then have "card (pset_atoms_branch b) \<le> 2 * (card (subterms b))^2"
+  then have "card (pset_atoms_branch b) \<le> 2 * (card (subterms b))\<^sup>2"
     by simp
   ultimately show ?thesis
     using card_subterms_branch_ub_if_wf_branch[OF assms]
@@ -2101,19 +2101,19 @@ proof -
     = card ({\<psi> \<in> set b. \<not> is_literal \<psi>}) + card ({\<psi> \<in> set b. is_literal \<psi>})"
     using card_Un_disjoint finite_Un
     by (metis (no_types, lifting) List.finite_set disjoint_iff mem_Collect_eq)
-  also have "\<dots> \<le> 2 * card (subfms (last b)) + 4 * (?csts + card (wits b))^2"
+  also have "\<dots> \<le> 2 * card (subfms (last b)) + 4 * (?csts + card (wits b))\<^sup>2"
     using assms card_literals_branch_if_wf_branch card_not_literal_branch_if_wf_branch
     by fastforce
-  also have "\<dots> \<le> 2 * card (subfms (last b)) + 4 * (?csts + ?csts^2)^2"
+  also have "\<dots> \<le> 2 * card (subfms (last b)) + 4 * (?csts + ?csts\<^sup>2)\<^sup>2"
     using assms card_wits_ub_if_wf_branch by auto
   also have "\<dots> \<le> 2 * card (subfms (last b)) + 16 * ?csts^4"
   proof -
     have "1 \<le> ?csts"
       using finite_subterms_fm[THEN card_0_eq]
       by (auto intro: Suc_leI)
-    then have "(?csts + ?csts^2)^2 = ?csts^2 + 2 * ?csts^3 + ?csts^4"
+    then have "(?csts + ?csts\<^sup>2)\<^sup>2 = ?csts\<^sup>2 + 2 * ?csts^3 + ?csts^4"
       by algebra
-    also have "\<dots> \<le> ?csts^2 + 2 * ?csts^4 + ?csts^4"
+    also have "\<dots> \<le> ?csts\<^sup>2 + 2 * ?csts^4 + ?csts^4"
       using power_increasing[OF _ \<open>1 \<le> ?csts\<close>] by simp
     also have "\<dots> \<le> ?csts^4 + 2 * ?csts^4 + ?csts^4"
       using power_increasing[OF _ \<open>1 \<le> ?csts\<close>] by simp
@@ -2266,7 +2266,7 @@ proof
       by (metis (no_types, lifting) not_lin_satD someI_ex)+
     with \<open>wf_branch b\<close> have "wf_branch (?b' @ b)"
       using wf_branch_lexpands by blast
-    with 1 lexpands_interp[OF b'_wd(1)] obtain b'' where
+    with 1 lexpands_sound[OF b'_wd(1)] obtain b'' where
       "expandss b'' (?b' @ b)" "\<exists>M. \<forall>\<psi> \<in> set b''. interp I\<^sub>s\<^sub>a M \<psi>" "bclosed b''"
       by (fastforce simp: mlss_proc_branch.psimps)
     with 1 show ?case
@@ -2279,10 +2279,10 @@ proof
       by (meson sat_def tfl_some)
     with \<open>wf_branch b\<close> have wf_branch_b': "wf_branch (b' @ b)" if "b' \<in> ?bs'" for b'
       using that  expandss.intros(3) wf_branch_def by blast
-    from fexpands_interp[OF bs'_wd] 2 obtain M' b' where
+    from fexpands_sound[OF bs'_wd] 2 obtain M' b' where
       "b' \<in> ?bs'" "\<forall>\<psi> \<in> set (b' @ b). interp I\<^sub>s\<^sub>a M' \<psi>"
       by metis
-    with 2 fexpands_interp[OF \<open>fexpands ?bs' b\<close>] wf_branch_b' obtain b'' where
+    with 2 fexpands_sound[OF \<open>fexpands ?bs' b\<close>] wf_branch_b' obtain b'' where
       "b' \<in> ?bs'" "expandss b'' (b' @ b)"
       "\<exists>M. \<forall>\<psi> \<in> set b''. interp I\<^sub>s\<^sub>a M \<psi>" "bclosed b''"
       using mlss_proc_branch.psimps(2)[OF "2.hyps"(2-4,1)] by blast
@@ -2290,7 +2290,7 @@ proof
       using expandss_trans expandss.intros(1,3)
       by (metis sat_def tfl_some)
   qed (use expandss.intros(1) mlss_proc_branch.psimps(3) in \<open>blast+\<close>)
-  with not_interp_if_bclosed show False by blast
+  with bclosed_sound show False by blast
 qed
 
 theorem mlss_proc_sound:

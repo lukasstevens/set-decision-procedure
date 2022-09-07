@@ -2138,7 +2138,6 @@ function (domintros) mlss_proc_branch :: "'a branch \<Rightarrow> bool" where
   by auto
 
 lemma mlss_proc_branch_dom_if_wf_branch:
-  fixes b :: "'a branch"
   assumes "wf_branch b"
   shows "mlss_proc_branch_dom b"
 proof -
@@ -2197,7 +2196,7 @@ lemma mlss_proc_branch_complete:
   assumes "wf_branch b"
   assumes "\<not> mlss_proc_branch b"
   assumes "infinite (UNIV :: 'a set)"
-  shows "\<exists>M :: 'a \<Rightarrow> V. interp I\<^sub>s\<^sub>a M (last b)"
+  shows "\<exists>M. interp I\<^sub>s\<^sub>a M (last b)"
 proof -
   from mlss_proc_branch_dom_if_wf_branch[OF assms(1)] assms(1,2)
   show ?thesis
@@ -2243,9 +2242,10 @@ proof -
 qed
 
 theorem mlss_proc_complete:
+  fixes \<phi> :: "'a pset_fm"
   assumes "\<not> mlss_proc \<phi>"
   assumes "infinite (UNIV :: 'a set)"
-  shows "\<exists>M :: 'a \<Rightarrow> V. interp I\<^sub>s\<^sub>a M \<phi>"
+  shows "\<exists>M. interp I\<^sub>s\<^sub>a M \<phi>"
   using assms mlss_proc_branch_complete[of "[\<phi>]"]
   unfolding mlss_proc_def wf_branch_def
   using expandss.intros(1) by auto

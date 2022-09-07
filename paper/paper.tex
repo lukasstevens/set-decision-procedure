@@ -26,7 +26,7 @@
 \lstdefinelanguage{isabelle}{%
     keywords=[1]{type_synonym,datatype,fun,function,abbreviation,definition,proof,lemma,theorem,corollary,inductive},
     keywordstyle=[1]\bfseries\color{isarblue},
-    keywords=[2]{where,assumes,shows,and},
+    keywords=[2]{where,assumes,shows,and,fixes},
     keywordstyle=[2]\bfseries\color{isargreen},
     keywords=[3]{if,then,else,case,of,SOME,let,in,O},
     keywordstyle=[3]\color{isarblue},
@@ -69,6 +69,10 @@
 
 \usepackage{todonotes}
 
+% Autoref names
+\renewcommand{\sectionautorefname}{Section}
+\renewcommand{\subsectionautorefname}{Section}
+
 % Commands
 \newcommand{\MLSS}{\textbf{MLSS}}
 
@@ -95,7 +99,8 @@
 
 \newcommand{\fmAnd}[2]{#1 $\boldsymbol{\land}$ #2}
 \newcommand{\fmOr}[2]{#1 $\boldsymbol{\lor}$ #2}
-\newcommand{\fmNeg}[1]{$\boldsymbol{\neg}$ #1}
+\newcommand{\fmNegSymbol}{\boldsymbol{\neg}}
+\newcommand{\fmNeg}[1]{$\fmNegSymbol$ #1}
 \newcommand{\fmAtom}{\textbf{A}}
 
 \begin{document}
@@ -239,13 +244,16 @@ The sets in $\mathcal{V}$ are well-founded meaning that there can be no membersh
 In Isabelle/HOL, which is simply typed, this definition is not accepted, though.
 A way to work around this limitiation is provided by Lawrence in an AFP entry~\cite{zfc_in_hol_afp}, which adds $\mathcal{V}$ to Isabelle/HOL by way of axiomatisation.
 An article by Lawrence~\cite{zfc_in_hol} provides some further context to this entry.
-The entry declares a type \lstinline!V! that is equipped with a function \lstinline!elts :: V $\Rightarrow$ V set! that maps a set to its elements.
-\todo[inline]{Use itemize for different functions}
-Even though we use the typed sets provided by Isabelle/HOL here, \lstinline!elts! actually returns a class.
-Only if the class is small enough, as indicated by the polymorphic predicate \lstinline!small :: 'a set $\Rightarrow$ bool!, it is indeed a set.
+The entry declares a type \lstinline!V! that comes with the following functionality:
+\begin{itemize}
+  \item The function \lstinline!elts :: V $\Rightarrow$ V set! maps a set to its elements.
+      Note that even though we use the typed sets provided by Isabelle/HOL here, \lstinline!elts! actually returns a class.
+      This class only constitutes a set if the class is small enough.
+  \item The predicate \lstinline!small :: 'a set $\Rightarrow$ bool!, which is polymorphic in \lstinline!'a!, indicates whether a set is small.
 Inversely, this predicate characterises those sets that can be turned into a set of type \lstinline!V! using the polymorphic function \lstinline!vset :: 'a set $\Rightarrow$ V!.
-The type \lstinline!V! comes with all the usual set operations such as equality ($=$), union ($\sqcup$), intersection ($\sqcap$), and difference ($-$).
-The empty set coincides with the ordinal $0$ so it is denoted by \lstinline!0 :: V!.
+\item The usual set operations such as equality ($=$), union ($\sqcup$), intersection ($\sqcap$), and difference ($-$) are defined.
+\item Finally, the empty set coincides with the ordinal $0$ so it is denoted by \lstinline!0 :: V!.
+\end{itemize}
 
 Equipped with the above, we define the interpretation function \lstinline!&\Ist&! for set terms that interprets a set term with respect to a valuation function \lstinline!M :: 'a $\Rightarrow$ V! for variable.
 \begin{lstlisting}
@@ -301,7 +309,6 @@ inductive bclosed :: 'a branch $\Rightarrow$ bool where
 abbreviation bopen b $\equiv$ $\neg$ bclosed b
 \end{lstlisting}
 A tableau is called \textit{closed} if all of its branches are closed.
-\todo[inline]{Move closed}
 
 \subsection{Linear Expansion Rules}
 The calculus considers two kinds of branch expansion rules: \textit{linear} and \textit{branching} rules.
@@ -359,6 +366,7 @@ definition subterms' ::
 We aim to construct a syntactic model that is derived from the membership literals \lstinline!(s $\inS$ t) $\in$ set b!.
 To this end, we construct a graph whose vertices are set terms and there is an edge from \lstinline!s! to \lstinline!t! in the graph if, and only if, \lstinline!s $\inS$ t! is in \lstinline!b!.
 Note that we use \citeauthor{graph_theory_afp}'s graph library~\cite{graph_theory_afp} where a graph is represented as a record of vertices, arcs (directed edges), and two functions \lstinline!tail! and \lstinline!head! that map an arc to its source respectively target vertex.
+\todo[inline]{Explain arrow notation}
 \begin{lstlisting}
 definition bgraph b $\equiv$
   let vs = Var ` wits' b $\cup$ subterms' b
@@ -436,7 +444,11 @@ The proofs of all propositions translate well into Isabelle so we refer to the o
   Assume that \lstinline!s $\eqS$ t! is in \lstinline!b!.
   If there exists a \lstinline!c $\in$ wits' b! where \lstinline!s = Var c! or \lstinline!t = Var c!, we arrive at a contradiction due to \lstinline!lemma_2!.
   Therefore, both \lstinline!s $\in$ subterms' b! and \lstinline!t $\inS$ subterms' b! must hold.
-  Now, assume for contradiction that \lstinline!realize s $\neq$ realize t! which implies that \lstinline!elts (realize s) $\neq$ elts (realize t)!.
+  Now, assume for contradiction that
+\begin{lstlisting}
+  &\phantom{$\Longrightarrow$}& realize s $\neq$ realize t
+  $\Longrightarrow$ elts (realize s) $\neq$ elts (realize t).
+\end{lstlisting}
   Without loss of generality --- the other case is symmetric ---, we obtain an \lstinline!a! such that
 \begin{lstlisting}
   a $\in$ elts (realize s) $\land$ a $\notin$ elts (realize t). 
@@ -504,7 +516,7 @@ The proofs of all propositions translate well into Isabelle so we refer to the o
   \end{lstlisting}
 \end{proof}
 
-\noindent The final step towards obtaining a proper model is to connect the realization function to the semantics as defined in Section~\ref{sec:semantics}.
+\noindent The final step towards obtaining a proper model is to connect the realization function to the semantics as defined in \autoref{sec:semantics}.
 For set terms, we can use the Propositions~\ref{it:empty}--\ref{it:single} to prove the lemma below by induction.
 \begin{lstlisting}
 lemma
@@ -542,7 +554,7 @@ lemma bclosed_sound:
 \end{lstlisting}
   for each \lstinline!i $\in$ {0,$\ldots$,k}!.
   Therefore, the transitive closure of the membership relation \lstinline!{(x, y). x $\in$ elts y}! contains a cycle. 
-  This, however, is a contradiction since the membership relation of \lstinline!V! is well-founded (see Section~\ref{sec:semantics}) and well-foundedness is closed under transitive closure.
+  This, however, is a contradiction since the membership relation of \lstinline!V! is well-founded (see \autoref{sec:semantics}) and well-foundedness is closed under transitive closure.
 \end{proof}
 
 \noindent We are left with showing that both linear and branching expansion rules preserve satisfiability.
@@ -554,7 +566,7 @@ lemma lexpands_sound:
   shows M $\models$ $\phi$
 \end{lstlisting}
 A similar argument would work for the branching rules if it were not for the last rule adding new variables.
-Those variables need to be assigned specific values, hence modifying the model, as we will see in the proof below.
+Those variables need to be assigned specific values; hence, we modify the model as we will see in the proof below.
 \begin{lstlisting}[belowskip=0pt]
 lemma fexpands_sound:
   assumes &\fexpands{bs'}{b}&
@@ -588,10 +600,10 @@ lemma fexpands_sound:
 \end{proof}
 
 \section{Upper Bounding the Cardinality of a Branch}
-Soundness and completeness of the calculus are the building blocks with which we establish partial correctness of Algorithm~\ref{fig:alg}.
-Consequently, we still need to give a termination proof of Algorithm~\ref{fig:alg} to obtain total correctness of the algorithm.
-The core of our argument is that the number of distinct formulae in a branch that can be derived with the expansion rules is finite.
-In particular, we claim that the number of distinct formulae has the following upper bound.
+Soundness and completeness of the calculus are the building blocks with which we establish partial correctness of \autoref{fig:alg}.
+Consequently, we still need to give a termination proof to ascertain total correctness.
+The core of our argument is that the number of distinct formulae that can be derived with the expansion rules is finite.
+In particular, we claim that the following upper bound holds.
 \begin{lstlisting}
   &\phantom{$\leq$}& card (set b)
   &\textover{$=$}{$\leq$}& card {$\psi$ $\in$ set b. $\neg$ is_literal $\psi$} +
@@ -601,9 +613,42 @@ In particular, we claim that the number of distinct formulae has the following u
   $\leq$ 2 * card (subfms (last b)) +
   &\phantom{$\leq$}& 16 * (card (subterms (last b)))$^4$
 \end{lstlisting}
-We justify both inequalities separately, starting with the first one whose justification hinges on an invariant:
-Its justification hinges on the invariant that the only new subformulae introduced by the expansion rules introduce
+We treat both inequalities separately, starting with the first one whose justification hinges on an invariant: 
+every new composite subformula that is introduced by an expansion rule is the negation of a subformula that already occurs in \lstinline!last b!.
+Written as a formula, we have
+\begin{lstlisting}
+  &\phantom{$\subseteq$}& {$\psi$ $\in$ set b. $\neg$ is_literal $\psi$}
+  $\subseteq$ subfms (last b) $\cup$ $\fmNegSymbol$ ` subfms (last b).
+\end{lstlisting}
+Confirming that this is an invariant is an easy exercise of going through each of the propositional rules in Table TODO and the first two branching rules in Table TODO.
+Thus, we have
+\begin{lstlisting}
+  &\phantom{$\leq$}& card {$\psi$ $\in$ set b. $\neg$ is_literal $\psi$}
+  $\leq$ card (subfms (last b)) +
+  &\phantom{$\leq$}& card ($\fmNegSymbol$ ` subfms (last b))
+  $\leq$ 2 * card (subfms (last b))
+\end{lstlisting}
+which is the first inequality we asserted. 
 
+Concerning the second inequality, first observe that each literal contains an atom, implying that the set of literals is at most twice as large as the set of atoms in a branch. 
+In addition, an atom is formed by combining two subterms occuring in the branch with either \lstinline!$\inS$! or \lstinline!$\eqS$!, ultimately yielding
+\begin{lstlisting}
+  &\phantom{$\leq$}& card {$\psi$ $\in$ set b. is_literal $\psi$}
+  $\leq$ 2 * card ($\bigcup$(atoms ` set b))
+  $\leq$ 2 * 2 * (card (subterms b))$^\text{2}$.
+\end{lstlisting}
+Since no expansion rule introduces new subterms, we know the cardinality of the subterms in a branch \lstinline!b! is limited by the subterms of \lstinline!last b! plus the number of witnesses added to the branch.
+Regarding an upper bound for the witnesses, recognise that the last branching rule requires \lstinline!s $\neqS$ t! to be in \lstinline!b! for some \lstinline!s,t $\in$ subterms (last b)!.
+The subsumption condition then prohibits that the rule can be applied again for the combination of \lstinline!s! and \lstinline!t!, thus yielding an upper bound of \lstinline!(card (subterms (last b)))$^\text{2}$!.
+This allows us to finish the calculation that justifies the second inequality:
+\begin{lstlisting}
+  &\phantom{$\leq$}& 4 * (card (subterms b))$^\text{2}$
+  $\leq$ 4 * (card (subterms (last b))
+  &\phantom{$\leq$}&      + card (wits b))$^\text{2}$
+  $\leq$ 4 * (card (subterms (last b))
+  &\phantom{$\leq$}&      + (card (subterms (last b))$^\text{2}$)$^\text{2}$
+  $\leq$ 4 * 4 * (card (subterms (last b)))$^\text{4}$.
+\end{lstlisting}
 
 \section{An Abstract Specification of the Decision Procedure}
 \begin{figure*}
@@ -622,6 +667,38 @@ definition mlss_proc :: 'a pset_fm $\Rightarrow$ bool where
 \end{lstlisting}
 \caption{Definition of the functions \lstinline|mlss_proc_branch| and \lstinline|mlss_proc|.\label{fig:alg}}
 \end{figure*}
+
+\begin{lstlisting}
+lemma mlss_proc_branch_dom_if_wf_branch:
+  assumes wf_branch b
+  shows mlss_proc_branch_dom b
+\end{lstlisting}
+
+\begin{lstlisting}
+lemma mlss_proc_branch_complete:
+  fixes b :: "'a branch"
+  assumes wf_branch b
+  assumes $\neg$ mlss_proc_branch b
+  assumes infinite (UNIV :: 'a set)
+  shows $\exists$M. M $\models$ (last b)
+
+theorem mlss_proc_complete:
+  fixes $\phi$ :: 'a pset_fm
+  assumes $\neg$ mlss_proc $\phi$
+  assumes infinite (UNIV :: 'a set)
+  shows $\exists$M. M $\models$ $\phi$
+\end{lstlisting}
+
+\begin{lstlisting}
+lemma mlss_proc_branch_sound:
+  assumes wf_branch b
+  assumes $\forall$$\psi$ $\in$ set b. M $\models$ $\psi$
+  shows $\neg$ mlss_proc_branch b
+
+theorem mlss_proc_sound:
+  assumes M $\models$ $\phi$
+  shows $\neg$ mlss_proc $\phi$
+\end{lstlisting}
 
 \section{Future Work}
 Challenges in obtaining an executable specification: membership cycle test unnecessary, fast branch membership test, proof reconstruction.

@@ -742,7 +742,7 @@ next
   with fexpands_paramD[OF "2"(1)] "2"(2-) show ?case
     unfolding P_def wits_subterms_def
     unfolding fexpands_param_wits'_eq[OF "2"(1-3)] fexpands_param_wits_eq[OF "2"(1-3)]
-    by (auto simp: vars_fm_vars_branchI)
+    by safe (auto simp: vars_fm_vars_branchI[where ?x=x and ?b=b])
 qed
 
 lemma subterms_branch_eq_if_wf_branch:
@@ -759,6 +759,60 @@ proof -
   with \<open>expandss b [\<phi>]\<close> assms show ?thesis
     by (intro subterms_branch_eq_if_no_new_subterms) simp_all
 qed
+
+lemma
+  assumes "wf_branch b"
+  shows no_new_subterms_if_wf_branch: "no_new_subterms b"
+    and no_wits_if_not_literal_if_wf_branch:
+          "\<forall>\<phi> \<in> set b. \<not> is_literal \<phi> \<longrightarrow> vars \<phi> \<inter> wits b = {}"
+proof -
+  from assms obtain \<phi> where "expandss b [\<phi>]"
+    unfolding wf_branch_def by blast
+  then have "no_new_subterms [\<phi>]"
+    by (auto simp: no_new_subterms_def wits_def vars_branch_simps subterms_branch_simps)
+  from expandss_no_new_subterms[OF \<open>expandss b [\<phi>]\<close> _ this] show "no_new_subterms b"
+    by simp
+  from expandss_no_wits_if_not_literal[OF \<open>expandss b [\<phi>]\<close>]
+  show "\<forall>\<phi> \<in> set b. \<not> is_literal \<phi> \<longrightarrow> vars \<phi> \<inter> wits b = {}"
+    unfolding wits_def by simp
+qed
+
+lemma lemma_2:
+  assumes "wf_branch b"
+  assumes "c \<in> wits' b" "t \<in> wits_subterms b"
+  shows "AT (Var c \<approx>\<^sub>s t) \<notin> set b" "AT (t \<approx>\<^sub>s Var c) \<notin> set b" "AT (t \<in>\<^sub>s Var c) \<notin> set b"
+proof -
+  from \<open>wf_branch b\<close> obtain \<phi> where "expandss b [\<phi>]"
+    using wf_branch_def by blast
+  have no_wits_if_not_literal: "\<forall>\<phi> \<in> set b'. \<not> is_literal \<phi> \<longrightarrow> vars \<phi> \<inter> wits b' = {}"
+    if "expandss b' [\<phi>]" for b'
+    using no_wits_if_not_literal_if_wf_branch that unfolding wf_branch_def by blast
+  have no_new_subterms: "no_new_subterms b'" if "expandss b' [\<phi>]" for b'
+    using no_new_subterms_if_wf_branch that unfolding wf_branch_def by blast
+  have "AT (Var c \<approx>\<^sub>s t) \<notin> set b \<and> AT (t \<approx>\<^sub>s Var c) \<notin> set b \<and> AT (t \<in>\<^sub>s Var c) \<notin> set b"
+    using \<open>expandss b [\<phi>]\<close> assms(2,3)
+  proof(induction b "[\<phi>]" arbitrary: c t rule: expandss.induct)
+    case 1
+    then show ?case by simp
+  next
+    case (2 b1 b2)
+    note lemma_2_lexpands[OF this(1) _
+        no_new_subterms[OF this(3)] no_wits_if_not_literal[OF this(3)]]
+    with 2 show ?case
+      using wf_branch_def wf_branch_not_Nil by blast
+  next
+    case (3 bs b2 b1)
+    note lemma_2_fexpands[OF this(1) _ _
+        no_new_subterms[OF this(3)] no_wits_if_not_literal[OF this(3)]]
+    with 3 show ?case
+      using wf_branch_def wf_branch_not_Nil by blast
+  qed
+  then show "AT (Var c \<approx>\<^sub>s t) \<notin> set b" "AT (t \<approx>\<^sub>s Var c) \<notin> set b" "AT (t \<in>\<^sub>s Var c) \<notin> set b"
+    by safe
+qed
+
+
+subsection \<open>Realization of an Open Branch\<close>
 
 lemma in_subterms'_if_AT_mem_in_branch:
   assumes "wf_branch b"
@@ -795,63 +849,6 @@ lemma in_subterms'_if_AF_eq_in_branch:
   using assms
   using wits_subterms_eq_subterms' AF_eq_subterms_branchD subterms_branch_eq_if_wf_branch
   by blast+
-
-lemma
-  assumes "wf_branch b"
-  shows no_new_subterms_if_wf_branch: "no_new_subterms b"
-    and no_wits_if_not_literal_if_wf_branch:
-          "\<forall>\<phi> \<in> set b. \<not> is_literal \<phi> \<longrightarrow> vars \<phi> \<inter> wits b = {}"
-proof -
-  from assms obtain \<phi> where "expandss b [\<phi>]"
-    unfolding wf_branch_def by blast
-  then have "no_new_subterms [\<phi>]"
-    by (auto simp: no_new_subterms_def wits_def vars_branch_simps subterms_branch_simps)
-  from expandss_no_new_subterms[OF \<open>expandss b [\<phi>]\<close> _ this] show "no_new_subterms b"
-    by simp
-  from expandss_no_wits_if_not_literal[OF \<open>expandss b [\<phi>]\<close>]
-  show "\<forall>\<phi> \<in> set b. \<not> is_literal \<phi> \<longrightarrow> vars \<phi> \<inter> wits b = {}"
-    unfolding wits_def by simp
-qed
-
-lemma lemma_2:
-  assumes "wf_branch b"
-  assumes "c \<in> wits' b" "t \<in> wits_subterms b"
-  shows "AT (Var c \<approx>\<^sub>s t) \<notin> set b" "AT (t \<approx>\<^sub>s Var c) \<notin> set b" "AT (t \<in>\<^sub>s Var c) \<notin> set b"
-proof -
-  from \<open>wf_branch b\<close> obtain \<phi> where "expandss b [\<phi>]"
-    using wf_branch_def by blast
-  have no_wits_if_not_literal: "\<forall>\<phi> \<in> set b'. \<not> is_literal \<phi> \<longrightarrow> vars \<phi> \<inter> wits b' = {}"
-    if "expandss b' [\<phi>]" for b'
-    using no_wits_if_not_literal_if_wf_branch that unfolding wf_branch_def by blast
-  have no_new_subterms: "no_new_subterms b'" if "expandss b' [\<phi>]" for b'
-    using no_new_subterms_if_wf_branch that unfolding wf_branch_def by blast
-  have "AT (Var c \<approx>\<^sub>s t) \<notin> set b \<and> AT (t \<approx>\<^sub>s Var c) \<notin> set b \<and> AT (t \<in>\<^sub>s Var c) \<notin> set b"
-    using \<open>expandss b [\<phi>]\<close> assms(2,3)
-  proof(induction b "[\<phi>]" arbitrary: c t rule: expandss.induct)
-    case 1
-    then have "wits' [\<phi>] = {}"
-      unfolding wits'_def wits_def by (auto simp: vars_branch_simps)
-    with 1 show ?case
-      by blast
-  next
-    case (2 b1 b2)
-    note lemma_2_lexpands[OF this(1) _
-        no_new_subterms[OF this(3)] no_wits_if_not_literal[OF this(3)]]
-    with 2 show ?case
-      using wf_branch_def wf_branch_not_Nil by blast
-  next
-    case (3 bs b2 b1)
-    note lemma_2_fexpands[OF this(1) _ _
-        no_new_subterms[OF this(3)] no_wits_if_not_literal[OF this(3)]]
-    with 3 show ?case
-      using wf_branch_def wf_branch_not_Nil by blast
-  qed
-  then show "AT (Var c \<approx>\<^sub>s t) \<notin> set b" "AT (t \<approx>\<^sub>s Var c) \<notin> set b" "AT (t \<in>\<^sub>s Var c) \<notin> set b"
-    by safe
-qed
-
-
-subsection \<open>Realization of an Open Branch\<close>
 
 lemma mem_subterms_fm_last_if_mem_subterms_branch:
   assumes "wf_branch b"
@@ -2131,10 +2128,10 @@ section \<open>The Decision Procedure\<close>
 function (domintros) mlss_proc_branch :: "'a branch \<Rightarrow> bool" where
   "\<not> lin_sat b
   \<Longrightarrow> mlss_proc_branch b = mlss_proc_branch ((SOME b'. lexpands b' b \<and> set b \<subset> set (b' @ b)) @ b)"
+| "\<lbrakk> lin_sat b; bclosed b \<rbrakk> \<Longrightarrow> mlss_proc_branch b = True"
 | "\<lbrakk> \<not> sat b; bopen b; lin_sat b \<rbrakk>
   \<Longrightarrow> mlss_proc_branch b = (\<forall>b' \<in> (SOME bs. fexpands bs b). mlss_proc_branch (b' @ b))"
 | "\<lbrakk> lin_sat b; sat b \<rbrakk> \<Longrightarrow> mlss_proc_branch b = bclosed b"
-| "\<lbrakk> lin_sat b; bclosed b \<rbrakk> \<Longrightarrow> mlss_proc_branch b = True"
   by auto
 
 lemma mlss_proc_branch_dom_if_wf_branch:
@@ -2181,10 +2178,10 @@ proof -
       next
         case 2
         then show ?thesis
-          using less' mlss_proc_branch.domintros(2,4)
+          using less' mlss_proc_branch.domintros(2,3)
           by (metis (mono_tags, lifting) fexpands_strict_mono expandss.intros(1,3) someI_ex)
       qed
-    qed (use mlss_proc_branch.domintros(3) sat_def in metis)
+    qed (use mlss_proc_branch.domintros(4) sat_def in metis)
   qed
 qed
 
@@ -2215,29 +2212,29 @@ proof -
       using wf_branch_not_Nil by auto
   next
     case (2 b)
+    then show ?case by (simp add: mlss_proc_branch.psimps)
+  next
+    case (3 b)
     let ?bs' = "SOME bs'. fexpands bs' b"
-    from 2 have bs': "fexpands ?bs' b"
+    from 3 have bs': "fexpands ?bs' b"
       by (meson sat_def tfl_some)
-    with 2 obtain b' where b': "b' \<in> ?bs'" "\<not> mlss_proc_branch (b' @ b)"
+    with 3 obtain b' where b': "b' \<in> ?bs'" "\<not> mlss_proc_branch (b' @ b)"
       using mlss_proc_branch.psimps by blast
     with bs' have "wf_branch (b' @ b)"
       using wf_branch_expandss[OF \<open>wf_branch b\<close> expandss.intros(3)]
       using expandss.intros(1) by blast
-    with 2 b' obtain M where "interp I\<^sub>s\<^sub>a M (last (b' @ b))"
+    with 3 b' obtain M where "interp I\<^sub>s\<^sub>a M (last (b' @ b))"
       by blast
-    with 2 show ?case
+    with 3 show ?case
       by auto
   next
-    case (3 b)
+    case (4 b)
     then have "bopen b"
       by (simp add: mlss_proc_branch.psimps)
     interpret open_branch b
-      apply(unfold_locales) using 3 assms(3) \<open>bopen b\<close> by auto
+      apply(unfold_locales) using 4 assms(3) \<open>bopen b\<close> by auto
     from coherence[OF \<open>sat b\<close> last_in_set] show ?case
       using wf_branch wf_branch_not_Nil by blast
-  next
-    case (4 b)
-    then show ?case by (simp add: mlss_proc_branch.psimps)
   qed
 qed
 
@@ -2273,23 +2270,23 @@ proof
       using expandss_trans expandss.intros(1,2)
       by (metis (no_types, lifting) not_lin_satD someI_ex)
   next
-    case (2 b)
+    case (3 b)
     let ?bs' = "SOME bs'. fexpands bs' b"
-    from 2 have bs'_wd: "fexpands ?bs' b"
+    from 3 have bs'_wd: "fexpands ?bs' b"
       by (meson sat_def tfl_some)
     with \<open>wf_branch b\<close> have wf_branch_b': "wf_branch (b' @ b)" if "b' \<in> ?bs'" for b'
       using that  expandss.intros(3) wf_branch_def by blast
-    from fexpands_sound[OF bs'_wd] 2 obtain M' b' where
+    from fexpands_sound[OF bs'_wd] 3 obtain M' b' where
       "b' \<in> ?bs'" "\<forall>\<psi> \<in> set (b' @ b). interp I\<^sub>s\<^sub>a M' \<psi>"
       by metis
-    with 2 fexpands_sound[OF \<open>fexpands ?bs' b\<close>] wf_branch_b' obtain b'' where
+    with 3 fexpands_sound[OF \<open>fexpands ?bs' b\<close>] wf_branch_b' obtain b'' where
       "b' \<in> ?bs'" "expandss b'' (b' @ b)"
       "\<exists>M. \<forall>\<psi> \<in> set b''. interp I\<^sub>s\<^sub>a M \<psi>" "bclosed b''"
-      using mlss_proc_branch.psimps(2)[OF "2.hyps"(2-4,1)] by blast
-    with 2 show ?case
+      using mlss_proc_branch.psimps(3)[OF "3.hyps"(2-4,1)] by blast
+    with 3 show ?case
       using expandss_trans expandss.intros(1,3)
       by (metis sat_def tfl_some)
-  qed (use expandss.intros(1) mlss_proc_branch.psimps(3) in \<open>blast+\<close>)
+  qed (use expandss.intros(1) mlss_proc_branch.psimps(4) in \<open>blast+\<close>)
   with bclosed_sound show False by blast
 qed
 

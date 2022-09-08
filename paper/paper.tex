@@ -150,7 +150,7 @@ Finally, we remark that \textbf{iff} is equivalent to \lstinline!$=$! on type \l
 \todo[inline]{Add arrows and bracket notation for Pure formulae}
 \section{Syntax and Semantics of MLSS\label{sec:semantics}}
 \subsection{Syntax}
-At the heart of \MLSS{}, we have the type of set terms which includes the empty set and variables as well as the operations union, intersection, set difference, and \lstinline!Single!, which represents a singleton set containing the argument.
+At the heart of \MLSS{}, we have the type of set terms which is the disjoint union of the empty set and variables as well as the operations union, intersection, set difference, and \lstinline!Single!, which represents a singleton set containing the argument.
 \todo[inline]{Syntax for \lstinline!Single!?, overloading of \lstinline!vars_term!, \lstinline!vars_atom!}
 \begin{lstlisting}
 datatype (vars: 'a) pset_term =
@@ -165,7 +165,7 @@ datatype (vars: 'a) pset_atom =
   'a pset_term $\inS$ 'a pset_term
 | 'a pset_term $\eqS$ 'a pset_term
 \end{lstlisting}
-With the above operators we can also represent the subset operator \lstinline!$\subseteqS$! and enumerate finite sets as \lstinline!s $\subseteqS$ t! is equivalent to \lstinline!s $\unionS$ t $\eqS$ t! and a finite set of elements \lstinline!{t$_1$,t$_2$,$\ldots$,t$_k$}! can be expressed by \lstinline!Single t$_1$ $\unionS$ $\ldots$ $\unionS$ Single t$_k$!.
+With the above operators we can also represent the subset operator \lstinline!$\subseteqS$! and enumerate finite sets as \lstinline!s $\subseteqS$ t! is equivalent to \lstinline!s $\unionS$ t $\eqS$ t! and a finite set of elements \lstinline!{t$_\text{1}$,$\ldots$,t$_\text{k}$}! can be expressed by \lstinline!Single t$_1$ $\unionS$ $\ldots$ $\unionS$ Single t$_k$!.
 
 The unquantified fragment \MLSS{} of set theory is then formed by combining set atoms, which are injected into formulae with the constructor \lstinline!&\fmAtom&!, with propositional logical connectives.
 \todo[inline]{Cite Nipkow's Linear Quantifier Elimination?}
@@ -176,7 +176,7 @@ datatype (atoms: 'a) fm =
 
 type_synonym 'a pset_fm = 'a pset_atom fm
 \end{lstlisting}
-We will sometimes drop the \lstinline!Atom! constructor to reduce clutter.
+We will often drop the atom constructor \lstinline!&\fmAtom{}&! to reduce clutter.
 Additionally, we use the abbreviations \lstinline!s $\notinS$ t! and \lstinline!s $\neqS$ t! to denote \lstinline!&\fmNeg{\fmAtom{} (s $\inS$ t)}&! and \lstinline!&\fmNeg{\fmAtom{} (s $\eqS$ t)}&!, respectively.
 Note that Isabelle's datatype package automatically defines a function \lstinline!atoms :: 'a fm $\Rightarrow$ 'a set! that allows us to obtain all set atoms in a formula.
 We combine these functions in order to define \lstinline!vars! that extracts all the variable names occuring in a set formula.
@@ -189,8 +189,8 @@ In addition to the variable names that appear in a formula, we will later also n
 We first define a function that collects the subterms of a set term.
 \todo[inline]{Motivation: linear rules don't introduce subterms, \lstinline!subterms b $\approx$ subterms (last b)!}
 \begin{lstlisting}
-fun subterms :: 'a pset_term $\Rightarrow$ 'a pset_term set
-where
+fun subterms :: 'a pset_term
+             $\Rightarrow$ 'a pset_term set where
   subterms $\emptyset$ = {$\emptyset$}
 | subterms (Var x) = {Var x}
 | subterms (s $\unionS$ t) =
@@ -204,8 +204,8 @@ where
 \end{lstlisting}
 The subterms of an atom are then the subterms of those terms that make up the atom.
 \begin{lstlisting}
-fun subterms :: 'a pset_atom $\Rightarrow$ 'a pset_term set
-where
+fun subterms :: 'a pset_atom
+             $\Rightarrow$ 'a pset_term set where
   subterms (s $\inS$ t) = subterms s $\cup$ subterms t
 | subterms (s $\eqS$ t) = subterms s $\cup$ subterms t
 \end{lstlisting}
@@ -249,8 +249,8 @@ The entry declares a type \lstinline!V! that comes with the following functional
   \item The function \lstinline!elts :: V $\Rightarrow$ V set! maps a set to its elements.
       Note that even though we use the typed sets provided by Isabelle/HOL here, \lstinline!elts! actually returns a class.
       This class only constitutes a set if the class is small enough.
-  \item The predicate \lstinline!small :: 'a set $\Rightarrow$ bool!, which is polymorphic in \lstinline!'a!, indicates whether a set is small.
-Inversely, this predicate characterises those sets that can be turned into a set of type \lstinline!V! using the polymorphic function \lstinline!vset :: 'a set $\Rightarrow$ V!.
+  \item The predicate \lstinline!small :: 'a set $\Rightarrow$ bool!, which is polymorphic in \lstinline!'a!, indicates whether a class is small.
+  \item The function \lstinline!vset :: 'a set $\Rightarrow$ V! turns a class into a set of type \lstinline!V! if it is small. 
 \item The usual set operations such as equality ($=$), union ($\sqcup$), intersection ($\sqcap$), and difference ($-$) are defined.
 \item Finally, the empty set coincides with the ordinal $0$ so it is denoted by \lstinline!0 :: V!.
 \end{itemize}
@@ -295,9 +295,10 @@ definition vars :: 'a branch $\Rightarrow$ 'a set
 In the standard tableau calculus for propositional logic, a branch is called \textit{closed} if it contains both the negation of a formula and the formula itself;
 conversely, it is called \textit{open} if it is not closed.
 For \MLSS{}, we extend the notion of closedness with three additional rules; the first two are straightforward while the last one states that a branch is closed when the branch contains a membership cycle
-\begin{center}
-\lstinline!s $\inS$ t$_\text{1}$, t$_\text{1}$ $\inS$ t$_\text{2}$, $\ldots$, t$_\text{k}$ $\inS$ s!.
-\end{center}
+\begin{lstlisting}
+  t$_\text{0}$ $\inS$ t$_\text{1}$, t$_\text{1}$ $\inS$ t$_\text{2}$, $\ldots$, t$_\text{k}$ $\inS$ t$_\text{0}$.
+\end{lstlisting}
+
 \begin{lstlisting}
 inductive bclosed :: 'a branch $\Rightarrow$ bool where
   $\llbracket$ $\phi$ $\in$ set b; &\fmNeg{$\phi$}& $\in$ set b $\rrbracket$ $\Longrightarrow$ bclosed b
@@ -332,7 +333,7 @@ definition lin_sat b $\equiv$
 \todo[inline]{Reference figure and mention missing rule + example}
 
 \subsection{Branching Rules\label{sec:branching}}
-Since the number of branches increases when applying branching rules, it is prudent to only apply them to open, linearly saturated branches.
+The number of branches increases when applying branching rules so it is prudent to only apply them to open, linearly saturated branches.
 To further prevent unnecessary branching, each rule has a \textit{subsumption} condition. 
 Note that even branching rules are restricted such that they never create new subterms, with exception of the last rule which adds a fresh variable.
 \todo[inline]{Reference figure}
@@ -342,7 +343,34 @@ Note that even branching rules are restricted such that they never create new su
 definition sat b $\equiv$ lin_sat b $\land$ ($\nexists$bs'. &\fexpands{bs'}{b}&)
 \end{lstlisting}
 
-\section{Completeness of the Calculus}
+\section{A Decision Procedure for MLSS}
+\begin{figure*}
+  \centering
+\begin{lstlisting}
+function (domintros) mlss_proc_branch :: 'a branch $\Rightarrow$ bool where
+  $\neg$ lin_sat b
+  $\Longrightarrow$ mlss_proc_branch = mlss_proc_branch ((SOME b'. &\lexpands{b'}{b}& $\land$ set b $\subset$ set (b' @ b)) @ b)
+| $\llbracket$ lin_sat b; bclosed b $\rrbracket$ $\Longrightarrow$ mlss_proc_branch b = True
+| $\llbracket$ $\neg$ sat b; bopen b; lin_sat b $\rrbracket$
+  $\Longrightarrow$ mlss_proc_branch b = ($\forall$b' $\in$ (SOME bs. &\fexpands{bs}{b}&). mlss_proc_branch (b' @ b))
+| $\llbracket$ lin_sat b; sat b $\rrbracket$ $\Longrightarrow$ mlss_proc_branch b = bclosed b
+
+definition mlss_proc :: 'a pset_fm $\Rightarrow$ bool where
+  mlss_proc $\phi$ $\equiv$ mlss_proc_branch [$\phi$]
+\end{lstlisting}
+\caption{Definition of the functions \lstinline|mlss_proc_branch| and \lstinline|mlss_proc|.\label{fig:alg}}
+\end{figure*}
+
+\noindent We abstractly specify the behaviour of the decision procedure, leaving an executable specification from which code can be generated to future work.
+The implementation as displayed in \autoref{fig:alg} uses a couple features of Isabelle's function package:
+instead of defining the function via pattern matching, we specify the equations of the function as conditional rewrite rules.
+This requires us to prove that the assumptions of the equations are non-overlapping, which is done by automation.
+The other concern is that a recursive function needs to terminate in order for it to be well-defined;
+nevertheless, the termination proof is separated from the definition of the function for modularity.
+The function package maintains the soundness of the definition by introducing a so-called domain predicate \lstinline!mlss_proc_branch_dom! and adding the assumption that the predicate holds for the argument to each equation of the function.
+To be able to reason about this predicate, we pass the \lstinline!domintros! flag which instructs the function package to derive introduction rules for it.
+
+\section{Completeness of the Calculus\label{sec:complete}}
 Once a branch \lstinline!b! is saturated and open at the same time, we are unable to expand the branch further in our calculus.
 Thus, to establish completeness of the calculus, we must construct a model \lstinline!M! such that \lstinline!M $\models$ $\phi$! for all formulae \lstinline!$\phi$ $\in$ set b!.
 The model is defined in terms of the following three collections.
@@ -390,6 +418,7 @@ function realize :: 'a pset_term $\Rightarrow$ V where
   &$\phantom{\Longrightarrow}$&   vset {realize ` parents (bgraph b) s}
 | x $\notin$ verts G $\Longrightarrow$ realize x = 0
 \end{lstlisting}
+\todo[inline]{Non-Overlapping!}
 Since the function is recursive, we need to ensure that it terminates for it to be well-defined.
 The assumption that \lstinline!b! is open implies that there are no membership cycles and thus \lstinline!bgraph b! is acyclic.
 Now, consider the ancestors \lstinline!av! of a vertex \lstinline!v!, which are those vertices from which we can reach \lstinline!v!.
@@ -517,7 +546,7 @@ The proofs of all propositions translate well into Isabelle so we refer to the o
 \end{proof}
 
 \noindent The final step towards obtaining a proper model is to connect the realization function to the semantics as defined in \autoref{sec:semantics}.
-For set terms, we can use the Propositions~\ref{it:empty}--\ref{it:single} to prove the lemma below by induction.
+For set terms, we can use the Propositions~\ref{it:empty}--\ref{it:single} to prove the lemma below by induction on \lstinline!t!.
 \begin{lstlisting}
 lemma
   assumes t $\in$ subterms b
@@ -532,7 +561,7 @@ lemma coherence:
 \end{lstlisting}
 The coherence property finishes the proof of completeness of the calculus as it gives us a model for every formula in an open and saturated branch.
 
-\section{Soundness of the Calculus}
+\section{Soundness of the Calculus\label{sec:sound}}
 Two aspects determine the soundness of the calculus: a closed branch must be unsatisfiable and all expansion rules must maintain satisfiability.
 We can express the former aspect in Isabelle as follows.
 \begin{lstlisting}[belowskip=0pt]
@@ -558,7 +587,7 @@ lemma bclosed_sound:
 \end{proof}
 
 \noindent We are left with showing that both linear and branching expansion rules preserve satisfiability.
-As for the linear rules, a straightforward proof by rule induction suffices to obtain the lemma below.
+As for the linear rules, a straightforward proof by case analysis on \lstinline!&\lexpands{b'}{b}&! suffices to obtain the lemma below.
 \begin{lstlisting}
 lemma lexpands_sound:
   assumes &\lexpands{b'}{b}& and $\phi$ $\in$ set b'
@@ -582,7 +611,7 @@ lemma fexpands_sound:
          [Var x $\inS$ t, Var x $\notinS$ s]}
 \end{lstlisting}
   for some fresh variable \lstinline!x!, i.e.\ \lstinline!x $\notin$ vars b! and in particular \lstinline!x $\notin$ vars s $\cup$ vars t!.
-  Another consequence of applying the last rule is that \lstinline!s $\neqS$ t! is in \lstinline!b!, which, because \lstinline!M! is a model, implies that \lstinline!&\Ist& M s $\neq$ &\Ist& M t!.
+  Another consequence of the last rule being applied is that \lstinline!s $\neqS$ t! is in \lstinline!b!, which, because \lstinline!M! is a model, implies that \lstinline!&\Ist& M s $\neq$ &\Ist& M t!.
   This inequality manifests itself through some \lstinline!y! with
 \begin{lstlisting}
   &\phantom{$\lor$}& y $\in$ elts (&\Ist& M s) $\land$ y $\notin$ elts (&\Ist& M t)
@@ -599,8 +628,8 @@ lemma fexpands_sound:
   This is indeed the case since the assumption \lstinline!M $\models$ $\psi$! is equivalent to \lstinline!M' $\models$ $\psi$! for all \lstinline!$\psi$ $\in$ set b! given that \lstinline!x! is fresh with respect to b.
 \end{proof}
 
-\section{Upper Bounding the Cardinality of a Branch}
-Soundness and completeness of the calculus are the building blocks with which we establish partial correctness of \autoref{fig:alg}.
+\section{Upper Bounding the Cardinality of a Branch\label{sec:upper}}
+Soundness and completeness of the calculus are the building blocks with which we establish partial correctness of the algorithm in \autoref{fig:alg}.
 Consequently, we still need to give a termination proof to ascertain total correctness.
 The core of our argument is that the number of distinct formulae that can be derived with the expansion rules is finite.
 In particular, we claim that the following upper bound holds.
@@ -650,23 +679,7 @@ This allows us to finish the calculation that justifies the second inequality:
   $\leq$ 4 * 4 * (card (subterms (last b)))$^\text{4}$.
 \end{lstlisting}
 
-\section{An Abstract Specification of the Decision Procedure}
-\begin{figure*}
-  \centering
-\begin{lstlisting}
-function mlss_proc_branch :: 'a branch $\Rightarrow$ bool where
-  $\neg$ lin_sat b
-  $\Longrightarrow$ mlss_proc_branch = mlss_proc_branch ((SOME b'. &\lexpands{b'}{b}& $\land$ set b $\subset$ set (b' @ b)) @ b)
-| $\llbracket$ $\neg$ sat b; bopen b; lin_sat b $\rrbracket$
-  $\Longrightarrow$ mlss_proc_branch b = ($\forall$b' $\in$ (SOME bs. &\fexpands{bs}{b}&). mlss_proc_branch (b' @ b))
-| $\llbracket$ lin_sat b; sat b $\rrbracket$ $\Longrightarrow$ mlss_proc_branch b = bclosed b
-| $\llbracket$ lin_sat b; bclosed b $\rrbracket$ $\Longrightarrow$ mlss_proc_branch b = True
-
-definition mlss_proc :: 'a pset_fm $\Rightarrow$ bool where
-  mlss_proc $\phi$ $\equiv$ mlss_proc_branch [$\phi$]
-\end{lstlisting}
-\caption{Definition of the functions \lstinline|mlss_proc_branch| and \lstinline|mlss_proc|.\label{fig:alg}}
-\end{figure*}
+\section{Total Correctness of the Decision Procedure\label{sec:correct}}
 
 \begin{lstlisting}
 lemma mlss_proc_branch_dom_if_wf_branch:

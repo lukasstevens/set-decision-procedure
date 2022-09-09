@@ -41,7 +41,7 @@ definition wits :: "'a branch \<Rightarrow> 'a set" where
 
 definition wits' :: "'a branch \<Rightarrow> 'a set" where
   "wits' b \<equiv> {c \<in> wits b. \<forall>t \<in> subterms (last b).
-                  AT (Var c \<approx>\<^sub>s t) \<notin> set b \<and> AT (t \<approx>\<^sub>s Var c) \<notin> set b}"
+                  AT (Var c =\<^sub>s t) \<notin> set b \<and> AT (t =\<^sub>s Var c) \<notin> set b}"
 
 lemma wits_singleton[simp]: "wits [\<phi>] = {}"
   unfolding wits_def vars_branch_simps by simp
@@ -52,14 +52,14 @@ lemma wits'_singleton[simp]: "wits' [\<phi>] = {}"
 lemma wits'D:
   assumes "c \<in> wits' b"
   shows "c \<in> wits b"
-        "t \<in> subterms (last b) \<Longrightarrow> AT (Var c \<approx>\<^sub>s t) \<notin> set b"
-        "t \<in> subterms (last b) \<Longrightarrow> AT (t \<approx>\<^sub>s Var c) \<notin> set b"
+        "t \<in> subterms (last b) \<Longrightarrow> AT (Var c =\<^sub>s t) \<notin> set b"
+        "t \<in> subterms (last b) \<Longrightarrow> AT (t =\<^sub>s Var c) \<notin> set b"
   using assms unfolding wits'_def by auto
 
 lemma wits'I:
   assumes "c \<in> wits b"
-  assumes "\<And>t. t \<in> subterms (last b) \<Longrightarrow> AT (Var c \<approx>\<^sub>s t) \<notin> set b"
-  assumes "\<And>t. t \<in> subterms (last b) \<Longrightarrow> AT (t \<approx>\<^sub>s Var c) \<notin> set b"
+  assumes "\<And>t. t \<in> subterms (last b) \<Longrightarrow> AT (Var c =\<^sub>s t) \<notin> set b"
+  assumes "\<And>t. t \<in> subterms (last b) \<Longrightarrow> AT (t =\<^sub>s Var c) \<notin> set b"
   shows "c \<in> wits' b"
   using assms unfolding wits'_def by blast
 
@@ -433,7 +433,7 @@ lemma lexpands_fm_wits'_eq:
 lemma lexpands_un_wits'_eq:
   assumes "lexpands_un b' b" "b \<noteq> []"
   assumes "\<forall>c \<in> wits' b. \<forall>t \<in> wits_subterms b.
-    AT (Var c \<approx>\<^sub>s t) \<notin> set b \<and> AT (t \<approx>\<^sub>s Var c) \<notin> set b \<and> AT (t \<in>\<^sub>s Var c) \<notin> set b"
+    AT (Var c =\<^sub>s t) \<notin> set b \<and> AT (t =\<^sub>s Var c) \<notin> set b \<and> AT (t \<in>\<^sub>s Var c) \<notin> set b"
   shows "wits' (b' @ b) = wits' b"
 proof -
   note lexpands.intros(2)[OF assms(1)]
@@ -449,7 +449,7 @@ qed
 lemma lexpands_int_wits'_eq:
   assumes "lexpands_int b' b" "b \<noteq> []"
   assumes "\<forall>c \<in> wits' b. \<forall>t \<in> wits_subterms b.
-    AT (Var c \<approx>\<^sub>s t) \<notin> set b \<and> AT (t \<approx>\<^sub>s Var c) \<notin> set b \<and> AT (t \<in>\<^sub>s Var c) \<notin> set b"
+    AT (Var c =\<^sub>s t) \<notin> set b \<and> AT (t =\<^sub>s Var c) \<notin> set b \<and> AT (t \<in>\<^sub>s Var c) \<notin> set b"
   shows "wits' (b' @ b) = wits' b"
 proof -
   note lexpands.intros(3)[OF assms(1)]
@@ -465,7 +465,7 @@ qed
 lemma lexpands_diff_wits'_eq:
   assumes "lexpands_diff b' b" "b \<noteq> []"
   assumes "\<forall>c \<in> wits' b. \<forall>t \<in> wits_subterms b.
-    AT (Var c \<approx>\<^sub>s t) \<notin> set b \<and> AT (t \<approx>\<^sub>s Var c) \<notin> set b \<and> AT (t \<in>\<^sub>s Var c) \<notin> set b"
+    AT (Var c =\<^sub>s t) \<notin> set b \<and> AT (t =\<^sub>s Var c) \<notin> set b \<and> AT (t \<in>\<^sub>s Var c) \<notin> set b"
   shows "wits' (b' @ b) = wits' b"
 proof -
   note lexpands.intros(4)[OF assms(1)]
@@ -503,7 +503,7 @@ lemma fexpands_param_wits'_eq:
 
 (* TODO: give the invariant P a proper name *)
 lemma lemma_2_lexpands:
-  defines "P \<equiv> (\<lambda>b c t. AT (Var c \<approx>\<^sub>s t) \<notin> set b \<and> AT (t \<approx>\<^sub>s Var c) \<notin> set b \<and> AT (t \<in>\<^sub>s Var c) \<notin> set b)"
+  defines "P \<equiv> (\<lambda>b c t. AT (Var c =\<^sub>s t) \<notin> set b \<and> AT (t =\<^sub>s Var c) \<notin> set b \<and> AT (t \<in>\<^sub>s Var c) \<notin> set b)"
   assumes "lexpands b' b" "b \<noteq> []"
   assumes "no_new_subterms b"
   assumes "\<forall>\<phi> \<in> set b. \<not> is_literal \<phi> \<longrightarrow> vars \<phi> \<inter> wits b = {}"
@@ -520,7 +520,7 @@ proof(induction rule: lexpands.induct)
     and "c \<in> wits' b" "t \<in> wits_subterms (b' @ b)" for c t
   proof -
     from that "1.prems"(5)
-    have "\<forall>\<phi> \<in> set b'. \<phi> \<noteq> AT (Var c \<approx>\<^sub>s t) \<and> \<phi> \<noteq> AT (t \<approx>\<^sub>s Var c) \<and> \<phi> \<noteq> AT (t \<in>\<^sub>s Var c)"
+    have "\<forall>\<phi> \<in> set b'. \<phi> \<noteq> AT (Var c =\<^sub>s t) \<and> \<phi> \<noteq> AT (t =\<^sub>s Var c) \<and> \<phi> \<noteq> AT (t \<in>\<^sub>s Var c)"
       by (auto simp: wits'_def disjoint_iff)
     with 1 that show ?thesis
       unfolding P_def wits_subterms_def
@@ -639,12 +639,12 @@ next
       case (1 c x)
       with subst have [simp]: "p"
         by (cases p) (simp add: P_def wits_subterms_def; blast)+
-      from 1 subst have "(Var c \<approx>\<^sub>s x) = subst_tlvl t1' t2' l"
+      from 1 subst have "(Var c =\<^sub>s x) = subst_tlvl t1' t2' l"
         by (simp add: P_def wits_subterms_def; blast)
       with 1 subst consider
-        (refl) "l = (t1' \<approx>\<^sub>s t1')" "t2' = Var c" "x = Var c"
-        | (t1'_left) "l = (Var c \<approx>\<^sub>s t1')" "t2' = x"
-        | (t1'_right) "l = (t1' \<approx>\<^sub>s x)" "t2' = Var c"
+        (refl) "l = (t1' =\<^sub>s t1')" "t2' = Var c" "x = Var c"
+        | (t1'_left) "l = (Var c =\<^sub>s t1')" "t2' = x"
+        | (t1'_right) "l = (t1' =\<^sub>s x)" "t2' = Var c"
         apply(cases "(t1', t2', l)" rule: subst_tlvl.cases)
         by (auto split: if_splits)
       then show ?case
@@ -654,12 +654,12 @@ next
       case (2 c x)
       with subst have [simp]: "p"
         by (cases p) (simp add: P_def wits_subterms_def; blast)+
-      from 2 subst have "(x \<approx>\<^sub>s Var c) = subst_tlvl t1' t2' l"
+      from 2 subst have "(x =\<^sub>s Var c) = subst_tlvl t1' t2' l"
         by (simp add: P_def wits_subterms_def; blast)
       with 2 subst consider
-        (refl) "l = (t1' \<approx>\<^sub>s t1')" "t2' = Var c" "x = Var c"
-        | (t1_left) "l = (t1' \<approx>\<^sub>s Var c)" "t2' = x"
-        | (t1_right) "l = (x \<approx>\<^sub>s t1')" "t2' = Var c"
+        (refl) "l = (t1' =\<^sub>s t1')" "t2' = Var c" "x = Var c"
+        | (t1_left) "l = (t1' =\<^sub>s Var c)" "t2' = x"
+        | (t1_right) "l = (x =\<^sub>s t1')" "t2' = Var c"
         apply(cases "(t1', t2', l)" rule: subst_tlvl.cases)
         by (auto split: if_splits)
       then show ?case
@@ -689,7 +689,7 @@ next
 qed
 
 lemma lemma_2_fexpands:
-  defines "P \<equiv> (\<lambda>b c t. AT (Var c \<approx>\<^sub>s t) \<notin> set b \<and> AT (t \<approx>\<^sub>s Var c) \<notin> set b
+  defines "P \<equiv> (\<lambda>b c t. AT (Var c =\<^sub>s t) \<notin> set b \<and> AT (t =\<^sub>s Var c) \<notin> set b
                       \<and> AT (t \<in>\<^sub>s Var c) \<notin> set b)"
   assumes "fexpands bs' b" "b' \<in> bs'" "b \<noteq> []"
   assumes "no_new_subterms b"
@@ -780,7 +780,7 @@ qed
 lemma lemma_2:
   assumes "wf_branch b"
   assumes "c \<in> wits' b" "t \<in> wits_subterms b"
-  shows "AT (Var c \<approx>\<^sub>s t) \<notin> set b" "AT (t \<approx>\<^sub>s Var c) \<notin> set b" "AT (t \<in>\<^sub>s Var c) \<notin> set b"
+  shows "AT (Var c =\<^sub>s t) \<notin> set b" "AT (t =\<^sub>s Var c) \<notin> set b" "AT (t \<in>\<^sub>s Var c) \<notin> set b"
 proof -
   from \<open>wf_branch b\<close> obtain \<phi> where "expandss b [\<phi>]"
     using wf_branch_def by blast
@@ -789,7 +789,7 @@ proof -
     using no_wits_if_not_literal_if_wf_branch that unfolding wf_branch_def by blast
   have no_new_subterms: "no_new_subterms b'" if "expandss b' [\<phi>]" for b'
     using no_new_subterms_if_wf_branch that unfolding wf_branch_def by blast
-  have "AT (Var c \<approx>\<^sub>s t) \<notin> set b \<and> AT (t \<approx>\<^sub>s Var c) \<notin> set b \<and> AT (t \<in>\<^sub>s Var c) \<notin> set b"
+  have "AT (Var c =\<^sub>s t) \<notin> set b \<and> AT (t =\<^sub>s Var c) \<notin> set b \<and> AT (t \<in>\<^sub>s Var c) \<notin> set b"
     using \<open>expandss b [\<phi>]\<close> assms(2,3)
   proof(induction b "[\<phi>]" arbitrary: c t rule: expandss.induct)
     case 1
@@ -807,7 +807,7 @@ proof -
     with 3 show ?case
       using wf_branch_def wf_branch_not_Nil by blast
   qed
-  then show "AT (Var c \<approx>\<^sub>s t) \<notin> set b" "AT (t \<approx>\<^sub>s Var c) \<notin> set b" "AT (t \<in>\<^sub>s Var c) \<notin> set b"
+  then show "AT (Var c =\<^sub>s t) \<notin> set b" "AT (t =\<^sub>s Var c) \<notin> set b" "AT (t \<in>\<^sub>s Var c) \<notin> set b"
     by safe
 qed
 
@@ -834,7 +834,7 @@ lemma in_subterms'_if_AF_mem_in_branch:
 
 lemma in_subterms'_if_AT_eq_in_branch:
   assumes "wf_branch b"
-  assumes "AT (s \<approx>\<^sub>s t) \<in> set b"
+  assumes "AT (s =\<^sub>s t) \<in> set b"
   shows "s \<in> Var ` wits' b \<union> subterms' b"
     and "t \<in> Var ` wits' b \<union> subterms' b"
   using assms
@@ -843,7 +843,7 @@ lemma in_subterms'_if_AT_eq_in_branch:
 
 lemma in_subterms'_if_AF_eq_in_branch:
   assumes "wf_branch b"
-  assumes "AF (s \<approx>\<^sub>s t) \<in> set b"
+  assumes "AF (s =\<^sub>s t) \<in> set b"
   shows "s \<in> Var ` wits' b \<union> subterms' b"
     and "t \<in> Var ` wits' b \<union> subterms' b"
   using assms
@@ -1006,12 +1006,12 @@ lemma AF_mem_branch_wits_subtermsD:
   using assms AF_mem_subterms_branchD subterms_branch_eq_if_wf_branch wf_branch by blast+
 
 lemma AT_eq_branch_wits_subtermsD:
-  assumes "AT (s \<approx>\<^sub>s t) \<in> set b"
+  assumes "AT (s =\<^sub>s t) \<in> set b"
   shows "s \<in> wits_subterms b" "t \<in> wits_subterms b"
   using assms AT_eq_subterms_branchD subterms_branch_eq_if_wf_branch wf_branch by blast+
 
 lemma AF_eq_branch_wits_subtermsD:
-  assumes "AF (s \<approx>\<^sub>s t) \<in> set b"
+  assumes "AF (s =\<^sub>s t) \<in> set b"
   shows "s \<in> wits_subterms b" "t \<in> wits_subterms b"
   using assms AF_eq_subterms_branchD subterms_branch_eq_if_wf_branch wf_branch by blast+
 
@@ -1034,7 +1034,7 @@ qed
 
 lemma realization_if_AT_eq:
   assumes "lin_sat b"
-  assumes "AT (s \<approx>\<^sub>s t) \<in> set b"
+  assumes "AT (s =\<^sub>s t) \<in> set b"
   shows "realize s = realize t"
 proof -
   note AT_eq_branch_wits_subtermsD[OF assms(2)]
@@ -1093,7 +1093,7 @@ lemma I_not_in_realization:
 
 lemma realization_if_AF_eq:
   assumes "sat b"
-  assumes "AF (t1 \<approx>\<^sub>s t2) \<in> set b"
+  assumes "AF (t1 =\<^sub>s t2) \<in> set b"
   shows "realize t1 \<noteq> realize t2"
 proof -
   note AF_eq_branch_wits_subtermsD[OF assms(2)]
@@ -1126,7 +1126,7 @@ proof -
   next
     case subterms
     define \<Delta> where "\<Delta> \<equiv> {(\<tau>\<^sub>1, \<tau>\<^sub>2) \<in> subterms' b \<times> subterms' b.
-                            AF (\<tau>\<^sub>1 \<approx>\<^sub>s \<tau>\<^sub>2) \<in> set b \<and> realize \<tau>\<^sub>1 = realize \<tau>\<^sub>2}"
+                            AF (\<tau>\<^sub>1 =\<^sub>s \<tau>\<^sub>2) \<in> set b \<and> realize \<tau>\<^sub>1 = realize \<tau>\<^sub>2}"
     have "finite \<Delta>"
     proof -
       have "\<Delta> \<subseteq> subterms' b \<times> subterms' b"
@@ -1153,27 +1153,27 @@ proof -
           by auto
       qed
       then have *: "t1 \<in> subterms' b" "t2 \<in> subterms' b"
-        "AF (t1 \<approx>\<^sub>s t2) \<in> set b" "realize t1 = realize t2"
+        "AF (t1 =\<^sub>s t2) \<in> set b" "realize t1 = realize t2"
         unfolding \<Delta>_def by auto
       obtain t1' t2' where t1'_t2':
         "t1' \<in> subterms (last b)" "t2' \<in> subterms (last b)"
-        "AF (t1' \<approx>\<^sub>s t2') \<in> set b" "realize t1' = realize t2'"
+        "AF (t1' =\<^sub>s t2') \<in> set b" "realize t1' = realize t2'"
         "realize t1' = realize t1" "realize t2' = realize t2"
       proof -
         from * consider
           "t1 \<in> subterms (last b)"
           | t1' where "t1' \<in> subterms (last b)"
-            "(AT (t1' \<approx>\<^sub>s t1) \<in> set b \<or> AT (t1 \<approx>\<^sub>s t1') \<in> set b)"
+            "(AT (t1' =\<^sub>s t1) \<in> set b \<or> AT (t1 =\<^sub>s t1') \<in> set b)"
           unfolding subterms'_def wits'_def by blast
         then obtain t1'' where
-          "t1'' \<in> subterms (last b)" "AF (t1'' \<approx>\<^sub>s t2) \<in> set b"
+          "t1'' \<in> subterms (last b)" "AF (t1'' =\<^sub>s t2) \<in> set b"
           "realize t1'' = realize t1"
         proof cases
           case (2 t1')
-          from bopen neqSelf \<open>AF (t1 \<approx>\<^sub>s t2) \<in> set b\<close> have "t1 \<noteq> t2"
+          from bopen neqSelf \<open>AF (t1 =\<^sub>s t2) \<in> set b\<close> have "t1 \<noteq> t2"
             by blast
-          with 2 \<open>sat b\<close> have "AF (t1' \<approx>\<^sub>s t2) \<in> set b"
-            using lexpands_eq.intros(2,4)[OF _ \<open>AF (t1 \<approx>\<^sub>s t2) \<in> set b\<close>, THEN lexpands.intros(6)]
+          with 2 \<open>sat b\<close> have "AF (t1' =\<^sub>s t2) \<in> set b"
+            using lexpands_eq.intros(2,4)[OF _ \<open>AF (t1 =\<^sub>s t2) \<in> set b\<close>, THEN lexpands.intros(6)]
             unfolding sat_def using lin_satD by fastforce
           with that[OF "2"(1) this] \<open>sat b\<close>[unfolded sat_def] show ?thesis
             using realization_if_AT_eq 2 by metis
@@ -1182,21 +1182,21 @@ proof -
         from * consider
           "t2 \<in> subterms (last b)"
           | t2' where "t2' \<in> subterms (last b)"
-            "(AT (t2' \<approx>\<^sub>s t2) \<in> set b \<or> AT (t2 \<approx>\<^sub>s t2') \<in> set b)"
+            "(AT (t2' =\<^sub>s t2) \<in> set b \<or> AT (t2 =\<^sub>s t2') \<in> set b)"
           unfolding subterms'_def wits'_def by blast
         then obtain t2'' where
-          "t2'' \<in> subterms (last b)" "AF (t1'' \<approx>\<^sub>s t2'') \<in> set b"
+          "t2'' \<in> subterms (last b)" "AF (t1'' =\<^sub>s t2'') \<in> set b"
           "realize t2'' = realize t2"
         proof cases
           case (2 t2')
-          from bopen neqSelf \<open>AF (t1'' \<approx>\<^sub>s t2) \<in> set b\<close> have "t1'' \<noteq> t2"
+          from bopen neqSelf \<open>AF (t1'' =\<^sub>s t2) \<in> set b\<close> have "t1'' \<noteq> t2"
             by blast
-          with 2 \<open>sat b\<close> have "AF (t1'' \<approx>\<^sub>s t2') \<in> set b"
-            using lexpands_eq.intros(2,4)[OF _ \<open>AF (t1'' \<approx>\<^sub>s t2) \<in> set b\<close>, THEN lexpands.intros(6)]
+          with 2 \<open>sat b\<close> have "AF (t1'' =\<^sub>s t2') \<in> set b"
+            using lexpands_eq.intros(2,4)[OF _ \<open>AF (t1'' =\<^sub>s t2) \<in> set b\<close>, THEN lexpands.intros(6)]
             unfolding sat_def using lin_satD by fastforce
           with that[OF "2"(1) this] \<open>sat b\<close>[unfolded sat_def] show ?thesis
             using realization_if_AT_eq 2 by metis
-        qed (use \<open>AF (t1'' \<approx>\<^sub>s t2) \<in> set b\<close> that[of t2] in blast)
+        qed (use \<open>AF (t1'' =\<^sub>s t2) \<in> set b\<close> that[of t2] in blast)
         ultimately show ?thesis
           using that * by metis
       qed
@@ -1227,19 +1227,19 @@ proof -
         then have "AT (s2 \<in>\<^sub>s t2') \<in> set b"
           unfolding bgraph_def Let_def by auto
         with \<open>AF (s1 \<in>\<^sub>s t2') \<in> set b\<close> \<open>sat b\<close>[unfolded sat_def]
-        have "AF (s2 \<approx>\<^sub>s s1) \<in> set b"
+        have "AF (s2 =\<^sub>s s1) \<in> set b"
           using lexpands_eq.intros(5)[THEN lexpands.intros(6)] lin_satD by fastforce
         then have "s1 \<noteq> s2"
           using neqSelf bopen by blast           
         then have "s1 \<in> subterms' b" "s2 \<in> subterms' b"
           using \<open>realize s1 = realize s2\<close> inj_on_contraD[OF inj_on_I \<open>s1 \<noteq> s2\<close>]
-          using in_subterms'_if_AF_eq_in_branch[OF wf_branch \<open>AF (s2 \<approx>\<^sub>s s1) \<in> set b\<close>]
+          using in_subterms'_if_AF_eq_in_branch[OF wf_branch \<open>AF (s2 =\<^sub>s s1) \<in> set b\<close>]
           using I_not_in_realization by auto blast+
         with \<open>realize s1 = realize s2\<close> have "(s2, s1) \<in> \<Delta>"
-          unfolding \<Delta>_def using \<open>AF (s2 \<approx>\<^sub>s s1) \<in> set b\<close> by auto
+          unfolding \<Delta>_def using \<open>AF (s2 =\<^sub>s s1) \<in> set b\<close> by auto
         moreover have "?h (s2, s1) < ?h (t1', t2')"
           using \<open>s1 \<in> subterms' b\<close> \<open>s2 \<in> subterms' b\<close>
-          using \<open>AF (s2 \<approx>\<^sub>s s1) \<in> set b\<close> \<open>realize s1 = realize s2\<close>
+          using \<open>AF (s2 =\<^sub>s s1) \<in> set b\<close> \<open>realize s1 = realize s2\<close>
                 \<open>realize s1 \<in> elts (realize t2')\<close>
           using t1'_t2'(4) t1'_t2'_subterms
           by (auto simp: min_def intro: lemma1_2 lemma1_3)
@@ -1259,20 +1259,20 @@ proof -
         then have "AT (s1 \<in>\<^sub>s t1') \<in> set b"
           unfolding bgraph_def Let_def by auto
         with \<open>AF (s2 \<in>\<^sub>s t1') \<in> set b\<close> \<open>sat b\<close>[unfolded sat_def]
-        have "AF (s1 \<approx>\<^sub>s s2) \<in> set b"
+        have "AF (s1 =\<^sub>s s2) \<in> set b"
           using lexpands_eq.intros(5)[THEN lexpands.intros(6)]
           using lin_satD by fastforce
         then have "s1 \<noteq> s2"
           using neqSelf bopen by blast           
         then have "s1 \<in> subterms' b" "s2 \<in> subterms' b"
           using \<open>realize s1 = realize s2\<close> inj_on_contraD[OF inj_on_I \<open>s1 \<noteq> s2\<close>]
-          using in_subterms'_if_AF_eq_in_branch[OF wf_branch \<open>AF (s1 \<approx>\<^sub>s s2) \<in> set b\<close>]
+          using in_subterms'_if_AF_eq_in_branch[OF wf_branch \<open>AF (s1 =\<^sub>s s2) \<in> set b\<close>]
           using I_not_in_realization by auto blast+
         with \<open>realize s1 = realize s2\<close> have "(s1, s2) \<in> \<Delta>"
-          unfolding \<Delta>_def using \<open>AF (s1 \<approx>\<^sub>s s2) \<in> set b\<close> by auto
+          unfolding \<Delta>_def using \<open>AF (s1 =\<^sub>s s2) \<in> set b\<close> by auto
         moreover have "?h (s1, s2) < ?h (t1', t2')"
           using \<open>s1 \<in> subterms' b\<close> \<open>s2 \<in> subterms' b\<close>
-          using \<open>AF (s1 \<approx>\<^sub>s s2) \<in> set b\<close> \<open>realize s1 = realize s2\<close>
+          using \<open>AF (s1 =\<^sub>s s2) \<in> set b\<close> \<open>realize s1 = realize s2\<close>
                 \<open>realize s2 \<in> elts (realize t1')\<close>
           using t1'_t2'(4) t1'_t2'_subterms
           by (auto simp: min_def intro: lemma1_2 lemma1_3)
@@ -1301,7 +1301,7 @@ proof
     by blast
   then have "AT (s' \<in>\<^sub>s t) \<in> set b"
     unfolding bgraph_def Let_def by auto
-  with assms lexpands_eq.intros(5)[THEN lexpands.intros(6)] have "AF (s' \<approx>\<^sub>s s) \<in> set b"
+  with assms lexpands_eq.intros(5)[THEN lexpands.intros(6)] have "AF (s' =\<^sub>s s) \<in> set b"
     unfolding sat_def using lin_satD by fastforce
   from realization_if_AF_eq[OF \<open>sat b\<close> this] \<open>realize s = realize s'\<close> show False
     by simp
@@ -1518,7 +1518,7 @@ proof -
     then have "AT (s \<in>\<^sub>s Single t) \<in> set b"
       unfolding bgraph_def Let_def by auto
     with \<open>sat b\<close> lexpands_single.intros(2)[OF this, THEN lexpands.intros(5)]
-    have "AT (s \<approx>\<^sub>s t) \<in> set b"
+    have "AT (s =\<^sub>s t) \<in> set b"
       unfolding sat_def using lin_satD by fastforce
     with s show "e \<in> elts (vset {realize t})"
       using realization_if_AT_eq \<open>sat b\<close>[unfolded sat_def]

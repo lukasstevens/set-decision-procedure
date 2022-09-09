@@ -16,7 +16,7 @@ fun member_cycle :: "'a pset_atom list \<Rightarrow> bool" where
 inductive bclosed :: "'a branch \<Rightarrow> bool" where
   contr: "\<lbrakk> \<phi> \<in> set b; Neg \<phi> \<in> set b \<rbrakk> \<Longrightarrow> bclosed b"
 | memEmpty: "AT (t \<in>\<^sub>s \<emptyset>) \<in> set b \<Longrightarrow> bclosed b"
-| neqSelf: "AF (t \<approx>\<^sub>s t) \<in> set b \<Longrightarrow> bclosed b"
+| neqSelf: "AF (t =\<^sub>s t) \<in> set b \<Longrightarrow> bclosed b"
 | memberCycle: "\<lbrakk> member_cycle cs; set cs \<subseteq> Atoms (set b) \<rbrakk> \<Longrightarrow> bclosed b"
 
 abbreviation "bopen branch \<equiv> \<not> bclosed branch"
@@ -25,13 +25,13 @@ section \<open>Linear Expansion Rules\<close>
 
 fun tlvl_terms :: "'a pset_atom \<Rightarrow> 'a pset_term set" where
   "tlvl_terms (t1 \<in>\<^sub>s t2) = {t1, t2}"
-| "tlvl_terms (t1 \<approx>\<^sub>s t2) = {t1, t2}"
+| "tlvl_terms (t1 =\<^sub>s t2) = {t1, t2}"
 
 fun subst_tlvl :: "'a pset_term \<Rightarrow> 'a pset_term \<Rightarrow> 'a pset_atom \<Rightarrow> 'a pset_atom" where
   "subst_tlvl t1 t2 (s1 \<in>\<^sub>s s2) =
     (if s1 = t1 then t2 else s1) \<in>\<^sub>s (if s2 = t1 then t2 else s2)"
-| "subst_tlvl t1 t2 (s1 \<approx>\<^sub>s s2) =
-    (if s1 = t1 then t2 else s1) \<approx>\<^sub>s (if s2 = t1 then t2 else s2)"
+| "subst_tlvl t1 t2 (s1 =\<^sub>s s2) =
+    (if s1 = t1 then t2 else s1) =\<^sub>s (if s2 = t1 then t2 else s2)"
 
 inductive lexpands_fm :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
   "And p q \<in> set b \<Longrightarrow> lexpands_fm [p, q] b"
@@ -83,20 +83,20 @@ inductive lexpands_diff :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool
 
 inductive lexpands_single :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
   "Single t1 \<in> subterms (last b) \<Longrightarrow> lexpands_single [AT (t1 \<in>\<^sub>s Single t1)] b"
-| "AT (s \<in>\<^sub>s Single t1) \<in> set b \<Longrightarrow> lexpands_single [AT (s \<approx>\<^sub>s t1)] b"
-| "AF (s \<in>\<^sub>s Single t1) \<in> set b \<Longrightarrow> lexpands_single [AF (s \<approx>\<^sub>s t1)] b"
+| "AT (s \<in>\<^sub>s Single t1) \<in> set b \<Longrightarrow> lexpands_single [AT (s =\<^sub>s t1)] b"
+| "AF (s \<in>\<^sub>s Single t1) \<in> set b \<Longrightarrow> lexpands_single [AF (s =\<^sub>s t1)] b"
 
 inductive lexpands_eq :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
-  "\<lbrakk> AT (t1 \<approx>\<^sub>s t2) \<in> set b; AT l \<in> set b; t1 \<in> tlvl_terms l \<rbrakk>
+  "\<lbrakk> AT (t1 =\<^sub>s t2) \<in> set b; AT l \<in> set b; t1 \<in> tlvl_terms l \<rbrakk>
     \<Longrightarrow> lexpands_eq [AT (subst_tlvl t1 t2 l)] b"
-| "\<lbrakk> AT (t1 \<approx>\<^sub>s t2) \<in> set b; AF l \<in> set b; t1 \<in> tlvl_terms l \<rbrakk>
+| "\<lbrakk> AT (t1 =\<^sub>s t2) \<in> set b; AF l \<in> set b; t1 \<in> tlvl_terms l \<rbrakk>
     \<Longrightarrow> lexpands_eq [AF (subst_tlvl t1 t2 l)] b"
-| "\<lbrakk> AT (t1 \<approx>\<^sub>s t2) \<in> set b; AT l \<in> set b; t2 \<in> tlvl_terms l \<rbrakk>
+| "\<lbrakk> AT (t1 =\<^sub>s t2) \<in> set b; AT l \<in> set b; t2 \<in> tlvl_terms l \<rbrakk>
     \<Longrightarrow> lexpands_eq [AT (subst_tlvl t2 t1 l)] b"
-| "\<lbrakk> AT (t1 \<approx>\<^sub>s t2) \<in> set b; AF l \<in> set b; t2 \<in> tlvl_terms l \<rbrakk>
+| "\<lbrakk> AT (t1 =\<^sub>s t2) \<in> set b; AF l \<in> set b; t2 \<in> tlvl_terms l \<rbrakk>
     \<Longrightarrow> lexpands_eq [AF (subst_tlvl t2 t1 l)] b"
 | "\<lbrakk> AT (s \<in>\<^sub>s t) \<in> set b; AF (s' \<in>\<^sub>s t) \<in> set b \<rbrakk>
-    \<Longrightarrow> lexpands_eq [AF (s \<approx>\<^sub>s s')] b"
+    \<Longrightarrow> lexpands_eq [AF (s =\<^sub>s s')] b"
 
 fun polarise :: "bool \<Rightarrow> 'a fm \<Rightarrow> 'a fm" where
   "polarise True \<phi> = \<phi>"
@@ -105,10 +105,10 @@ fun polarise :: "bool \<Rightarrow> 'a fm \<Rightarrow> 'a fm" where
 lemma lexpands_eq_induct'[consumes 1, case_names subst neq]:
   assumes "lexpands_eq b' b"
   assumes "\<And>t1 t2 t1' t2' p l b. 
-      \<lbrakk> AT (t1 \<approx>\<^sub>s t2) \<in> set b; polarise p (Atom l) \<in> set b;
+      \<lbrakk> AT (t1 =\<^sub>s t2) \<in> set b; polarise p (Atom l) \<in> set b;
        (t1', t2') \<in> {(t1, t2), (t2, t1)}; t1' \<in> tlvl_terms l \<rbrakk>
       \<Longrightarrow> P [polarise p (Atom (subst_tlvl t1' t2' l))] b"
-  assumes "\<And>s t s' b. \<lbrakk> AT (s \<in>\<^sub>s t) \<in> set b; AF (s' \<in>\<^sub>s t) \<in> set b \<rbrakk> \<Longrightarrow> P [AF (s \<approx>\<^sub>s s')] b"
+  assumes "\<And>s t s' b. \<lbrakk> AT (s \<in>\<^sub>s t) \<in> set b; AF (s' \<in>\<^sub>s t) \<in> set b \<rbrakk> \<Longrightarrow> P [AF (s =\<^sub>s s')] b"
   shows "P b' b"
   using assms(1)
   apply(induction rule: lexpands_eq.induct)
@@ -151,13 +151,13 @@ lemma lexpands_induct[consumes 1]:
     (\<And>s t1 t2 b. AF (s \<in>\<^sub>s t1 -\<^sub>s t2) \<in> set b \<Longrightarrow> AF (s \<in>\<^sub>s t2) \<in> set b \<Longrightarrow> P [AF (s \<in>\<^sub>s t1)] b) \<Longrightarrow>
     (\<And>s t1 b t2. AT (s \<in>\<^sub>s t1) \<in> set b \<Longrightarrow> AF (s \<in>\<^sub>s t2) \<in> set b \<Longrightarrow> t1 -\<^sub>s t2 \<in> subterms (last b) \<Longrightarrow> P [AT (s \<in>\<^sub>s t1 -\<^sub>s t2)] b) \<Longrightarrow>
     (\<And>t1 b. Single t1 \<in> subterms (last b) \<Longrightarrow> P [AT (t1 \<in>\<^sub>s Single t1)] b) \<Longrightarrow>
-    (\<And>s t1 b. AT (s \<in>\<^sub>s Single t1) \<in> set b \<Longrightarrow> P [AT (s \<approx>\<^sub>s t1)] b) \<Longrightarrow>
-    (\<And>s t1 b. AF (s \<in>\<^sub>s Single t1) \<in> set b \<Longrightarrow> P [AF (s \<approx>\<^sub>s t1)] b) \<Longrightarrow>
-    (\<And>t1 t2 b l. AT (t1 \<approx>\<^sub>s t2) \<in> set b \<Longrightarrow> AT l \<in> set b \<Longrightarrow> t1 \<in> tlvl_terms l \<Longrightarrow> P [AT (subst_tlvl t1 t2 l)] b) \<Longrightarrow>
-    (\<And>t1 t2 b l. AT (t1 \<approx>\<^sub>s t2) \<in> set b \<Longrightarrow> AF l \<in> set b \<Longrightarrow> t1 \<in> tlvl_terms l \<Longrightarrow> P [AF (subst_tlvl t1 t2 l)] b) \<Longrightarrow>
-    (\<And>t1 t2 b l. AT (t1 \<approx>\<^sub>s t2) \<in> set b \<Longrightarrow> AT l \<in> set b \<Longrightarrow> t2 \<in> tlvl_terms l \<Longrightarrow> P [AT (subst_tlvl t2 t1 l)] b) \<Longrightarrow>
-    (\<And>t1 t2 b l. AT (t1 \<approx>\<^sub>s t2) \<in> set b \<Longrightarrow> AF l \<in> set b \<Longrightarrow> t2 \<in> tlvl_terms l \<Longrightarrow> P [AF (subst_tlvl t2 t1 l)] b) \<Longrightarrow>  
-    (\<And>s t b s'. AT (s \<in>\<^sub>s t) \<in> set b \<Longrightarrow> AF (s' \<in>\<^sub>s t) \<in> set b \<Longrightarrow> P [AF (s \<approx>\<^sub>s s')] b) \<Longrightarrow> P b' b"
+    (\<And>s t1 b. AT (s \<in>\<^sub>s Single t1) \<in> set b \<Longrightarrow> P [AT (s =\<^sub>s t1)] b) \<Longrightarrow>
+    (\<And>s t1 b. AF (s \<in>\<^sub>s Single t1) \<in> set b \<Longrightarrow> P [AF (s =\<^sub>s t1)] b) \<Longrightarrow>
+    (\<And>t1 t2 b l. AT (t1 =\<^sub>s t2) \<in> set b \<Longrightarrow> AT l \<in> set b \<Longrightarrow> t1 \<in> tlvl_terms l \<Longrightarrow> P [AT (subst_tlvl t1 t2 l)] b) \<Longrightarrow>
+    (\<And>t1 t2 b l. AT (t1 =\<^sub>s t2) \<in> set b \<Longrightarrow> AF l \<in> set b \<Longrightarrow> t1 \<in> tlvl_terms l \<Longrightarrow> P [AF (subst_tlvl t1 t2 l)] b) \<Longrightarrow>
+    (\<And>t1 t2 b l. AT (t1 =\<^sub>s t2) \<in> set b \<Longrightarrow> AT l \<in> set b \<Longrightarrow> t2 \<in> tlvl_terms l \<Longrightarrow> P [AT (subst_tlvl t2 t1 l)] b) \<Longrightarrow>
+    (\<And>t1 t2 b l. AT (t1 =\<^sub>s t2) \<in> set b \<Longrightarrow> AF l \<in> set b \<Longrightarrow> t2 \<in> tlvl_terms l \<Longrightarrow> P [AF (subst_tlvl t2 t1 l)] b) \<Longrightarrow>  
+    (\<And>s t b s'. AT (s \<in>\<^sub>s t) \<in> set b \<Longrightarrow> AF (s' \<in>\<^sub>s t) \<in> set b \<Longrightarrow> P [AF (s =\<^sub>s s')] b) \<Longrightarrow> P b' b"
   using assms
   apply(induction rule: lexpands.induct)
   subgoal apply(induction rule: lexpands_fm.induct) by metis+
@@ -191,7 +191,7 @@ inductive fexpands_noparam :: "'a branch set \<Rightarrow> 'a branch \<Rightarro
 
 inductive fexpands_param ::
   "'a pset_term \<Rightarrow> 'a pset_term \<Rightarrow> 'a \<Rightarrow> 'a branch set \<Rightarrow> 'a branch \<Rightarrow> bool" for t1 t2 x where
-  "\<lbrakk> AF (t1 \<approx>\<^sub>s t2) \<in> set b; t1 \<in> subterms (last b); t2 \<in> subterms (last b);
+  "\<lbrakk> AF (t1 =\<^sub>s t2) \<in> set b; t1 \<in> subterms (last b); t2 \<in> subterms (last b);
      \<nexists>x. AT (x \<in>\<^sub>s t1) \<in> set b \<and> AF (x \<in>\<^sub>s t2) \<in> set b;
      \<nexists>x. AT (x \<in>\<^sub>s t2) \<in> set b \<and> AF (x \<in>\<^sub>s t1) \<in> set b;
      x \<notin> vars b \<rbrakk>
@@ -204,7 +204,7 @@ lemma fexpands_paramD:
   assumes "fexpands_param t1 t2 x bs' b"
   shows "bs' = {[AT (pset_term.Var x \<in>\<^sub>s t1), AF (pset_term.Var x \<in>\<^sub>s t2)],
                [AT (pset_term.Var x \<in>\<^sub>s t2), AF (pset_term.Var x \<in>\<^sub>s t1)]}"
-        "AF (t1 \<approx>\<^sub>s t2) \<in> set b" "t1 \<in> subterms (last b)" "t2 \<in> subterms (last b)"
+        "AF (t1 =\<^sub>s t2) \<in> set b" "t1 \<in> subterms (last b)" "t2 \<in> subterms (last b)"
         "\<nexists>x. AT (x \<in>\<^sub>s t1) \<in> set b \<and> AF (x \<in>\<^sub>s t2) \<in> set b"
         "\<nexists>x. AT (x \<in>\<^sub>s t2) \<in> set b \<and> AF (x \<in>\<^sub>s t1) \<in> set b"
         "x \<notin> vars b"

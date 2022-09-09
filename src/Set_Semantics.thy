@@ -13,7 +13,7 @@ datatype (vars_term: 'a) pset_term =
 
 datatype (vars_atom: 'a) pset_atom =
   Elem "'a pset_term" "'a pset_term" (infix \<open>\<in>\<^sub>s\<close> 55) | 
-  Equal "'a pset_term" "'a pset_term" (infix \<open>\<approx>\<^sub>s\<close> 55)
+  Equal "'a pset_term" "'a pset_term" (infix \<open>=\<^sub>s\<close> 55)
 
 abbreviation "AT a \<equiv> Atom a"
 abbreviation "AF a \<equiv> Neg (Atom a)"
@@ -31,7 +31,7 @@ fun I\<^sub>s\<^sub>t :: "('a \<Rightarrow> V) \<Rightarrow> 'a pset_term \<Righ
 
 fun I\<^sub>s\<^sub>a :: "('a \<Rightarrow> V) \<Rightarrow> 'a pset_atom \<Rightarrow> bool" where
   "I\<^sub>s\<^sub>a v (t1 \<in>\<^sub>s t2) \<longleftrightarrow> I\<^sub>s\<^sub>t v t1 \<in> elts (I\<^sub>s\<^sub>t v t2)"
-| "I\<^sub>s\<^sub>a v (t1 \<approx>\<^sub>s t2) \<longleftrightarrow> I\<^sub>s\<^sub>t v t1 = I\<^sub>s\<^sub>t v t2"
+| "I\<^sub>s\<^sub>a v (t1 =\<^sub>s t2) \<longleftrightarrow> I\<^sub>s\<^sub>t v t1 = I\<^sub>s\<^sub>t v t2"
 
 
 section \<open>Variables\<close>
@@ -136,7 +136,7 @@ fun subterms_term :: "'a pset_term \<Rightarrow> 'a pset_term set"  where
 
 fun subterms_atom :: "'a pset_atom \<Rightarrow> 'a pset_term set"  where
   "subterms_atom (t1 \<in>\<^sub>s t2) = subterms_term t1 \<union> subterms_term t2"
-| "subterms_atom (t1 \<approx>\<^sub>s t2) = subterms_term t1 \<union> subterms_term t2"
+| "subterms_atom (t1 =\<^sub>s t2) = subterms_term t1 \<union> subterms_term t2"
 
 definition subterms_fm :: "'a pset_fm \<Rightarrow> 'a pset_term set" where
  "subterms_fm \<phi> \<equiv> \<Union>(subterms_atom ` atoms \<phi>)"
@@ -218,12 +218,12 @@ lemma AF_mem_subterms_branchD:
   using assms unfolding subterms_branch_def by force+
 
 lemma AT_eq_subterms_branchD:
-  assumes "AT (s \<approx>\<^sub>s t) \<in> set b"
+  assumes "AT (s =\<^sub>s t) \<in> set b"
   shows "s \<in> subterms b" "t \<in> subterms b"
   using assms unfolding subterms_branch_def by force+
 
 lemma AF_eq_subterms_branchD:
-  assumes "AF (s \<approx>\<^sub>s t) \<in> set b"
+  assumes "AF (s =\<^sub>s t) \<in> set b"
   shows "s \<in> subterms b" "t \<in> subterms b"
   using assms unfolding subterms_branch_def by force+
 

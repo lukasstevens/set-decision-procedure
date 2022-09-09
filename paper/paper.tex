@@ -59,6 +59,7 @@
 }
 
 \hyphenation{Isa-belle}
+\hyphenation{tab-leau}
 
 % % LuaLatex on Arxiv: https://tex.stackexchange.com/questions/372154/lualatex-how-to-produce-pdf-acceptable-by-arxiv 
 % \hypersetup{%
@@ -84,7 +85,8 @@
 \newcommand{\lexpands}[2]{#1 $\lefttriangle$ #2}
 \newcommand{\fexpands}[2]{#1 $\lefttrianglebar$ #2}
 \newcommand{\fexpandsW}[2]{#1 $\lefttrianglebar_\text{v}$ #2}
-\newcommand{\expandss}[2]{#1 $\lefttriangle^*$ #2}
+\newcommand{\expandssSym}{\lefttriangle^*}
+\newcommand{\expandss}[2]{#1 $\expandssSym$ #2}
 
 \newcommand{\unionS}{\sqcup_\text{s}}
 \newcommand{\interS}{\sqcap_\text{s}}
@@ -121,7 +123,6 @@
 \email{lukas.stevens@in.tum.de}
 
 \begin{abstract}
-  \todo[inline]{Write the abstract}
 \end{abstract}
 
 \maketitle
@@ -129,13 +130,12 @@
 \listoftodos{}
 
 \section{Introduction}
-\todo[inline]{Write the introduction, Remember that \MLSS{} is multi-level syllogistics with singleton}
+\todo[inline]{\MLSS{} is multi-level syllogistics with singleton}
 
 \subsection{Related work}
 AFP entry~\cite{hybrid_logic_afp} and workshop paper in Isabelle 2022 workshop.
 
 \subsection{Contributions}
-\todo[inline]{Write the contributions}
 
 \subsection{Notation}
 Isabelle/HOL~\cite{isabelle} conforms to everyday mathematical notation for the most part.
@@ -187,7 +187,7 @@ definition vars :: 'a pset_fm $\Rightarrow$ 'a set where
 \end{lstlisting}
 In addition to the variable names that appear in a formula, we will later also need to obtain those set terms that occur as subterms in a formula. 
 We first define a function that collects the subterms of a set term.
-\todo[inline]{Motivation: linear rules don't introduce subterms, \lstinline!subterms b $\approx$ subterms (last b)!}
+\todo[inline]{Motivation: linear rules don't introduce subterms, \\ \lstinline!subterms b $\approx$ subterms (last b)!}
 \begin{lstlisting}
 fun subterms :: 'a pset_term
              $\Rightarrow$ 'a pset_term set where
@@ -343,6 +343,11 @@ Note that even branching rules are restricted such that they never create new su
 definition sat b $\equiv$ lin_sat b $\land$ ($\nexists$bs'. &\fexpands{bs'}{b}&)
 \end{lstlisting}
 
+\begin{lstlisting}
+definition wits :: 'a branch $\Rightarrow$ 'a set where
+  wits b $\equiv$ vars b - vars (last b)
+\end{lstlisting}
+
 \section{A Decision Procedure for MLSS}
 \begin{figure*}
   \centering
@@ -358,17 +363,39 @@ function (domintros) mlss_proc_branch :: 'a branch $\Rightarrow$ bool where
 definition mlss_proc :: 'a pset_fm $\Rightarrow$ bool where
   mlss_proc $\phi$ $\equiv$ mlss_proc_branch [$\phi$]
 \end{lstlisting}
-\caption{Definition of the functions \lstinline|mlss_proc_branch| and \lstinline|mlss_proc|.\label{fig:alg}}
+\caption{Definition of the decision procedure through the \lstinline|mlss_proc_branch| and \lstinline|mlss_proc|.\label{fig:alg}}
 \end{figure*}
 
 \noindent We abstractly specify the behaviour of the decision procedure, leaving an executable specification from which code can be generated to future work.
 The implementation as displayed in \autoref{fig:alg} uses a couple features of Isabelle's function package:
 instead of defining the function via pattern matching, we specify the equations of the function as conditional rewrite rules.
 This requires us to prove that the assumptions of the equations are non-overlapping, which is done by automation.
-The other concern is that a recursive function needs to terminate in order for it to be well-defined;
+The other concern is that Isabelle requires functions to be total so a recursive function needs to terminate in order for it to be well-defined;
 nevertheless, the termination proof is separated from the definition of the function for modularity.
-The function package maintains the soundness of the definition by introducing a so-called domain predicate \lstinline!mlss_proc_branch_dom! and adding the assumption that the predicate holds for the argument to each equation of the function.
-To be able to reason about this predicate, we pass the \lstinline!domintros! flag which instructs the function package to derive introduction rules for it.
+The function package maintains the soundness of the definition by introducing a so-called domain predicate \lstinline!mlss_proc_branch_dom! which characterises where the function terminates.
+Each equation of the function receives the assumption that the predicate holds for the argument.
+To be able to reason about this predicate, we pass the \lstinline!domintros! flag that instructs the function package to derive introduction rules for it.
+Before we go into more detail on how the termination is handled, we discuss the definition of \lstinline!mlss_proc_branch!.
+
+The purpose of the function is to take a branch and determine whether the branch can be expanded to a closed tableau.
+As stated before, we first use linear expansion rules in order to prevent premature branching;
+therefore, we recursively expand the branch with linear rules until the branch is linearly saturated.
+Note that we use Hilbert's $\varepsilon$-operator in the form of \lstinline!SOME! to choose some rule that actually adds new formulae to the branch. 
+As soon as the branch is linearly saturated, we terminate if the branch is closed as shown in the second equation.
+Otherwise, we choose an applicable branching rule and recursively check whether all newly created branches can be closed.
+The final equation applies once no further branch expansion is possible, in which case we just tests for closedness of the branch.
+
+Every unsatisfiable formula has a closed tableau so we can determine the satisfiability of a formula \lstinline!$\psi$! by passing the singleton branch \lstinline![$\psi$]! to \lstinline!mlss_proc_branch!. 
+Because this is the only context that \lstinline!mlss_proc_branch! is used in, it only encounters branches that result from applying branch expansion rules to a singleton branch.
+We call this kind of branches \textit{well-formed} branches and define a predicate for it.
+In the definition, the expression \lstinline!&\expandss{b'}{b}&! denotes that \lstinline!b'! is one of the branches that results from applying (potentially zero) expansion rules to \lstinline!b!.
+\begin{lstlisting}
+definition wf_branch b $\equiv$ $\exists$$\phi$. &\expandss{b}{[$\phi$]}&
+\end{lstlisting}
+In particular, we will use this notion in \autoref{sec:bound} where derive an upper bound for the cardinality of a well-formed branch.
+This is then used in \autoref{sec:correct} to justify the termination of the decision procedure. 
+Before we come to that, though, we prove soundness and completeness in Section~\ref{sec:sound} and~\ref{sec:complete}, respectively.
+In \autoref{sec:correct}, we also show that both properties easily transfer to the decision procedure which, together with termination, give us total correctness.
 
 \section{Completeness of the Calculus\label{sec:complete}}
 Once a branch \lstinline!b! is saturated and open at the same time, we are unable to expand the branch further in our calculus.
@@ -376,9 +403,6 @@ Thus, to establish completeness of the calculus, we must construct a model \lsti
 The model is defined in terms of the following three collections.
 \todo[inline]{explain wits, explain that wits' are those whose value is not fixed by literals in b}
 \begin{lstlisting}
-definition wits :: 'a branch $\Rightarrow$ 'a set where
-  wits b $\equiv$ vars b - vars (last b)
-
 definition wits' :: 'a branch $\Rightarrow$ 'a set where
   wits' b $\equiv$
     {c $\in$ wits b. $\forall$t $\in$ subterms (last b).
@@ -419,7 +443,7 @@ function realize :: 'a pset_term $\Rightarrow$ V where
 | x $\notin$ verts G $\Longrightarrow$ realize x = 0
 \end{lstlisting}
 \todo[inline]{Non-Overlapping!}
-Since the function is recursive, we need to ensure that it terminates for it to be well-defined.
+Again, we need to ensure that the function terminates for it to be well-defined.
 The assumption that \lstinline!b! is open implies that there are no membership cycles and thus \lstinline!bgraph b! is acyclic.
 Now, consider the ancestors \lstinline!av! of a vertex \lstinline!v!, which are those vertices from which we can reach \lstinline!v!.
 Due to acyclicity, it holds that the ancestors \lstinline!ap! of a parent \lstinline!p! of \lstinline!v! are a subset of \lstinline!av!.
@@ -452,11 +476,6 @@ definition no_new_subterms b $\equiv$
   $\forall$t $\in$ subterms b. t $\notin$ Var ` wits b
     $\longrightarrow$ t $\in$ subterms (last b))
 \end{lstlisting}
-
-\begin{lstlisting}
-definition wf_branch b $\equiv$ $\exists$$\phi$. &\expandss{b}{[$\phi$]}&
-\end{lstlisting}
-
 
 \subsection{Realisation of an Open Branch}
 Remember that for completeness, we need to show that the realization function for an open and saturated branch \lstinline!b! actually constitutes a model for all formualae in the branch.
@@ -628,7 +647,7 @@ lemma fexpands_sound:
   This is indeed the case since the assumption \lstinline!M $\models$ $\psi$! is equivalent to \lstinline!M' $\models$ $\psi$! for all \lstinline!$\psi$ $\in$ set b! given that \lstinline!x! is fresh with respect to b.
 \end{proof}
 
-\section{Upper Bounding the Cardinality of a Branch\label{sec:upper}}
+\section{Upper Bounding the Cardinality of a Branch\label{sec:bound}}
 Soundness and completeness of the calculus are the building blocks with which we establish partial correctness of the algorithm in \autoref{fig:alg}.
 Consequently, we still need to give a termination proof to ascertain total correctness.
 The core of our argument is that the number of distinct formulae that can be derived with the expansion rules is finite.
@@ -719,7 +738,6 @@ Additional constructs such as finiteness and pairs.
 Optimisations for the algorithm.
 
 \section{Conclusion}
-\todo[inline]{Conclude}
 
 \begin{acks}
   \todo[inline]{Acknowledge}

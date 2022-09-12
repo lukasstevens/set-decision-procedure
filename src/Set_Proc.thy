@@ -380,7 +380,7 @@ lemma lexpands_no_wits_if_not_literal:
   assumes "P b"
   shows "P (b' @ b)"
   using assms(2-) lexpands_wits_eq[OF assms(2,3)]
-  by (induction rule: lexpands_induct)(auto simp: disjoint_iff P_def)
+  by (induction rule: lexpands_induct) (auto simp: disjoint_iff P_def)
 
 lemma fexpands_noparam_no_wits_if_not_literal:
   defines "P \<equiv> (\<lambda>b. \<forall>\<phi> \<in> set b. \<not> is_literal \<phi> \<longrightarrow> vars \<phi> \<inter> wits b = {})"
@@ -610,15 +610,15 @@ next
   case (5 b' b)
   then show ?case
   proof(induction rule: lexpands_single.induct)
-    case (2 s t1 b)
-    then have "Single t1 \<in> subterms b"
+    case (2 s t b)
+    then have "Single t \<in> subterms b"
       by (auto intro: subterms_branch_subterms_atomI)
-    with 2 have "t1 \<in> subterms (last b)"
+    with 2 have "t \<in> subterms (last b)"
       by (metis subterms_fmD(7) no_new_subtermsD(5))
-    then have "\<forall>c \<in> wits' b. Var c \<noteq> t1"
+    then have "\<forall>c \<in> wits' b. Var c \<noteq> t"
       unfolding wits'_def wits_def
       using wits_def wits_subterms_last_disjnt by fastforce
-    with \<open>t1 \<in> subterms (last b)\<close> show ?case
+    with \<open>t \<in> subterms (last b)\<close> show ?case
       using 2
       unfolding P_def
       by (auto simp: wits_subterms_last_disjnt[unfolded disjoint_iff] wits_subterms_def subsetD

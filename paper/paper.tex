@@ -387,7 +387,7 @@ The final equation applies once no further branch expansion is possible, in whic
 
 Every unsatisfiable formula has a closed tableau so we can determine the satisfiability of a formula \lstinline!$\psi$! by passing the singleton branch \lstinline![$\psi$]! to \lstinline!mlss_proc_branch!. 
 Because this is the only context that \lstinline!mlss_proc_branch! is used in, it only encounters branches that result from applying branch expansion rules to a singleton branch.
-We call this kind of branches \textit{well-formed} branches and define a predicate for it.
+We call this kind of branches \textit{well-formed}.
 In the definition, the expression \lstinline!&\expandss{b'}{b}&! denotes that \lstinline!b'! is one of the branches that results from applying (potentially zero) expansion rules to \lstinline!b!.
 \begin{lstlisting}
 definition wf_branch b $\equiv$ $\exists$$\phi$. &\expandss{b}{[$\phi$]}&
@@ -395,7 +395,7 @@ definition wf_branch b $\equiv$ $\exists$$\phi$. &\expandss{b}{[$\phi$]}&
 In particular, we will use this notion in \autoref{sec:bound} where derive an upper bound for the cardinality of a well-formed branch.
 This is then used in \autoref{sec:correct} to justify the termination of the decision procedure. 
 Before we come to that, though, we prove soundness and completeness in Section~\ref{sec:sound} and~\ref{sec:complete}, respectively.
-In \autoref{sec:correct}, we also show that both properties easily transfer to the decision procedure which, together with termination, give us total correctness.
+In \autoref{sec:correct}, we also show that both properties easily transfer to the decision procedure which, together with termination, gives us total correctness.
 
 \section{Completeness of the Calculus\label{sec:complete}}
 Once a branch \lstinline!b! is saturated and open at the same time, we are unable to expand the branch further in our calculus.
@@ -714,11 +714,6 @@ lemma mlss_proc_branch_complete:
   assumes infinite (UNIV :: 'a set)
   shows $\exists$M. M $\models$ (last b)
 
-theorem mlss_proc_complete:
-  fixes $\phi$ :: 'a pset_fm
-  assumes $\neg$ mlss_proc $\phi$
-  assumes infinite (UNIV :: 'a set)
-  shows $\exists$M. M $\models$ $\phi$
 \end{lstlisting}
 
 \begin{lstlisting}
@@ -726,6 +721,14 @@ lemma mlss_proc_branch_sound:
   assumes wf_branch b
   assumes $\forall$$\psi$ $\in$ set b. M $\models$ $\psi$
   shows $\neg$ mlss_proc_branch b
+\end{lstlisting}
+
+\begin{lstlisting}
+theorem mlss_proc_complete:
+  fixes $\phi$ :: 'a pset_fm
+  assumes $\neg$ mlss_proc $\phi$
+  assumes infinite (UNIV :: 'a set)
+  shows $\exists$M. M $\models$ $\phi$
 
 theorem mlss_proc_sound:
   assumes M $\models$ $\phi$

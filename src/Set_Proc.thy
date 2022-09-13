@@ -779,7 +779,7 @@ qed
 
 lemma lemma_2:
   assumes "wf_branch b"
-  assumes "c \<in> wits' b" "t \<in> wits_subterms b"
+  assumes "c \<in> wits' b"
   shows "AT (Var c =\<^sub>s t) \<notin> set b" "AT (t =\<^sub>s Var c) \<notin> set b" "AT (t \<in>\<^sub>s Var c) \<notin> set b"
 proof -
   from \<open>wf_branch b\<close> obtain \<phi> where "expandss b [\<phi>]"
@@ -790,7 +790,7 @@ proof -
   have no_new_subterms: "no_new_subterms b'" if "expandss b' [\<phi>]" for b'
     using no_new_subterms_if_wf_branch that unfolding wf_branch_def by blast
   have "AT (Var c =\<^sub>s t) \<notin> set b \<and> AT (t =\<^sub>s Var c) \<notin> set b \<and> AT (t \<in>\<^sub>s Var c) \<notin> set b"
-    using \<open>expandss b [\<phi>]\<close> assms(2,3)
+    using \<open>expandss b [\<phi>]\<close> assms(2)
   proof(induction b "[\<phi>]" arbitrary: c t rule: expandss.induct)
     case 1
     then show ?case by simp
@@ -799,13 +799,15 @@ proof -
     note lemma_2_lexpands[OF this(1) _
         no_new_subterms[OF this(3)] no_wits_if_not_literal[OF this(3)]]
     with 2 show ?case
-      using wf_branch_def wf_branch_not_Nil by blast
+      using wf_branch_def wf_branch_not_Nil subterms_branch_eq_if_wf_branch
+      by (metis AT_eq_subterms_branchD(1,2) AT_mem_subterms_branchD(1) expandss.intros(2))
   next
     case (3 bs b2 b1)
-    note lemma_2_fexpands[OF this(1) _ _
-        no_new_subterms[OF this(3)] no_wits_if_not_literal[OF this(3)]]
+    note lemma_2_fexpands[OF "3"(1) _ _
+        no_new_subterms[OF "3"(3)] no_wits_if_not_literal[OF "3"(3)]]
     with 3 show ?case
-      using wf_branch_def wf_branch_not_Nil by blast
+      using wf_branch_def wf_branch_not_Nil subterms_branch_eq_if_wf_branch
+      by (metis AT_eq_subterms_branchD(1,2) AT_mem_subterms_branchD(1) expandss.intros(3))
   qed
   then show "AT (Var c =\<^sub>s t) \<notin> set b" "AT (t =\<^sub>s Var c) \<notin> set b" "AT (t \<in>\<^sub>s Var c) \<notin> set b"
     by safe
@@ -1307,19 +1309,18 @@ proof
     by simp
 qed
 
-lemma realization_Empty:
-  assumes "\<emptyset> \<in> subterms b"
-  shows "realize \<emptyset> = 0"
+lemma realization_Empty: "realize \<emptyset> = 0"
 proof -
   from bopen have "AT (s \<in>\<^sub>s \<emptyset>) \<notin> set b" for s
     using bclosed.intros by blast
   then have "parents (bgraph b) \<emptyset> = {}"
     unfolding bgraph_def Let_def by auto
-  moreover from assms have "\<emptyset> \<in> subterms' b"
-    using mem_subterms_fm_last_if_mem_subterms_branch[OF wf_branch]
-    unfolding subterms'_def by simp
+  moreover have "\<emptyset> \<notin> Var ` wits' b"
+    using wits'_def wits_def by blast
+  then have "\<emptyset> \<in> subterms' b \<or> \<emptyset> \<notin> verts (bgraph b)"
+    by (simp add: P_T_partition_verts(2))
   ultimately show "realize \<emptyset> = 0"
-    by simp
+    by (auto simp: P_T_partition_verts(2))
 qed
 
 lemma realization_Union:

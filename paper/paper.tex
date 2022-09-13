@@ -399,9 +399,11 @@ In \autoref{sec:correct}, we also show that both properties easily transfer to t
 
 \section{Completeness of the Calculus\label{sec:complete}}
 Once a branch \lstinline!b! is saturated and open at the same time, we are unable to expand the branch further in our calculus.
-Thus, to establish completeness of the calculus, we must construct a model \lstinline!M! such that \lstinline!M $\models$ $\phi$! for all formulae \lstinline!$\phi$ $\in$ set b!.
-The model is defined in terms of the following three collections.
-\todo[inline]{explain wits, explain that wits' are those whose value is not fixed by literals in b}
+Thus, to establish completeness of the calculus, we must construct a model \lstinline!M! such that \lstinline!M $\models$ $\phi$! for all \lstinline!$\phi$ $\in$ set b!.
+
+At the core of the model, there is a \textit{realization} function that maps set terms to sets of type \lstinline!V!.
+A subset of the witnesses, which we call \textit{pure} witnesses, receives special treatment from the realization function for reasons that will become apparent in \autoref{sec:pwits}.
+The set terms of a branch can thus be partitioned into two collections as defined below.
 \begin{lstlisting}
 definition wits' :: 'a branch $\Rightarrow$ 'a set where
   wits' b $\equiv$
@@ -415,10 +417,10 @@ definition subterms' ::
     subterms (last b) $\cup$ 
     Var ` (wits b - wits' b)
 \end{lstlisting}
-We aim to construct a syntactic model that is derived from the membership literals \lstinline!(s $\inS$ t) $\in$ set b!.
-To this end, we construct a graph whose vertices are set terms and there is an edge from \lstinline!s! to \lstinline!t! in the graph if, and only if, \lstinline!s $\inS$ t! is in \lstinline!b!.
+
+We aim to construct a syntactic model that is derived from the membership literals \lstinline!s $\inS$ t! in the branch.
+To this end, we construct a graph whose vertices are the disjoint union of the sets above and there is an edge from \lstinline!s! to \lstinline!t! in the graph if, and only if, \lstinline!s $\inS$ t! is in \lstinline!b!.
 Note that we use \citeauthor{graph_theory_afp}'s graph library~\cite{graph_theory_afp} where a graph is represented as a record of vertices, arcs (directed edges), and two functions \lstinline!tail! and \lstinline!head! that map an arc to its source respectively target vertex.
-\todo[inline]{Explain arrow notation}
 \begin{lstlisting}
 definition bgraph b $\equiv$
   let vs = Var ` wits' b $\cup$ subterms' b
@@ -426,12 +428,14 @@ definition bgraph b $\equiv$
      &$\phantom{\llparenthesis}$& arcs = {(s, t). (s $\inS$ t) $\in$ set b},
      &$\phantom{\llparenthesis}$& tail = fst, head = snd $\rrparenthesis$
 \end{lstlisting}
-The model is defined in terms of a \textit{realization} function relative to this graph.
-Observe that the vertices are partitioned into two sets, a collection of witnesses \lstinline!Var ` wits' b! and the rest of the set terms \lstinline!subterms' b!, which are treated differently by the realization.
+
+The realization function is defined relative to this graph.
+As mentioned before, the pure witnesses \lstinline!Var ` wits' b! and the rest of the set terms \lstinline!subterms' b! are treated differently by the realization function.
 Terms in the latter set are evaluated in accordance to the structure of the graph, i.e.\ the realization of a vertex is defined as the union of the realizations of the parent vertices. 
 For the former set, we choose a function \lstinline!I! that assigns the witnesses in \lstinline!Var ` wits' b! pairwise distinct sets with cardinality greater than that of the vertices.
 We can always choose such a function since we assume an infinite universe of variables.
-Then, we return the singleton set \lstinline!vset {I x}!, which, together with the cardinality constraint, ensures that realizations are distinct between those witnesses and the set terms.  
+Then, we return the singleton set \lstinline!vset {I x}!, which, together with the cardinality constraint, ensures that realizations are distinct between pure witnesses themselves as well as between pure witnesses and set terms.  
+The notation \lstinline!u $\rightarrow_\text{G}$ s! in the definition below indicates that there is an edge from \lstinline!u! to \lstinline!s! in the graph \lstinline!G!.
 \begin{lstlisting}
 abbreviation parents G s $\equiv$ {u. u $\rightarrow_\text{G}$ s}
 
@@ -439,19 +443,48 @@ function realize :: 'a pset_term $\Rightarrow$ V where
   x $\in$ Var ` wits' b $\Longrightarrow$ realize x = vset {I x}
 | x $\in$ subterms' b
   $\Longrightarrow$ realize t =
-  &$\phantom{\Longrightarrow}$&   vset {realize ` parents (bgraph b) s}
+  &\phantom{$\Longrightarrow$ }&  vset {realize ` parents (bgraph b) s}
 | x $\notin$ verts G $\Longrightarrow$ realize x = 0
 \end{lstlisting}
-\todo[inline]{Non-Overlapping!}
-Again, we need to ensure that the function terminates for it to be well-defined.
+
+Again, we need to ensure that the assumptions of the equations are non-overlapping and that function terminates.
+The former is taken care of by automation, leaving us to prove termination.
 The assumption that \lstinline!b! is open implies that there are no membership cycles and thus \lstinline!bgraph b! is acyclic.
 Now, consider the ancestors \lstinline!av! of a vertex \lstinline!v!, which are those vertices from which we can reach \lstinline!v!.
 Due to acyclicity, it holds that the ancestors \lstinline!ap! of a parent \lstinline!p! of \lstinline!v! are a subset of \lstinline!av!.
 They are also a proper subset of \lstinline!av! since \lstinline!p! is an ancestor of \lstinline!v! but not of \lstinline!p! itself.
 Together with the fact that \lstinline!bgraph b! is finite, it follows that the cardinality of the ancestors decreases in each recursive call thus proving the termination of \lstinline!realize!.
-\todo[inline]{Überleitung}
 
-\subsection{Formalising the Key Technical Lemma}
+Before we prove that the realization function constitutes a model in \autoref{sec:real}, we will first explain the significance of the pure witnesses.
+
+\subsection{Characterisation of the Pure Witnesses\label{sec:pwits}}
+Recall that the pure witnesses for a branch \lstinline!b! are those witnesses that are not related to other subterms in \lstinline!last b! by equality.
+In the context of a well-formed branch, this characterisation can be strengthened to any set term and, in addition, we also get that there is no membership literal where a pure witness is on the right-hand side.
+Intuitively speaking, the realization of a pure witness does not depend on the realization of any other set term.
+\begin{lstlisting}
+lemma lemma_2:
+  assumes wf_branch b
+  assumes c $\in$ wits' b
+  shows (Var c $\eqS$ t) $\notin$ set b
+    and (t $\eqS$ Var c) $\notin$ set b
+    and (t $\inS$ Var c) $\notin$ set b
+\end{lstlisting}
+So why are pure witnesses treated differently?
+According to the definition of \lstinline!realize!, the pure witnesses would be evaluated to the empty set \lstinline!0 :: V!, were they not treated separately. 
+To see that this is a problem, consider the branch
+\begin{lstlisting}
+  b = [Var s $\neqS$ Var t, Var t $\neqS$ Var u]
+\end{lstlisting}
+which expands to several open and saturated branches, one of which is
+\begin{lstlisting}
+  [Var x $\inS$ Var s, Var x $\notinS$ Var t,
+   Var y $\inS$ Var t, Var y $\notinS$ Var u] @ b
+\end{lstlisting}
+for some fresh \lstinline!x! and \lstinline!y!.
+Assigning both \lstinline!Var x! and \lstinline!Var y! a value of \lstinline!0! would result in the realization of \lstinline!Var s! and \lstinline!Var t! becoming equal;
+therefore, the realization would not be a model for \lstinline!Var s $\neqS$ Var t!.
+To prevent this, we assign the pure witnesses pairwise different values.
+
 \begin{lstlisting}
 fun is_literal :: 'a fm $\Rightarrow$ bool where
   is_literal (&\fmAtom& _) = True
@@ -459,26 +492,14 @@ fun is_literal :: 'a fm $\Rightarrow$ bool where
 | is_literal _ = False
 \end{lstlisting}
 
-\todo[inline]{Rename \lstinline!lemma_2!}
-\begin{lstlisting}
-lemma lemma_2:
-  assumes wf_branch b
-  assumes c $\in$ wits' b and t $\in$ subterms b
-  shows (Var c $\eqS$ t) $\notin$ set b
-    and (t $\eqS$ Var c) $\notin$ set b
-    and (t $\inS$ Var c) $\notin$ set b
-\end{lstlisting}
-Only one quite trivial invariant needed 
-
-
 \begin{lstlisting}
 definition no_new_subterms b $\equiv$
   $\forall$t $\in$ subterms b. t $\notin$ Var ` wits b
     $\longrightarrow$ t $\in$ subterms (last b))
 \end{lstlisting}
 
-\subsection{Realisation of an Open Branch}
-Remember that for completeness, we need to show that the realization function for an open and saturated branch \lstinline!b! actually constitutes a model for all formualae in the branch.
+\subsection{Realisation of an Open Branch\label{sec:real}}
+Remember that for completeness, we need to show that the realization function for an open and saturated branch \lstinline!b! actually constitutes a model for all formulae in the branch.
 We start by verifying that the realization function models all literals in the branch; more formally, the following propositions hold: 
 \begin{enumerate}[label=(\roman*)]
   \item\label{it:at_mem} We have \lstinline!realize s $\in$ elts (realize t)! if it holds that \lstinline!s $\inS$ t! is in \lstinline!b!. 
@@ -712,7 +733,7 @@ lemma mlss_proc_branch_complete:
   assumes wf_branch b
   assumes $\neg$ mlss_proc_branch b
   assumes infinite (UNIV :: 'a set)
-  shows $\exists$M. M $\models$ (last b)
+  shows $\exists$M. M $\models$ last b
 
 \end{lstlisting}
 

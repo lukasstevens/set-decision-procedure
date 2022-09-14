@@ -172,60 +172,60 @@ lemma lexpands_induct[consumes 1]:
 section \<open>Fulfilling Expansion Rules\<close>
 
 (* Maybe rename noparam thing*)
-inductive fexpands_noparam :: "'a branch set \<Rightarrow> 'a branch \<Rightarrow> bool" where
+inductive bexpands_noparam :: "'a branch set \<Rightarrow> 'a branch \<Rightarrow> bool" where
   "\<lbrakk> Or p q \<in> set b;
      p \<notin> set b; Neg p \<notin> set b \<rbrakk>
-    \<Longrightarrow> fexpands_noparam {[p], [Neg p]} b"
+    \<Longrightarrow> bexpands_noparam {[p], [Neg p]} b"
 | "\<lbrakk> Neg (And p q) \<in> set b;
      Neg p \<notin> set b; p \<notin> set b \<rbrakk>
-    \<Longrightarrow> fexpands_noparam {[Neg p], [p]} b"
+    \<Longrightarrow> bexpands_noparam {[Neg p], [p]} b"
 | "\<lbrakk> AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set b; t1 \<squnion>\<^sub>s t2 \<in> subterms (last b);
      AT (s \<in>\<^sub>s t1) \<notin> set b; AF (s \<in>\<^sub>s t1) \<notin> set b \<rbrakk>
-    \<Longrightarrow> fexpands_noparam {[AT (s \<in>\<^sub>s t1)], [AF (s \<in>\<^sub>s t1)]} b"
+    \<Longrightarrow> bexpands_noparam {[AT (s \<in>\<^sub>s t1)], [AF (s \<in>\<^sub>s t1)]} b"
 | "\<lbrakk> AT (s \<in>\<^sub>s t1) \<in> set b; t1 \<sqinter>\<^sub>s t2 \<in> subterms (last b);
      AT (s \<in>\<^sub>s t2) \<notin> set b; AF (s \<in>\<^sub>s t2) \<notin> set b \<rbrakk>
-    \<Longrightarrow> fexpands_noparam {[AT (s \<in>\<^sub>s t2)], [AF (s \<in>\<^sub>s t2)]} b"
+    \<Longrightarrow> bexpands_noparam {[AT (s \<in>\<^sub>s t2)], [AF (s \<in>\<^sub>s t2)]} b"
 | "\<lbrakk> AT (s \<in>\<^sub>s t1) \<in> set b; t1 -\<^sub>s t2 \<in> subterms (last b);
      AT (s \<in>\<^sub>s t2) \<notin> set b; AF (s \<in>\<^sub>s t2) \<notin> set b \<rbrakk>
-    \<Longrightarrow> fexpands_noparam {[AT (s \<in>\<^sub>s t2)], [AF (s \<in>\<^sub>s t2)]} b"
+    \<Longrightarrow> bexpands_noparam {[AT (s \<in>\<^sub>s t2)], [AF (s \<in>\<^sub>s t2)]} b"
 
-inductive fexpands_param ::
+inductive bexpands_param ::
   "'a pset_term \<Rightarrow> 'a pset_term \<Rightarrow> 'a \<Rightarrow> 'a branch set \<Rightarrow> 'a branch \<Rightarrow> bool" for t1 t2 x where
   "\<lbrakk> AF (t1 =\<^sub>s t2) \<in> set b; t1 \<in> subterms (last b); t2 \<in> subterms (last b);
      \<nexists>x. AT (x \<in>\<^sub>s t1) \<in> set b \<and> AF (x \<in>\<^sub>s t2) \<in> set b;
      \<nexists>x. AT (x \<in>\<^sub>s t2) \<in> set b \<and> AF (x \<in>\<^sub>s t1) \<in> set b;
      x \<notin> vars b \<rbrakk>
-    \<Longrightarrow> fexpands_param t1 t2 x {[AT (Var x \<in>\<^sub>s t1), AF (Var x \<in>\<^sub>s t2)],
+    \<Longrightarrow> bexpands_param t1 t2 x {[AT (Var x \<in>\<^sub>s t1), AF (Var x \<in>\<^sub>s t2)],
                                [AT (Var x \<in>\<^sub>s t2), AF (Var x \<in>\<^sub>s t1)]} b"
 
-inductive_cases fexpands_param_cases[consumes 1]: "fexpands_param t1 t2 x bs' b"
+inductive_cases bexpands_param_cases[consumes 1]: "bexpands_param t1 t2 x bs' b"
 
-lemma fexpands_paramD:
-  assumes "fexpands_param t1 t2 x bs' b"
+lemma bexpands_paramD:
+  assumes "bexpands_param t1 t2 x bs' b"
   shows "bs' = {[AT (pset_term.Var x \<in>\<^sub>s t1), AF (pset_term.Var x \<in>\<^sub>s t2)],
                [AT (pset_term.Var x \<in>\<^sub>s t2), AF (pset_term.Var x \<in>\<^sub>s t1)]}"
         "AF (t1 =\<^sub>s t2) \<in> set b" "t1 \<in> subterms (last b)" "t2 \<in> subterms (last b)"
         "\<nexists>x. AT (x \<in>\<^sub>s t1) \<in> set b \<and> AF (x \<in>\<^sub>s t2) \<in> set b"
         "\<nexists>x. AT (x \<in>\<^sub>s t2) \<in> set b \<and> AF (x \<in>\<^sub>s t1) \<in> set b"
         "x \<notin> vars b"
-  using fexpands_param.cases[OF assms] by metis+
+  using bexpands_param.cases[OF assms] by metis+
 
-inductive fexpands :: "'a branch set \<Rightarrow> 'a branch \<Rightarrow> bool" where
-  "fexpands_noparam bs' b \<Longrightarrow> fexpands bs' b"
-| "fexpands_param t1 t2 x bs' b \<Longrightarrow> fexpands bs' b"
+inductive bexpands :: "'a branch set \<Rightarrow> 'a branch \<Rightarrow> bool" where
+  "bexpands_noparam bs' b \<Longrightarrow> bexpands bs' b"
+| "bexpands_param t1 t2 x bs' b \<Longrightarrow> bexpands bs' b"
 
-lemma fexpands_disjnt:
-  assumes "fexpands bs' b" "b' \<in> bs'"
+lemma bexpands_disjnt:
+  assumes "bexpands bs' b" "b' \<in> bs'"
   shows "set b \<inter> set b' = {}"
   using assms
-proof(induction bs' b rule: fexpands.induct)
+proof(induction bs' b rule: bexpands.induct)
   case (1 bs b)
   then show ?case
-    by (induction rule: fexpands_noparam.induct) (auto intro: list.set_intros(1))
+    by (induction rule: bexpands_noparam.induct) (auto intro: list.set_intros(1))
 next
   case (2 t1 t2 x bs b)
   then show ?case
-  proof(induction rule: fexpands_param.induct)
+  proof(induction rule: bexpands_param.induct)
     case (1 b)
     from \<open>x \<notin> vars b\<close>
     have "AT (Var x \<in>\<^sub>s t1) \<notin> set b" "AF (Var x \<in>\<^sub>s t1) \<notin> set b"
@@ -235,36 +235,36 @@ next
   qed
 qed
 
-lemma fexpands_branch_not_Nil:
-  assumes "fexpands bs' b" "b' \<in> bs'"
+lemma bexpands_branch_not_Nil:
+  assumes "bexpands bs' b" "b' \<in> bs'"
   shows "b' \<noteq> []"
   using assms
-proof(induction bs' b rule: fexpands.induct)
+proof(induction bs' b rule: bexpands.induct)
   case (1 bs' b)
   then show ?case
-    by (induction rule: fexpands_noparam.induct) auto
+    by (induction rule: bexpands_noparam.induct) auto
 next
   case (2 t1 t2 x bs' b)
   then show ?case
-    by (induction rule: fexpands_param.induct) auto
+    by (induction rule: bexpands_param.induct) auto
 qed
 
-lemma fexpands_nonempty: "fexpands bs' b \<Longrightarrow> bs' \<noteq> {}"
-proof(induction rule: fexpands.induct)
+lemma bexpands_nonempty: "bexpands bs' b \<Longrightarrow> bs' \<noteq> {}"
+proof(induction rule: bexpands.induct)
   case (1 bs' b)
-  then show ?case by (induction rule: fexpands_noparam.induct) auto
+  then show ?case by (induction rule: bexpands_noparam.induct) auto
 next
   case (2 t1 t2 x bs' b)
-  then show ?case by (induction rule: fexpands_param.induct) auto
+  then show ?case by (induction rule: bexpands_param.induct) auto
 qed
 
-lemma fexpands_strict_mono:
-  assumes "fexpands bs' b" "b' \<in> bs'"
+lemma bexpands_strict_mono:
+  assumes "bexpands bs' b" "b' \<in> bs'"
   shows "set b \<subset> set (b' @ b)"
-  using fexpands_disjnt[OF assms] fexpands_branch_not_Nil[OF assms]
+  using bexpands_disjnt[OF assms] bexpands_branch_not_Nil[OF assms]
   by (simp add: less_le) (metis Un_Int_eq(1) set_empty2)
 
-inductive_cases fexpands_cases[consumes 1, case_names no_param param]: "fexpands bs b"
+inductive_cases bexpands_cases[consumes 1, case_names no_param param]: "bexpands bs b"
 
 
 section \<open>Expansion Closure\<close>
@@ -272,7 +272,7 @@ section \<open>Expansion Closure\<close>
 inductive expandss :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
   "expandss b b"
 | "lexpands b3 b2 \<Longrightarrow> set b2 \<subset> set (b3 @ b2) \<Longrightarrow> expandss b2 b1 \<Longrightarrow> expandss (b3 @ b2) b1"
-| "fexpands bs b2 \<Longrightarrow> b3 \<in> bs \<Longrightarrow> expandss b2 b1 \<Longrightarrow> expandss (b3 @ b2) b1"
+| "bexpands bs b2 \<Longrightarrow> b3 \<in> bs \<Longrightarrow> expandss b2 b1 \<Longrightarrow> expandss (b3 @ b2) b1"
 
 lemma expandss_trans: "expandss b3 b2 \<Longrightarrow> expandss b2 b1 \<Longrightarrow> expandss b3 b1"
   by (induction rule: expandss.induct) (auto simp: expandss.intros)

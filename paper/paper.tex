@@ -123,6 +123,9 @@
 \email{lukas.stevens@in.tum.de}
 
 \begin{abstract}
+  Using Isabelle/HOL, we verify the state-of-the-art decision procedure for multi-level syllogistics with singleton (\MLSS{} for short), which is a ground fragment of set theory.
+  We formalise the syntax and semantics of \MLSS{} as well as a sound and complete tableau calculus for it.
+  We also provide an abstract specification of a decision procedure that applies the rules of the calculus exhaustively and prove its termination.
 \end{abstract}
 
 \maketitle
@@ -168,13 +171,20 @@ datatype (vars: 'a) pset_atom =
 With the above operators we can also represent the subset operator \lstinline!$\subseteqS$! and enumerate finite sets as \lstinline!s $\subseteqS$ t! is equivalent to \lstinline!s $\unionS$ t $\eqS$ t! and a finite set of elements \lstinline!{t$_\text{1}$,$\ldots$,t$_\text{k}$}! can be expressed by \lstinline!Single t$_1$ $\unionS$ $\ldots$ $\unionS$ Single t$_k$!.
 
 The unquantified fragment \MLSS{} of set theory is then formed by combining set atoms, which are injected into formulae with the constructor \lstinline!&\fmAtom&!, with propositional logical connectives.
-\todo[inline]{Cite Nipkow's Linear Quantifier Elimination?}
+\todo[inline]{Cite Nipkow's Linear Quantifier Elimination?, literals}
 \begin{lstlisting}
 datatype (atoms: 'a) fm =
   &\fmAtom& 'a | &\fmNeg{('a fm)}&
 | &\fmAnd{'a fm}{'a fm}& | &\fmOr{'a fm}{'a fm}&
 
 type_synonym 'a pset_fm = 'a pset_atom fm
+\end{lstlisting}
+
+\begin{lstlisting}
+fun is_literal :: 'a fm $\Rightarrow$ bool where
+  is_literal (&\fmAtom& _) = True
+| is_literal (&\fmNeg{(\fmAtom{} \_)}&) = True
+| is_literal _ = False
 \end{lstlisting}
 We will often drop the atom constructor \lstinline!&\fmAtom{}&! to reduce clutter.
 Additionally, we use the abbreviations \lstinline!s $\notinS$ t! and \lstinline!s $\neqS$ t! to denote \lstinline!&\fmNeg{\fmAtom{} (s $\inS$ t)}&! and \lstinline!&\fmNeg{\fmAtom{} (s $\eqS$ t)}&!, respectively.
@@ -363,7 +373,7 @@ function (domintros) mlss_proc_branch :: 'a branch $\Rightarrow$ bool where
 definition mlss_proc :: 'a pset_fm $\Rightarrow$ bool where
   mlss_proc $\phi$ $\equiv$ mlss_proc_branch [$\phi$]
 \end{lstlisting}
-\caption{Definition of the decision procedure through the \lstinline|mlss_proc_branch| and \lstinline|mlss_proc|.\label{fig:alg}}
+\caption{Definition of the decision procedure through \lstinline|mlss_proc_branch| and \lstinline|mlss_proc|.\label{fig:alg}}
 \end{figure*}
 
 \noindent We abstractly specify the behaviour of the decision procedure, leaving an executable specification from which code can be generated to future work.
@@ -461,7 +471,7 @@ Before we prove that the realization function constitutes a model in \autoref{se
 Recall that the pure witnesses for a branch \lstinline!b! are those witnesses that are not related to other subterms in \lstinline!last b! by equality.
 In the context of a well-formed branch, this characterisation can be strengthened to any set term and, in addition, we also get that there is no membership literal where a pure witness is on the right-hand side.
 Intuitively speaking, the realization of a pure witness does not depend on the realization of any other set term.
-\begin{lstlisting}
+\begin{lstlisting}[label={lst:lemma_2}]
 lemma lemma_2:
   assumes wf_branch b
   assumes c $\in$ wits' b
@@ -477,26 +487,15 @@ To see that this is a problem, consider the branch
 \end{lstlisting}
 which expands to several open and saturated branches, one of which is
 \begin{lstlisting}
-  [Var x $\inS$ Var s, Var x $\notinS$ Var t,
+  [Var x $\neqS$ Var y,
+   Var x $\inS$ Var s, Var x $\notinS$ Var t,
    Var y $\inS$ Var t, Var y $\notinS$ Var u] @ b
 \end{lstlisting}
 for some fresh \lstinline!x! and \lstinline!y!.
-Assigning both \lstinline!Var x! and \lstinline!Var y! a value of \lstinline!0! would result in the realization of \lstinline!Var s! and \lstinline!Var t! becoming equal;
-therefore, the realization would not be a model for \lstinline!Var s $\neqS$ Var t!.
+Assigning both \lstinline!Var x! and \lstinline!Var y! a value of \lstinline!0! would contradict the literal \lstinline!Var x $\neqS$ Var y!.
 To prevent this, we assign the pure witnesses pairwise different values.
 
-\begin{lstlisting}
-fun is_literal :: 'a fm $\Rightarrow$ bool where
-  is_literal (&\fmAtom& _) = True
-| is_literal (&\fmNeg{(\fmAtom{} \_)}&) = True
-| is_literal _ = False
-\end{lstlisting}
-
-\begin{lstlisting}
-definition no_new_subterms b $\equiv$
-  $\forall$t $\in$ subterms b. t $\notin$ Var ` wits b
-    $\longrightarrow$ t $\in$ subterms (last b))
-\end{lstlisting}
+The proof of \hyperref[lst:lemma_2]{\lstinline!lemma_2!} is more technical than interesting so we refer the reader to the formalisation.
 
 \subsection{Realisation of an Open Branch\label{sec:real}}
 Remember that for completeness, we need to show that the realization function for an open and saturated branch \lstinline!b! actually constitutes a model for all formulae in the branch.
@@ -507,11 +506,11 @@ We start by verifying that the realization function models all literals in the b
   \item\label{it:af_eq} We have \lstinline!realize s $\neq$ realize t! if \lstinline!s $\neqS$ t! is in \lstinline!b!.
   \item\label{it:af_mem} We have \lstinline!realize s $\notin$ elts (realize t)! if it holds that \lstinline!s $\notinS$ t! is in \lstinline!b!. 
 \end{enumerate}
-To illustrate the usefulness of \lstinline!lemma_2!, we prove Proposition~\ref{it:at_eq}.
+To illustrate the usefulness of \hyperref[lst:lemma_2]{\lstinline!lemma_2!}, we prove Proposition~\ref{it:at_eq}.
 The proofs of all propositions translate well into Isabelle so we refer to the original paper~\cite{new_fast_tableau} for the remaining proofs. 
 \begin{proof}[Proof of Proposition~\ref{it:at_eq}]
   Assume that \lstinline!s $\eqS$ t! is in \lstinline!b!.
-  If there exists a \lstinline!c $\in$ wits' b! where \lstinline!s = Var c! or \lstinline!t = Var c!, we arrive at a contradiction due to \lstinline!lemma_2!.
+  If there exists a \lstinline!c $\in$ wits' b! where \lstinline!s = Var c! or \lstinline!t = Var c!, we arrive at a contradiction due to \hyperref[lst:lemma_2]{\lstinline!lemma_2!}.
   Therefore, both \lstinline!s $\in$ subterms' b! and \lstinline!t $\inS$ subterms' b! must hold.
   Now, assume for contradiction that
 \begin{lstlisting}
@@ -535,7 +534,7 @@ The proofs of all propositions translate well into Isabelle so we refer to the o
 
 \noindent The results on literals can now be lowered to set terms.
 \begin{enumerate}[label=(\alph*)]
-  \item\label{it:empty} If \lstinline!$\emptyset$ $\in$ subterms b!, then \lstinline!realize $\emptyset$ = 0!.
+  \item\label{it:empty} It holds that \lstinline!realize $\emptyset$ = 0!.
   \item\label{it:op} Let \lstinline!$\star_\text{s}$ $\in$ {$\unionS$, $\diffS$, $\interS$}!. If the term \lstinline!s $\star_\text{s}$ t! occurs in \lstinline!subterms b!, then
     \begin{center}
     \lstinline!realize (s $\star_\text{s}$ t) = realize s $\star$ realize t!.
@@ -546,9 +545,10 @@ The proofs of all propositions translate well into Isabelle so we refer to the o
     \end{center}
 \end{enumerate}
 \begin{proof}[Proof of Proposition~\ref{it:empty}]
-  Since \lstinline!b! is open, we know \lstinline!s $\inS$ $\emptyset$! is not in \lstinline!b! for any \lstinline!s!, implying that the term \lstinline!$\emptyset$! has no parents in \lstinline!bgraph b!.
-  Moreover, the assumption \lstinline!$\emptyset$ $\in$ subterms b! can be strengthened to \lstinline!$\emptyset$ $\in$ subterms' b! as the term \lstinline!$\emptyset$! is not a witness. 
-  Ultimately, we obtain \lstinline!realize $\emptyset$ = 0! by definition of \lstinline!realize!.
+  By definition, \lstinline!realize $\emptyset$! is equal to \lstinline!0! if \lstinline!$\emptyset$! is not a vertex of \lstinline!bgraph b!.
+  Otherwise, \lstinline!$\emptyset$! must be in \lstinline!subterms' b! as it is not a witness.
+  Moreover, since \lstinline!b! is open, we know \lstinline!s $\inS$ $\emptyset$! is not in \lstinline!b! for any \lstinline!s!, implying that the term \lstinline!$\emptyset$! has no parents in \lstinline!bgraph b!.
+  Ultimately, we obtain \lstinline!realize $\emptyset$ = 0!.
 \end{proof}
 \begin{proof}[Proof of Proposition~\ref{it:op} for $\star_\texttt{s} = -_\texttt{s}$]
   For equality, it suffices to prove subset inclusion in both directions.
@@ -558,7 +558,8 @@ The proofs of all propositions translate well into Isabelle so we refer to the o
 \begin{lstlisting}
   e = realize u $\land$ u $\rightarrow_\text{bgraph b}$ (s $\diffS$ t).
 \end{lstlisting}
-  We therefore have \lstinline!(u $\inS$ s $\diffS$ t) $\in$ set b! which, due to \lstinline!b! being saturated, implies that \lstinline!u $\inS$ s! is in \lstinline!b! while \lstinline!u $\inS$ t! is not.
+  We therefore have \lstinline!(u $\inS$ s $\diffS$ t) $\in$ set b! which, due to \lstinline!b! being saturated, implies that \lstinline!u $\inS$ s! and \lstinline!u $\notinS$ t! are in \lstinline!b!.
+  \todo[inline]{Explain latter of line above}
   By applying Proposition~\ref{it:at_mem} and~\ref{it:af_mem} we obtain
 \begin{lstlisting}
   realize u $\in$ realize s $\land$ realize u $\notin$ realize t
@@ -594,7 +595,7 @@ lemma
 \end{lstlisting}
 Lifting the above result to formulae yields the coherence of \lstinline!b! as the original paper~\cite{new_fast_tableau} calls it.
 The proof is a tedious but straightforward induction on the the size of the formulae.
-\begin{lstlisting}
+\begin{lstlisting}[label={lst:coherence}]
 lemma coherence:
   assumes $\phi$ $\in$ set b
   shows ($\lambda$x. realize (Var x)) $\models$ $\phi$
@@ -604,7 +605,7 @@ The coherence property finishes the proof of completeness of the calculus as it 
 \section{Soundness of the Calculus\label{sec:sound}}
 Two aspects determine the soundness of the calculus: a closed branch must be unsatisfiable and all expansion rules must maintain satisfiability.
 We can express the former aspect in Isabelle as follows.
-\begin{lstlisting}[belowskip=0pt]
+\begin{lstlisting}[belowskip=0pt,label={lst:bclosed_sound}]
 lemma bclosed_sound:
   assumes bclosed b shows $\exists$$\phi$ $\in$ set b. M $\not\models$ $\phi$
 \end{lstlisting}
@@ -628,7 +629,7 @@ lemma bclosed_sound:
 
 \noindent We are left with showing that both linear and branching expansion rules preserve satisfiability.
 As for the linear rules, a straightforward proof by case analysis on \lstinline!&\lexpands{b'}{b}&! suffices to obtain the lemma below.
-\begin{lstlisting}
+\begin{lstlisting}[label={lst:lexpands_sound}]
 lemma lexpands_sound:
   assumes &\lexpands{b'}{b}& and $\phi$ $\in$ set b'
   assumes $\bigwedge$$\psi$. $\psi$ $\in$ set b $\Longrightarrow$ M $\models$ $\psi$
@@ -636,8 +637,8 @@ lemma lexpands_sound:
 \end{lstlisting}
 A similar argument would work for the branching rules if it were not for the last rule adding new variables.
 Those variables need to be assigned specific values; hence, we modify the model as we will see in the proof below.
-\begin{lstlisting}[belowskip=0pt]
-lemma fexpands_sound:
+\begin{lstlisting}[belowskip=0pt, label={lst:bexpands_sound}]
+lemma bexpands_sound:
   assumes &\fexpands{bs'}{b}&
   assumes $\bigwedge$$\psi$. $\psi$ $\in$ set b $\Longrightarrow$ M $\models$ $\psi$
   shows $\exists$M'. $\exists$b' $\in$ bs'.
@@ -718,32 +719,104 @@ This allows us to finish the calculation that justifies the second inequality:
   &\phantom{$\leq$}&      + (card (subterms (last b))$^\text{2}$)$^\text{2}$
   $\leq$ 4 * 4 * (card (subterms (last b)))$^\text{4}$.
 \end{lstlisting}
+All in all, we get the following lemma.
+\begin{lstlisting}[label={lst:card_branch}]
+lemma card_wf_branch_ub:
+  assumes wf_branch b
+  shows card (set b)
+        $\leq$ 2 * card (subfms (last b)) +
+        &\phantom{$\leq$}& 16 * (card (subterms (last b)))$^\text{4}$
+\end{lstlisting}
 
 \section{Total Correctness of the Decision Procedure\label{sec:correct}}
-
-\begin{lstlisting}
+We first prove the termination of the procedure for well-formed branches, i.e.\ every well-formed branch is in the domain of \lstinline!mlss_proc_branch!.
+\begin{lstlisting}[belowskip=0pt]
 lemma mlss_proc_branch_dom_if_wf_branch:
   assumes wf_branch b
   shows mlss_proc_branch_dom b
 \end{lstlisting}
+\begin{proof}
+  We proceed by strong induction on the difference between the upper bound due to \hyperref[lst:card_branch]{\lstinline!card_wf_branch_ub!} and \lstinline!card b!.
 
+  We only have one inductive case where the induction hypothesis holds for all well-formed branches \lstinline!b'! where the difference between the upper bound and the cardinality is smaller than that of \lstinline!b!.
+  We strengthen those assumptions to obtain
 \begin{lstlisting}
+  $\llbracket$ expandss b' b; set b $\subset$ set b' $\rrbracket$
+  $\Longrightarrow$ mlss_proc_branch_dom b'
+\end{lstlisting}
+for all \lstinline!b'!.
+The former strengthening is admissable since, by definition, every expansion of a well-formed branch is again well-formed while the latter ensures that the cardinality of \lstinline!b'! is larger than the cardinality of \lstinline!b!, ensuring that the difference to the upper bound decreases.
+
+Now, consider the case where \lstinline!b! is saturated.
+Then, the procedure terminates without recursive calls and we immediately get \lstinline!mlss_proc_branch_dom b! using the corresponding introduction rule for the domain predicate.
+
+If \lstinline!b! is not saturated, we can expand \lstinline!b! using a linear or a branching rule, which adds new formulae to the resulting branch(es).
+In the first case, we can thus, using \lstinline!SOME!, choose a branch \lstinline!b'! that linearly expands \lstinline!b!.
+Moreover, the domain predicate holds for \lstinline!b' @ b! since the assumptions of the modified induction hypothesis are fulfilled.
+Ultimately, we use the corresponding introduction rule for the domain predicate to obtain \lstinline!mlss_proc_branch b!.
+
+The case of a branching rule is analogous.
+\end{proof}
+
+\noindent The above lemma allows us to use the computation induction rule of \lstinline!mlss_proc_branch! on well-formed branches, which we do to prove soundness and completeness, starting with completeness.
+\begin{lstlisting}[belowskip=0pt]
 lemma mlss_proc_branch_complete:
-  fixes b :: "'a branch"
+  fixes b :: 'a branch
   assumes wf_branch b
   assumes $\neg$ mlss_proc_branch b
   assumes infinite (UNIV :: 'a set)
   shows $\exists$M. M $\models$ last b
-
 \end{lstlisting}
+\begin{proof}
+  We prove the completeness by computation induction on \lstinline!b!.
 
+  The case of the first and third equation, where the branch can be expanded, are immediately resolved with the induction hypothesis.
+
+  We evaluate \lstinline!mlss_proc_branch b! to \lstinline!True! in the case of the third equation, yielding a contradiction with the assumption \lstinline!$\neg$ mlss_proc_branch b!.
+
+  This leaves us with the final case where we assume that the branch is saturated and \lstinline!mlss_proc_branch b! evaluates to \lstinline!bclosed b!.
+  The branch, however, must be open due to the assumption \lstinline!$\neg$ mlss_proc_branch b!.
+  This allows us to use the Lemma~\hyperref[lst:coherence]{\lstinline!coherence!} to obtain the model
 \begin{lstlisting}
+  ($\lambda$x. realize (Var x)) $\models$ last b.
+\end{lstlisting}
+\end{proof}
+
+\noindent With completeness out of the way, only soundness remains to be proven. 
+\begin{lstlisting}[belowskip=0pt]
 lemma mlss_proc_branch_sound:
   assumes wf_branch b
   assumes $\forall$$\psi$ $\in$ set b. M $\models$ $\psi$
   shows $\neg$ mlss_proc_branch b
 \end{lstlisting}
+\begin{proof}
+  We proceed by assuming \lstinline!mlss_proc_branch b! and deriving \lstinline!False!.
+  Using the assumptions, we can prove that there exists \lstinline!b'! such that
+\begin{lstlisting}
+  expandss b' b $\land$
+  ($\exists$M. $\forall$$\psi$ $\in$ set b'. M $\models$ $\psi$) $\land$ bclosed b'
+\end{lstlisting}
+  by computation induction on \lstinline!b!.
 
+  In the case where we choose a branching rule to expand \lstinline!b! with the branches in \lstinline!bs'!, we use Lemma~\hyperref[lst:lexpands_sound]{\lstinline!bexpands_sound!} to obtain \lstinline!b' $\in$ bs'! and \lstinline!M'! with
+\begin{lstlisting}
+  $\forall$$\psi$ $\in$ set (b' @ b). M' $\models$ $\psi$.
+\end{lstlisting}
+  Together with the induction hypothesis, we obtain a \lstinline!b''! where 
+\begin{lstlisting}
+  expandss b'' (b' @ b) $\land$
+  ($\exists$M. $\forall$$\psi$ $\in$ set b''. M $\models$ $\psi$) $\land$ bclosed b''.
+\end{lstlisting}
+  Due to the transitivity of \lstinline!expandss!, the above also holds if we replace \lstinline!b' @ b! with \lstinline!b!, which is our goal.
+
+  The case of a linear expansion is dealt with in an analogous manner using Lemma~\hyperref[lst:lexpands_sound]{\lstinline!lexpands_sound!}.
+
+  The two remaining cases are trivial as the branch is already closed, finishing the proof of the proposition.
+
+  This proposition, however, is a contradiction to the statement of Lemma~\hyperref[lst:bclosed_sound]{\lstinline!bclosed_sound!}: no closed branch can have a model. 
+\end{proof}
+
+\noindent To finish of the proof of total correctness, note that every singleton branch is trivially well-formed so termination, completeness, and soundless easily transfer to \lstinline!mlss_proc!.
 \begin{lstlisting}
 theorem mlss_proc_complete:
   fixes $\phi$ :: 'a pset_fm

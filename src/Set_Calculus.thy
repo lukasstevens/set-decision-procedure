@@ -202,8 +202,8 @@ inductive_cases bexpands_param_cases[consumes 1]: "bexpands_param t1 t2 x bs' b"
 
 lemma bexpands_paramD:
   assumes "bexpands_param t1 t2 x bs' b"
-  shows "bs' = {[AT (pset_term.Var x \<in>\<^sub>s t1), AF (pset_term.Var x \<in>\<^sub>s t2)],
-               [AT (pset_term.Var x \<in>\<^sub>s t2), AF (pset_term.Var x \<in>\<^sub>s t1)]}"
+  shows "bs' = {[AT (Var x \<in>\<^sub>s t1), AF (Var x \<in>\<^sub>s t2)],
+               [AT (Var x \<in>\<^sub>s t2), AF (Var x \<in>\<^sub>s t1)]}"
         "AF (t1 =\<^sub>s t2) \<in> set b" "t1 \<in> subterms (last b)" "t2 \<in> subterms (last b)"
         "\<nexists>x. AT (x \<in>\<^sub>s t1) \<in> set b \<and> AF (x \<in>\<^sub>s t2) \<in> set b"
         "\<nexists>x. AT (x \<in>\<^sub>s t2) \<in> set b \<and> AF (x \<in>\<^sub>s t1) \<in> set b"

@@ -20,6 +20,9 @@
 
 \usepackage{enumitem}
 
+\usepackage{array}
+\usepackage{multirow}
+
 \usepackage{listings}
 \definecolor{isarblue}{HTML}{006699}
 \definecolor{isargreen}{HTML}{009966}
@@ -43,6 +46,7 @@
 \makeatletter
 \lst@AddToHook{OnEmptyLine}{\vspace{-0.4\baselineskip}}
 \makeatother
+\newcommand{\lstinlinew}[2][]{\lstinline[#1]{#2}}
 % This is a hack to allow escaping inside lstinline (https://tex.stackexchange.com/questions/43526/escaping-in-lstinline)
 \usepackage{etoolbox}
 \makeatletter
@@ -139,6 +143,7 @@
 AFP entry~\cite{hybrid_logic_afp} and workshop paper in Isabelle 2022 workshop.
 
 \subsection{Contributions}
+Fill the proof of Lemma 2. More explicit proof of the cardinality of a branch.
 
 \subsection{Notation}
 Isabelle/HOL~\cite{isabelle} conforms to everyday mathematical notation for the most part.
@@ -340,6 +345,70 @@ In Isabelle, we express this as follows.
 definition lin_sat b $\equiv$
   $\forall$b'. &\lexpands{b'}{b}& $\longrightarrow$ set b' $\subseteq$ set b
 \end{lstlisting}
+
+\begin{table*}
+  \lstset{
+    escapeinside={@}{@}
+  }
+  \newcommand{\ton}{\text{t}_\text{1}}
+  \newcommand{\ttw}{\text{t}_\text{2}}
+  \begin{tabular}{p{0.21\textwidth}cp{0.18\textwidth} p{0.01\textwidth} p{0.21\textwidth}cp{0.18\textwidth}}
+    \multicolumn{3}{c}{Propositional Rules} && \multicolumn{3}{c}{Rules for \lstinline!$\unionS$!} \\
+    \cmidrule{1-3}\cmidrule{5-7}
+    \lstinline!@\fmAnd{p}{q}@! & $\Longrightarrow$ & \lstinline!p, q! &&
+    \lstinline!s $\notinS$ $\ton$ $\unionS$ $\ttw$! & $\Longrightarrow$ & \lstinline!s $\notinS$ $\ton$, s $\notinS$ $\ttw$! \\
+
+    \lstinline!@\fmNeg{(\fmOr{p}{q})}@! & $\Longrightarrow$ & \lstinline!@\fmNeg{p}@, @\fmNeg{q}@! &&
+    \lstinline!s $\inS$ $\ton$! & $\Longrightarrow$ & \lstinline!s $\inS$ $\ton$ $\unionS$ $\ttw$! \\
+
+    \lstinline!@\fmOr{p}{q}, \fmNeg{p}@! & $\Longrightarrow$ & \lstinline!q! &&
+    \lstinline!s $\in$ $\ttw$! & $\Longrightarrow$ & \lstinline!s $\inS$ $\ton$ $\unionS$ $\ttw$! \\
+
+    \lstinline!@\fmOr{p}{q}, \fmNeg{q}@! & $\Longrightarrow$ & \lstinline!p! &&
+    \lstinline!s $\inS$ $\ton$ $\unionS$ $\ttw$, s $\notinS$ $\ton$! & $\Longrightarrow$ & \lstinline!s $\inS$ $\ttw$! \\
+
+    \lstinline!@\fmNeg{(\fmOr{p}{q})}@, p! & $\Longrightarrow$ & \lstinline!@\fmNeg{q}@! &&
+    \lstinline!s $\inS$ $\ton$ $\unionS$ $\ttw$, s $\notinS$ $\ttw$! & $\Longrightarrow$ & \lstinline!s $\inS$ $\ton$! \\
+
+    \lstinline!@\fmNeg{(\fmOr{p}{q})}@, q! & $\Longrightarrow$ & \lstinline!@\fmNeg{p}@! &&
+    \lstinline!s $\notinS$ $\ton$, s $\notinS$ $\ttw$! & $\Longrightarrow$ & \lstinline!s $\notinS$ $\ton$ $\unionS$ $\ttw$! \\
+    \lstinline!@\fmNeg{(\fmNeg{p})}@! & $\Longrightarrow$ & \lstinline!p! &&&& \\[3ex]
+
+
+    \multicolumn{3}{c}{Rules for \lstinline!$\interS$!} && \multicolumn{3}{c}{Rules for \lstinline!$\diffS$!} \\
+    \cmidrule{1-3}\cmidrule{5-7}
+    \lstinline!s $\inS$ $\ton$ $\interS$ $\ttw$! & $\Longrightarrow$ & \lstinline!s $\inS$ $\ton$, s $\inS$ $\ttw$! &&
+    \lstinline!s $\inS$ $\ton$ $\diffS$ $\ttw$! & $\Longrightarrow$ & \lstinline!s $\inS$ $\ton$, s $\notinS$ $\ttw$! \\
+
+    \lstinline!s $\notinS$ $\ton$! & $\Longrightarrow$ & \lstinline!s $\notinS$ $\ton$ $\interS$ $\ttw$! && 
+    \lstinline!s $\notinS$ $\ton$! & $\Longrightarrow$ & \lstinline!s $\notinS$ $\ton$ $\diffS$ $\ttw$! \\
+
+    \lstinline!s $\notinS$ $\ttw$! & $\Longrightarrow$ & \lstinline!s $\notinS$ $\ton$ $\interS$ $\ttw$! &&
+    \lstinline!s $\inS$ $\ttw$! & $\Longrightarrow$ & \lstinline!s $\notinS$ $\ton$ $\diffS$ $\ttw$! \\
+
+    \lstinline!s $\notinS$ $\ton$ $\interS$ $\ttw$, s $\inS$ $\ton$! & $\Longrightarrow$ & \lstinline!s $\notinS$ $\ttw$! && 
+    \lstinline!s $\notinS$ $\ton$ $\diffS$ $\ttw$, s $\inS$ $\ton$! & $\Longrightarrow$ & \lstinline!s $\inS$ $\ttw$! \\
+
+    \lstinline!s $\notinS$ $\ton$ $\interS$ $\ttw$, s $\inS$ $\ttw$! & $\Longrightarrow$ & \lstinline!s $\notinS$ $\ton$! && 
+    \lstinline!s $\notinS$ $\ton$ $\diffS$ $\ttw$, s $\notinS$ $\ttw$! & $\Longrightarrow$ & \lstinline!s $\notinS$ $\ton$! \\
+
+    \lstinline!s $\inS$ $\ton$, s $\inS$ $\ttw$! & $\Longrightarrow$ & \lstinline!s $\inS$ $\ton$ $\interS$ $\ttw$! &&
+    \lstinline!s $\inS$ $\ton$, s $\notinS$ $\ttw$! & $\Longrightarrow$ & \lstinline!s $\inS$ $\ton$ $\diffS$ $\ttw$! \\[3ex]
+
+    \multicolumn{3}{c}{Rules for \lstinline!Single!} && \multicolumn{3}{c}{Rules for \lstinline!$\eqS$!} \\
+    \cmidrule{1-3}\cmidrule{5-7}
+    & $\Longrightarrow$ & \lstinline!s $\inS$ Single s! &&
+    \lstinline!$\ton$ $\eqS$ $\ttw$, ($\fmNegSymbol$) a! & $\Longrightarrow$ & \lstinline!($\fmNegSymbol$) a[$\ttw$/$\ton$]! \\
+
+    \lstinline!s $\inS$ Single t! & $\Longrightarrow$ & \lstinline!s $\eqS$ t! &&
+    \lstinline!$\ton$ $\eqS$ $\ttw$, ($\fmNegSymbol$) a! & $\Longrightarrow$ & \lstinline!($\fmNegSymbol$) a[$\ton$/$\ttw$]! \\
+
+    \lstinline!s $\notinS$ Single t! & $\Longrightarrow$ & \lstinline!s $\neqS$ t! &&
+    \lstinline!s$_\text{1}$ $\inS$ t, s$_\text{2}$ $\inS$ t! & $\Longrightarrow$ & \lstinline!s$_\text{1}$ $\neqS$ s$_\text{2}$! \\
+  \end{tabular}
+  \bigskip
+  \caption{Linear expansion rules.\label{tab:lexpands}}
+\end{table*}
 \todo[inline]{Reference figure and mention missing rule + example}
 
 \subsection{Branching Rules\label{sec:branching}}
@@ -357,6 +426,75 @@ definition sat b $\equiv$ lin_sat b $\land$ ($\nexists$bs'. &\fexpands{bs'}{b}&)
 definition wits :: 'a branch $\Rightarrow$ 'a set where
   wits b $\equiv$ vars b - vars (last b)
 \end{lstlisting}
+
+\begin{table*}
+  \lstset{
+    escapeinside={@}{@}
+  }
+  \newcommand{\ton}{\text{t}_\text{1}}
+  \newcommand{\ttw}{\text{t}_\text{2}}
+  \newcommand{\lpipe}{\rule[-0.4ex]{0.6pt}{2.3ex}}
+  \begin{tabular}{>{\centering\arraybackslash}p{0.28\textwidth} >{\centering\arraybackslash}p{0.3\textwidth} >{\centering\arraybackslash}p{0.3\textwidth}}
+    Rule & Precondition & Subsumption condition \\
+    \midrule
+    \begin{tabular}{@{}>{\raggedleft\arraybackslash}p{0.11\textwidth}c>{\raggedright\arraybackslash}p{0.11\textwidth}@{}}
+      \\
+      \midrule
+      \lstinline!p! & \lpipe & \lstinline!@\fmNeg{p}@! \\
+    \end{tabular}
+         & Test & \lstinline!p $\in$ set b $\lor$ @\fmNeg{p}@ $\in$ set b! \\
+
+    \begin{tabular}{@{}>{\raggedleft\arraybackslash}p{0.11\textwidth}c>{\raggedright\arraybackslash}p{0.11\textwidth}@{}}
+      \\
+      \midrule
+      \lstinline!@\fmNeg{p}@! & \lpipe & \lstinline!p! \\
+    \end{tabular}
+         & Test & \lstinline!@\fmNeg{p}@ $\in$ set b $\lor$ p $\in$ set b! \\
+
+    \begin{tabular}{@{}>{\raggedleft\arraybackslash}p{0.11\textwidth}c>{\raggedright\arraybackslash}p{0.11\textwidth}@{}}
+      \\
+      \midrule
+      \lstinline!s $\inS$ $\ton$! & \lpipe & \lstinline!s $\notinS$ $\ton$! \\
+    \end{tabular}
+         & Test &
+         \begin{tabular}{@{}rl@{}}
+                  & \lstinline!(s $\inS$ $\ton$) $\in$ set b! \\
+           $\lor$ & \lstinline!(s $\notinS$ $\ton$) $\in$ set b!
+         \end{tabular}
+         \\
+
+    \begin{tabular}{@{}>{\raggedleft\arraybackslash}p{0.11\textwidth}c>{\raggedright\arraybackslash}p{0.11\textwidth}@{}}
+      \\
+      \midrule
+      \lstinline!s $\inS$ $\ttw$! & \lpipe & \lstinline!s $\notinS$ $\ttw$! \\
+    \end{tabular}
+         & Test &
+         \begin{tabular}{@{}rl@{}}
+                  & \lstinline!(s $\inS$ $\ttw$) $\in$ set b! \\
+           $\lor$ & \lstinline!(s $\notinS$ $\ttw$) $\in$ set b! \\
+        \end{tabular}
+        \\
+
+    \begin{tabular}{@{}>{\raggedleft\arraybackslash}p{0.11\textwidth}c>{\raggedright\arraybackslash}p{0.11\textwidth}@{}}
+      \\
+      \midrule
+      \lstinline!s $\inS$ $\ttw$! & \lpipe & \lstinline!s $\notinS$ $\ttw$! \\
+    \end{tabular}
+         & Test &
+         \begin{tabular}{@{}rl@{}}
+                  & \lstinline!(s $\inS$ $\ttw$) $\in$ set b! \\
+           $\lor$ & \lstinline!(s $\notinS$ $\ttw$) $\in$ set b! \\
+         \end{tabular} \\
+    \begin{tabular}{@{}>{\raggedleft\arraybackslash}p{0.11\textwidth}c>{\raggedright\arraybackslash}p{0.11\textwidth}@{}}
+      \\
+      \midrule
+      \lstinline!Var x $\inS$ $\ton$! \lstinline!Var x $\notinS$ $\ttw$! & \multirow{2}{*}{\rule[-0.4ex]{0.6pt}{4.8ex}} & \lstinline!Var x $\notinS$ $\ton$! \lstinline!Var x $\inS$ $\ttw$! \\
+    \end{tabular}
+         & Test & Test \\
+  \end{tabular}
+  \bigskip
+  \caption{Branching expansion rules.\label{tab:bexpands}}
+\end{table*}
 
 \section{A Decision Procedure for MLSS}
 \begin{figure*}
@@ -411,8 +549,8 @@ In \autoref{sec:correct}, we also show that both properties easily transfer to t
 Once a branch \lstinline!b! is saturated and open at the same time, we are unable to expand the branch further in our calculus.
 Thus, to establish completeness of the calculus, we must construct a model \lstinline!M! such that \lstinline!M $\models$ $\phi$! for all \lstinline!$\phi$ $\in$ set b!.
 
-At the core of the model, there is a \textit{realization} function that maps set terms to sets of type \lstinline!V!.
-A subset of the witnesses, which we call \textit{pure} witnesses, receives special treatment from the realization function for reasons that will become apparent in \autoref{sec:pwits}.
+At the core of the model, there is a \textit{realisation} function that maps set terms to sets of type \lstinline!V!.
+A subset of the witnesses, which we call \textit{pure} witnesses, receives special treatment from the realisation function for reasons that will become apparent in \autoref{sec:pwits}.
 The set terms of a branch can thus be partitioned into two collections as defined below.
 \begin{lstlisting}
 definition wits' :: 'a branch $\Rightarrow$ 'a set where
@@ -439,22 +577,22 @@ definition bgraph b $\equiv$
      &$\phantom{\llparenthesis}$& tail = fst, head = snd $\rrparenthesis$
 \end{lstlisting}
 
-The realization function is defined relative to this graph.
-As mentioned before, the pure witnesses \lstinline!Var ` wits' b! and the rest of the set terms \lstinline!subterms' b! are treated differently by the realization function.
-Terms in the latter set are evaluated in accordance to the structure of the graph, i.e.\ the realization of a vertex is defined as the union of the realizations of the parent vertices. 
+The realisation function is defined relative to this graph.
+As mentioned before, the pure witnesses \lstinline!Var ` wits' b! and the rest of the set terms \lstinline!subterms' b! are treated differently by the realisation function.
+Terms in the latter set are evaluated in accordance to the structure of the graph, i.e.\ the realisation of a vertex is defined as the union of the realisations of the parent vertices. 
 For the former set, we choose a function \lstinline!I! that assigns the witnesses in \lstinline!Var ` wits' b! pairwise distinct sets with cardinality greater than that of the vertices.
 We can always choose such a function since we assume an infinite universe of variables.
-Then, we return the singleton set \lstinline!vset {I x}!, which, together with the cardinality constraint, ensures that realizations are distinct between pure witnesses themselves as well as between pure witnesses and set terms.  
+Then, we return the singleton set \lstinline!vset {I x}!, which, together with the cardinality constraint, ensures that realisations are distinct between pure witnesses themselves as well as between pure witnesses and set terms.  
 The notation \lstinline!u $\rightarrow_\text{G}$ s! in the definition below indicates that there is an edge from \lstinline!u! to \lstinline!s! in the graph \lstinline!G!.
 \begin{lstlisting}
 abbreviation parents G s $\equiv$ {u. u $\rightarrow_\text{G}$ s}
 
-function realize :: 'a pset_term $\Rightarrow$ V where
-  x $\in$ Var ` wits' b $\Longrightarrow$ realize x = vset {I x}
+function realise :: 'a pset_term $\Rightarrow$ V where
+  x $\in$ Var ` wits' b $\Longrightarrow$ realise x = vset {I x}
 | x $\in$ subterms' b
-  $\Longrightarrow$ realize t =
-  &\phantom{$\Longrightarrow$ }&  vset {realize ` parents (bgraph b) s}
-| x $\notin$ verts G $\Longrightarrow$ realize x = 0
+  $\Longrightarrow$ realise t =
+  &\phantom{$\Longrightarrow$ }&  vset {realise ` parents (bgraph b) s}
+| x $\notin$ verts G $\Longrightarrow$ realise x = 0
 \end{lstlisting}
 
 Again, we need to ensure that the assumptions of the equations are non-overlapping and that function terminates.
@@ -463,14 +601,14 @@ The assumption that \lstinline!b! is open implies that there are no membership c
 Now, consider the ancestors \lstinline!av! of a vertex \lstinline!v!, which are those vertices from which we can reach \lstinline!v!.
 Due to acyclicity, it holds that the ancestors \lstinline!ap! of a parent \lstinline!p! of \lstinline!v! are a subset of \lstinline!av!.
 They are also a proper subset of \lstinline!av! since \lstinline!p! is an ancestor of \lstinline!v! but not of \lstinline!p! itself.
-Together with the fact that \lstinline!bgraph b! is finite, it follows that the cardinality of the ancestors decreases in each recursive call thus proving the termination of \lstinline!realize!.
+Together with the fact that \lstinline!bgraph b! is finite, it follows that the cardinality of the ancestors decreases in each recursive call thus proving the termination of \lstinline!realise!.
 
-Before we prove that the realization function constitutes a model in \autoref{sec:real}, we will first explain the significance of the pure witnesses.
+Before we prove that the realisation function constitutes a model in \autoref{sec:real}, we will first explain the significance of the pure witnesses.
 
 \subsection{Characterisation of the Pure Witnesses\label{sec:pwits}}
 Recall that the pure witnesses for a branch \lstinline!b! are those witnesses that are not related to other subterms in \lstinline!last b! by equality.
 In the context of a well-formed branch, this characterisation can be strengthened to any set term and, in addition, we also get that there is no membership literal where a pure witness is on the right-hand side.
-Intuitively speaking, the realization of a pure witness does not depend on the realization of any other set term.
+Intuitively speaking, the realisation of a pure witness does not depend on the realisation of any other set term.
 \begin{lstlisting}[label={lst:lemma_2}]
 lemma lemma_2:
   assumes wf_branch b
@@ -480,7 +618,7 @@ lemma lemma_2:
     and (t $\inS$ Var c) $\notin$ set b
 \end{lstlisting}
 So why are pure witnesses treated differently?
-According to the definition of \lstinline!realize!, the pure witnesses would be evaluated to the empty set \lstinline!0 :: V!, were they not treated separately. 
+According to the definition of \lstinline!realise!, the pure witnesses would be evaluated to the empty set \lstinline!0 :: V!, were they not treated separately. 
 To see that this is a problem, consider the branch
 \begin{lstlisting}
   b = [Var s $\neqS$ Var t, Var t $\neqS$ Var u]
@@ -498,13 +636,13 @@ To prevent this, we assign the pure witnesses pairwise different values.
 The proof of \hyperref[lst:lemma_2]{\lstinline!lemma_2!} is more technical than interesting so we refer the reader to the formalisation.
 
 \subsection{Realisation of an Open Branch\label{sec:real}}
-Remember that for completeness, we need to show that the realization function for an open and saturated branch \lstinline!b! actually constitutes a model for all formulae in the branch.
-We start by verifying that the realization function models all literals in the branch; more formally, the following propositions hold: 
+Remember that for completeness, we need to show that the realisation function for an open and saturated branch \lstinline!b! actually constitutes a model for all formulae in the branch.
+We start by verifying that the realisation function models all literals in the branch; more formally, the following propositions hold: 
 \begin{enumerate}[label=(\roman*)]
-  \item\label{it:at_mem} We have \lstinline!realize s $\in$ elts (realize t)! if it holds that \lstinline!s $\inS$ t! is in \lstinline!b!. 
-  \item\label{it:at_eq} We have \lstinline!realize s $=$ realize t! if \lstinline!s $\eqS$ t! is in \lstinline!b!.
-  \item\label{it:af_eq} We have \lstinline!realize s $\neq$ realize t! if \lstinline!s $\neqS$ t! is in \lstinline!b!.
-  \item\label{it:af_mem} We have \lstinline!realize s $\notin$ elts (realize t)! if it holds that \lstinline!s $\notinS$ t! is in \lstinline!b!. 
+  \item\label{it:at_mem} We have \lstinline!realise s $\in$ elts (realise t)! if it holds that \lstinline!s $\inS$ t! is in \lstinline!b!. 
+  \item\label{it:at_eq} We have \lstinline!realise s $=$ realise t! if \lstinline!s $\eqS$ t! is in \lstinline!b!.
+  \item\label{it:af_eq} We have \lstinline!realise s $\neq$ realise t! if \lstinline!s $\neqS$ t! is in \lstinline!b!.
+  \item\label{it:af_mem} We have \lstinline!realise s $\notin$ elts (realise t)! if it holds that \lstinline!s $\notinS$ t! is in \lstinline!b!. 
 \end{enumerate}
 To illustrate the usefulness of \hyperref[lst:lemma_2]{\lstinline!lemma_2!}, we prove Proposition~\ref{it:at_eq}.
 The proofs of all propositions translate well into Isabelle so we refer to the original paper~\cite{new_fast_tableau} for the remaining proofs. 
@@ -514,63 +652,63 @@ The proofs of all propositions translate well into Isabelle so we refer to the o
   Therefore, both \lstinline!s $\in$ subterms' b! and \lstinline!t $\inS$ subterms' b! must hold.
   Now, assume for contradiction that
 \begin{lstlisting}
-  &\phantom{$\Longrightarrow$}& realize s $\neq$ realize t
-  $\Longrightarrow$ elts (realize s) $\neq$ elts (realize t).
+  &\phantom{$\Longrightarrow$}& realise s $\neq$ realise t
+  $\Longrightarrow$ elts (realise s) $\neq$ elts (realise t).
 \end{lstlisting}
   Without loss of generality --- the other case is symmetric ---, we obtain an \lstinline!a! such that
 \begin{lstlisting}
-  a $\in$ elts (realize s) $\land$ a $\notin$ elts (realize t). 
+  a $\in$ elts (realise s) $\land$ a $\notin$ elts (realise t). 
 \end{lstlisting}
-  Considering the fact that \lstinline!s $\in$ subterms' b! and the definition of \lstinline!realize!, we obtain an \lstinline!u! such that \lstinline!a = realize u! and \lstinline!u $\rightarrow_\text{bgraph b}$ s!.
+  Considering the fact that \lstinline!s $\in$ subterms' b! and the definition of \lstinline!realise!, we obtain an \lstinline!u! such that \lstinline!a = realise u! and \lstinline!u $\rightarrow_\text{bgraph b}$ s!.
   This, in turn, yields that \lstinline!u $\inS$ s! must be in \lstinline!b!.
   Together with the assumption \lstinline!(s $\eqS$ t) $\in$ b! and the openness of \lstinline!b!, it follows that \lstinline!u $\inS$ t! must also be in \lstinline!b!.
   But then we have
 \begin{lstlisting}[columns=fixed]
-  realize u $\in$ elts (realize t)
-        = a $\in$ elts (realize t)
+  realise u $\in$ elts (realise t)
+        = a $\in$ elts (realise t)
 \end{lstlisting}
-  using Proposition~\ref{it:at_mem}, which stands in contradiction to the assumption \lstinline!a $\notin$ elts (realize t)!.
+  using Proposition~\ref{it:at_mem}, which stands in contradiction to the assumption \lstinline!a $\notin$ elts (realise t)!.
 \end{proof}
 
 \noindent The results on literals can now be lowered to set terms.
 \begin{enumerate}[label=(\alph*)]
-  \item\label{it:empty} It holds that \lstinline!realize $\emptyset$ = 0!.
+  \item\label{it:empty} It holds that \lstinline!realise $\emptyset$ = 0!.
   \item\label{it:op} Let \lstinline!$\star_\text{s}$ $\in$ {$\unionS$, $\diffS$, $\interS$}!. If the term \lstinline!s $\star_\text{s}$ t! occurs in \lstinline!subterms b!, then
     \begin{center}
-    \lstinline!realize (s $\star_\text{s}$ t) = realize s $\star$ realize t!.
+    \lstinline!realise (s $\star_\text{s}$ t) = realise s $\star$ realise t!.
     \end{center}
   \item\label{it:single} If \lstinline!Single t $\in$ subterms b!, then
     \begin{center}
-    \lstinline!realize (Single t) = vset {realize t}!.
+    \lstinline!realise (Single t) = vset {realise t}!.
     \end{center}
 \end{enumerate}
 \begin{proof}[Proof of Proposition~\ref{it:empty}]
-  By definition, \lstinline!realize $\emptyset$! is equal to \lstinline!0! if \lstinline!$\emptyset$! is not a vertex of \lstinline!bgraph b!.
+  By definition, \lstinline!realise $\emptyset$! is equal to \lstinline!0! if \lstinline!$\emptyset$! is not a vertex of \lstinline!bgraph b!.
   Otherwise, \lstinline!$\emptyset$! must be in \lstinline!subterms' b! as it is not a witness.
   Moreover, since \lstinline!b! is open, we know \lstinline!s $\inS$ $\emptyset$! is not in \lstinline!b! for any \lstinline!s!, implying that the term \lstinline!$\emptyset$! has no parents in \lstinline!bgraph b!.
-  Ultimately, we obtain \lstinline!realize $\emptyset$ = 0!.
+  Ultimately, we obtain \lstinline!realise $\emptyset$ = 0!.
 \end{proof}
 \begin{proof}[Proof of Proposition~\ref{it:op} for $\star_\texttt{s} = -_\texttt{s}$]
   For equality, it suffices to prove subset inclusion in both directions.
 
-  \textbf{Direction $\subseteq$. } Fix some \lstinline!e! in \lstinline!elts (realize (s $\diffS$ t))!.
+  \textbf{Direction $\subseteq$. } Fix some \lstinline!e! in \lstinline!elts (realise (s $\diffS$ t))!.
   Again, we obtain an \lstinline!u! with 
 \begin{lstlisting}
-  e = realize u $\land$ u $\rightarrow_\text{bgraph b}$ (s $\diffS$ t).
+  e = realise u $\land$ u $\rightarrow_\text{bgraph b}$ (s $\diffS$ t).
 \end{lstlisting}
   We therefore have \lstinline!(u $\inS$ s $\diffS$ t) $\in$ set b! which, due to \lstinline!b! being saturated, implies that \lstinline!u $\inS$ s! and \lstinline!u $\notinS$ t! are in \lstinline!b!.
   \todo[inline]{Explain latter of line above}
   By applying Proposition~\ref{it:at_mem} and~\ref{it:af_mem} we obtain
 \begin{lstlisting}
-  realize u $\in$ realize s $\land$ realize u $\notin$ realize t
+  realise u $\in$ realise s $\land$ realise u $\notin$ realise t
 \end{lstlisting}
-  and together with \lstinline!e = realize u! we arrive at the goal 
+  and together with \lstinline!e = realise u! we arrive at the goal 
 \begin{lstlisting}
-  e $\in$ elts (realize s - realize t).
+  e $\in$ elts (realise s - realise t).
 \end{lstlisting}
 
-\textbf{Direction $\supseteq$. } Let \lstinline[columns=fullflexible]!e $\in$ elts (realize s - realize t)! for some fixed \lstinline!e!.
-  As before, we obtain an \lstinline!u! such that \lstinline!e! is the realization of \lstinline!u!, i.e.\ \lstinline!e = realization u!, and
+\textbf{Direction $\supseteq$. } Let \lstinline[columns=fullflexible]!e $\in$ elts (realise s - realise t)! for some fixed \lstinline!e!.
+  As before, we obtain an \lstinline!u! such that \lstinline!e! is the realisation of \lstinline!u!, i.e.\ \lstinline!e = realisation u!, and
 \begin{lstlisting}
   u $\rightarrow_\text{bgraph b}$ s $\land$ u $\nrightarrow_\text{bgraph b}$ t.
 \end{lstlisting}
@@ -581,24 +719,24 @@ The proofs of all propositions translate well into Isabelle so we refer to the o
   Ultimately, we infer that \lstinline!u $\in$ s $\diffS$ t! is in \lstinline!b! by invoking saturation again.
   The last step is to apply Proposition~\ref{it:at_mem} in order to obtain the goal
   \begin{lstlisting}
-    realize u $\in$ elts (realize (s $\diffS$ t))
-    &\textover[r]{=}{realize}& e $\in$ elts (realize (s $\diffS$ t)).
+    realise u $\in$ elts (realise (s $\diffS$ t))
+    &\textover[r]{=}{realise}& e $\in$ elts (realise (s $\diffS$ t)).
   \end{lstlisting}
 \end{proof}
 
-\noindent The final step towards obtaining a proper model is to connect the realization function to the semantics as defined in \autoref{sec:semantics}.
+\noindent The final step towards obtaining a proper model is to connect the realisation function to the semantics as defined in \autoref{sec:semantics}.
 For set terms, we can use the Propositions~\ref{it:empty}--\ref{it:single} to prove the lemma below by induction on \lstinline!t!.
 \begin{lstlisting}
 lemma
   assumes t $\in$ subterms b
-  shows &\Ist& ($\lambda$x. realize (Var x)) t = realize t
+  shows &\Ist& ($\lambda$x. realise (Var x)) t = realise t
 \end{lstlisting}
 Lifting the above result to formulae yields the coherence of \lstinline!b! as the original paper~\cite{new_fast_tableau} calls it.
 The proof is a tedious but straightforward induction on the the size of the formulae.
 \begin{lstlisting}[label={lst:coherence}]
 lemma coherence:
   assumes $\phi$ $\in$ set b
-  shows ($\lambda$x. realize (Var x)) $\models$ $\phi$
+  shows ($\lambda$x. realise (Var x)) $\models$ $\phi$
 \end{lstlisting}
 The coherence property finishes the proof of completeness of the calculus as it gives us a model for every formula in an open and saturated branch.
 
@@ -778,7 +916,7 @@ lemma mlss_proc_branch_complete:
   The branch, however, must be open due to the assumption \lstinline!$\neg$ mlss_proc_branch b!.
   This allows us to use the Lemma~\hyperref[lst:coherence]{\lstinline!coherence!} to obtain the model
 \begin{lstlisting}
-  ($\lambda$x. realize (Var x)) $\models$ last b.
+  ($\lambda$x. realise (Var x)) $\models$ last b.
 \end{lstlisting}
 \end{proof}
 
@@ -816,7 +954,7 @@ lemma mlss_proc_branch_sound:
   This proposition, however, is a contradiction to the statement of Lemma~\hyperref[lst:bclosed_sound]{\lstinline!bclosed_sound!}: no closed branch can have a model. 
 \end{proof}
 
-\noindent To finish of the proof of total correctness, note that every singleton branch is trivially well-formed so termination, completeness, and soundless easily transfer to \lstinline!mlss_proc!.
+\noindent To finish of the proof of total correctness, note that every singleton branch is trivially well-formed so termination, completeness, and soundness easily transfer to \lstinline!mlss_proc!.
 \begin{lstlisting}
 theorem mlss_proc_complete:
   fixes $\phi$ :: 'a pset_fm

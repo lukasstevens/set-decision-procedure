@@ -36,14 +36,18 @@ fun I\<^sub>s\<^sub>a :: "('a \<Rightarrow> V) \<Rightarrow> 'a pset_atom \<Righ
 
 section \<open>Variables\<close>
 
-consts vars :: "'a \<Rightarrow> 'b set"
-adhoc_overloading vars vars_term
-adhoc_overloading vars vars_atom
-
 definition vars_fm :: "'a pset_fm \<Rightarrow> 'a set" where
-  "vars_fm \<phi> \<equiv> \<Union>(vars ` atoms \<phi>)"
+  "vars_fm \<phi> \<equiv> \<Union>(vars_atom ` atoms \<phi>)"
 
-adhoc_overloading vars vars_fm
+definition vars_branch :: "'a branch \<Rightarrow> 'a set" where
+  "vars_branch b \<equiv> \<Union>(vars_fm ` set b)"
+
+consts vars :: "'b \<Rightarrow> 'a set"
+adhoc_overloading
+  vars vars_term and
+  vars vars_atom and
+  vars vars_fm and
+  vars vars_branch
 
 lemma vars_fm_simps[simp]:
   "vars (Atom a) = vars a"
@@ -61,11 +65,6 @@ lemma vars_fmI:
   "x \<in> vars q \<Longrightarrow> x \<in> vars (Or p q)"
   "x \<in> vars p \<Longrightarrow> x \<in> vars (Neg p)"
   by auto
-
-definition vars_branch :: "'a branch \<Rightarrow> 'a set" where
-  "vars_branch b \<equiv> \<Union>(vars ` set b)"
-
-adhoc_overloading vars vars_branch
 
 lemma vars_branch_simps:
   "vars [] = {}"
@@ -124,8 +123,6 @@ lemma subfmsD:
 
 subsection \<open>Subterms\<close>
 
-consts subterms :: "'a \<Rightarrow> 'b set"
-
 fun subterms_term :: "'a pset_term \<Rightarrow> 'a pset_term set"  where
   "subterms_term \<emptyset> = {\<emptyset>}"
 | "subterms_term (Var i) = {Var i}"
@@ -144,6 +141,7 @@ definition subterms_fm :: "'a pset_fm \<Rightarrow> 'a pset_term set" where
 definition subterms_branch :: "'a branch \<Rightarrow> 'a pset_term set" where
   "subterms_branch b \<equiv> \<Union>(subterms_fm ` set b)"
 
+consts subterms :: "'a \<Rightarrow> 'b set"
 adhoc_overloading 
   subterms subterms_term and
   subterms subterms_atom and

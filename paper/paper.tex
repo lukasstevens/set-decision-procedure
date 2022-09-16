@@ -200,6 +200,7 @@ We combine these functions in order to define \lstinline!vars! that extracts all
 definition vars :: 'a pset_fm $\Rightarrow$ 'a set where
   vars $\phi$ $\equiv$ $\bigcup$(vars ` atoms $\phi$)
 \end{lstlisting}
+
 In addition to the variable names that appear in a formula, we will later also need to obtain those set terms that occur as subterms in a formula. 
 We first define a function that collects the subterms of a set term.
 \todo[inline]{Motivation: linear rules don't introduce subterms, \\ \lstinline!subterms b $\approx$ subterms (last b)!}
@@ -327,25 +328,6 @@ abbreviation bopen b $\equiv$ $\neg$ bclosed b
 A tableau is called \textit{closed} if all of its branches are closed.
 
 \subsection{Linear Expansion Rules}
-The calculus considers two kinds of branch expansion rules: \textit{linear} and \textit{branching} rules.
-As the name suggests, branching rules lead to the creation of new branches in the tableau while linear rules only extend a branch \lstinline!b! with new formulae \lstinline[breaklines=true]!b' = [$\psi_1$,$\ldots$,$\psi_n$]!, which we denote by \lstinline!&\lexpands{b'}{b}&!.
-Furthermore, linear rules are restricted such that no new subterm may be created by their application:
-for example, the rule
-\begin{center}
-\lstinline!(s $\inS$ t$_\text{1}$) $\in$ set b $\Longrightarrow$ &\lexpands{[s $\inS$ t$_\text{1}$ $\unionS$ t$_\text{2}$]}{b}&!
-\end{center}
-may only be used under the condition
-\begin{center}
-  \lstinline!t$_\text{1}$ $\unionS$ t$_\text{2}$ $\in$ subterms (last b)!.
-\end{center}
-\todo[inline]{Explain this restriction in more detail.}
-This ensures that repeated application of linear rules eventually results in a \textit{linearly saturated} branch, i.e.\ a branch where no application of linear rules would produce new formulae.
-In Isabelle, we express this as follows.
-\begin{lstlisting}
-definition lin_sat b $\equiv$
-  $\forall$b'. &\lexpands{b'}{b}& $\longrightarrow$ set b' $\subseteq$ set b
-\end{lstlisting}
-
 \begin{table*}
   \lstset{
     escapeinside={@}{@}
@@ -353,6 +335,7 @@ definition lin_sat b $\equiv$
   \newcommand{\ton}{\text{t}_\text{1}}
   \newcommand{\ttw}{\text{t}_\text{2}}
   \begin{tabular}{p{0.21\textwidth}cp{0.18\textwidth} p{0.01\textwidth} p{0.21\textwidth}cp{0.18\textwidth}}
+    \toprule
     \multicolumn{3}{c}{Propositional Rules} && \multicolumn{3}{c}{Rules for \lstinline!$\unionS$!} \\
     \cmidrule{1-3}\cmidrule{5-7}
     \lstinline!@\fmAnd{p}{q}@! & $\Longrightarrow$ & \lstinline!p, q! &&
@@ -398,35 +381,62 @@ definition lin_sat b $\equiv$
     \multicolumn{3}{c}{Rules for \lstinline!Single!} && \multicolumn{3}{c}{Rules for \lstinline!$\eqS$!} \\
     \cmidrule{1-3}\cmidrule{5-7}
     & $\Longrightarrow$ & \lstinline!s $\inS$ Single s! &&
-    \lstinline!$\ton$ $\eqS$ $\ttw$, ($\fmNegSymbol$) a! & $\Longrightarrow$ & \lstinline!($\fmNegSymbol$) a[$\ttw$/$\ton$]! \\
+    \lstinline!$\ton$ $\eqS$ $\ttw$, l! & $\Longrightarrow$ & \lstinline!l{$\ttw$/$\ton$}! \\
 
     \lstinline!s $\inS$ Single t! & $\Longrightarrow$ & \lstinline!s $\eqS$ t! &&
-    \lstinline!$\ton$ $\eqS$ $\ttw$, ($\fmNegSymbol$) a! & $\Longrightarrow$ & \lstinline!($\fmNegSymbol$) a[$\ton$/$\ttw$]! \\
+    \lstinline!$\ton$ $\eqS$ $\ttw$, l! & $\Longrightarrow$ & \lstinline!l{$\ton$/$\ttw$}! \\
 
     \lstinline!s $\notinS$ Single t! & $\Longrightarrow$ & \lstinline!s $\neqS$ t! &&
     \lstinline!s$_\text{1}$ $\inS$ t, s$_\text{2}$ $\inS$ t! & $\Longrightarrow$ & \lstinline!s$_\text{1}$ $\neqS$ s$_\text{2}$! \\
+    \bottomrule
   \end{tabular}
   \bigskip
   \caption{Linear expansion rules.\label{tab:lexpands}}
 \end{table*}
-\todo[inline]{Reference figure and mention missing rule + example}
+The calculus considers two kinds of branch expansion rules: \textit{linear} and \textit{branching} rules.
+As the name suggests, branching rules lead to the creation of new branches in the tableau while linear rules only extend a branch \lstinline!b! with new formulae \lstinline[breaklines=true]!b' = [$\psi_1$,$\ldots$,$\psi_n$]!, which we denote by \lstinline!&\lexpands{b'}{b}&!.
+\autoref{tab:lexpands} shows all linear expansion rules.
+Note that, in the first two rules for \lstinline!$\eqS$!, \lstinline!l! is a literal occuring in the branch.
+Furthermore, the term-for-term substitution \lstinline!l{s/t}! is restricted to the top-level set terms of the literal;
+for example, given the literal
+\begin{lstlisting}
+  l = &\fmNeg{((s $\unionS$ u) $\diffS$ s $\eqS$ s $\unionS$ u)}&
+\end{lstlisting}
+we have
+\begin{lstlisting}
+  &\phantom{=}& (&\fmNeg{((s $\unionS$ u) $\diffS$ s $\eqS$ s $\unionS$ u)}&){t/s $\unionS$ u}
+  = &\fmNeg{((s $\unionS$ u) $\diffS$ s $\eqS$ t)}&.
+\end{lstlisting}
+The perhaps more crucial restriction of the linear rules is that that no new subterm may be created by their application;
+for instance, the second rule for \lstinline!$\unionS$!
+\begin{lstlisting}
+  s $\inS$ t$_\text{1}$ $\Longrightarrow$ s $\inS$ t$_\text{1}$ $\unionS$ t$_\text{2}$,
+\end{lstlisting}
+which formally represents 
+\begin{lstlisting}
+  (s $\inS$ t$_\text{1}$) $\in$ set b $\Longrightarrow$ &\lexpands{[s $\inS$ t$_\text{1}$ $\unionS$ t$_\text{2}$]}{b}&,
+\end{lstlisting}
+may only be used under the condition
+\begin{lstlisting}
+  t$_\text{1}$ $\unionS$ t$_\text{2}$ $\in$ subterms (last b).
+\end{lstlisting}
+The purpose of this restriction is to prevent unbounded expansion of the branch.
+In fact, we give an explicit upper bound for the number of formulae in a branch in \autoref{sec:bound}.
+
+Due to boundedness, repeated application of linear rules eventually results in a \textit{linearly saturated} branch, i.e.\ a branch where no application of linear rules would produce new formulae.
+\begin{lstlisting}
+definition lin_sat b $\equiv$
+  $\forall$b'. &\lexpands{b'}{b}& $\longrightarrow$ set b' $\subseteq$ set b
+\end{lstlisting}
+
+Finally, we remark that the original paper~\cite{new_fast_tableau} is missing the last propositional rules dealing with double negation.
+This rule is required for completeness, though, considering that the branch
+\begin{lstlisting}
+  [&\fmNeg{\fmNeg{\fmNeg{p}}}&, p, &\fmAnd{\fmNeg{\fmNeg{\fmNeg{p}}}}{p}&]
+\end{lstlisting}
+is saturated --- neither linear nor branching rules apply --- and open but there is obviously no model for the initial formula \lstinline!&\fmAnd{\fmNeg{\fmNeg{\fmNeg{p}}}}{p}&!.
 
 \subsection{Branching Rules\label{sec:branching}}
-The number of branches increases when applying branching rules so it is prudent to only apply them to open, linearly saturated branches.
-To further prevent unnecessary branching, each rule has a \textit{subsumption} condition. 
-Note that even branching rules are restricted such that they never create new subterms, with exception of the last rule which adds a fresh variable.
-\todo[inline]{Reference figure}
-
-
-\begin{lstlisting}
-definition sat b $\equiv$ lin_sat b $\land$ ($\nexists$bs'. &\fexpands{bs'}{b}&)
-\end{lstlisting}
-
-\begin{lstlisting}
-definition wits :: 'a branch $\Rightarrow$ 'a set where
-  wits b $\equiv$ vars b - vars (last b)
-\end{lstlisting}
-
 \begin{table*}
   \lstset{
     escapeinside={@}{@}
@@ -434,7 +444,8 @@ definition wits :: 'a branch $\Rightarrow$ 'a set where
   \newcommand{\ton}{\text{t}_\text{1}}
   \newcommand{\ttw}{\text{t}_\text{2}}
   \newcommand{\lpipe}{\rule[-0.4ex]{0.6pt}{2.3ex}}
-  \begin{tabular}{>{\centering\arraybackslash}p{0.28\textwidth} >{\centering\arraybackslash}p{0.3\textwidth} >{\centering\arraybackslash}p{0.3\textwidth}}
+  \begin{tabular}{>{\centering\arraybackslash}p{0.28\textwidth} >{\centering\arraybackslash}p{0.34\textwidth} >{\centering\arraybackslash}p{0.3\textwidth}}
+    \toprule
     Rule & Precondition & Subsumption condition \\
     \midrule
     \begin{tabular}{@{}>{\raggedleft\arraybackslash}p{0.11\textwidth}c>{\raggedright\arraybackslash}p{0.11\textwidth}@{}}
@@ -442,21 +453,27 @@ definition wits :: 'a branch $\Rightarrow$ 'a set where
       \midrule
       \lstinline!p! & \lpipe & \lstinline!@\fmNeg{p}@! \\
     \end{tabular}
-         & Test & \lstinline!p $\in$ set b $\lor$ @\fmNeg{p}@ $\in$ set b! \\
+         & \lstinline!@\fmOr{p}{q}@ $\in$ set b! & \lstinline!p $\in$ set b $\lor$ @\fmNeg{p}@ $\in$ set b! \\
 
     \begin{tabular}{@{}>{\raggedleft\arraybackslash}p{0.11\textwidth}c>{\raggedright\arraybackslash}p{0.11\textwidth}@{}}
       \\
       \midrule
       \lstinline!@\fmNeg{p}@! & \lpipe & \lstinline!p! \\
     \end{tabular}
-         & Test & \lstinline!@\fmNeg{p}@ $\in$ set b $\lor$ p $\in$ set b! \\
+         & \lstinline!@\fmNeg{(\fmAnd{p}{q})}@ $\in$ set b!
+         & \lstinline!@\fmNeg{p}@ $\in$ set b $\lor$ p $\in$ set b! \\
 
     \begin{tabular}{@{}>{\raggedleft\arraybackslash}p{0.11\textwidth}c>{\raggedright\arraybackslash}p{0.11\textwidth}@{}}
       \\
       \midrule
       \lstinline!s $\inS$ $\ton$! & \lpipe & \lstinline!s $\notinS$ $\ton$! \\
     \end{tabular}
-         & Test &
+         &
+         \begin{tabular}{c}
+           \lstinline!(s $\inS$ $\ton$ $\unionS$ $\ttw$) $\in$ set  b! \\
+           \lstinline!$\ton$ $\unionS$ $\ttw$ $\in$ subterms (last b)! \\
+         \end{tabular}
+         &
          \begin{tabular}{@{}rl@{}}
                   & \lstinline!(s $\inS$ $\ton$) $\in$ set b! \\
            $\lor$ & \lstinline!(s $\notinS$ $\ton$) $\in$ set b!
@@ -468,7 +485,12 @@ definition wits :: 'a branch $\Rightarrow$ 'a set where
       \midrule
       \lstinline!s $\inS$ $\ttw$! & \lpipe & \lstinline!s $\notinS$ $\ttw$! \\
     \end{tabular}
-         & Test &
+         &
+         \begin{tabular}{c}
+           \lstinline!(s $\inS$ $\ton$ $\interS$ $\ttw$) $\in$ set  b! \\
+           \lstinline!($\ton$ $\interS$ $\ttw$) $\in$ subterms (last b)! \\
+         \end{tabular}
+         &
          \begin{tabular}{@{}rl@{}}
                   & \lstinline!(s $\inS$ $\ttw$) $\in$ set b! \\
            $\lor$ & \lstinline!(s $\notinS$ $\ttw$) $\in$ set b! \\
@@ -480,21 +502,61 @@ definition wits :: 'a branch $\Rightarrow$ 'a set where
       \midrule
       \lstinline!s $\inS$ $\ttw$! & \lpipe & \lstinline!s $\notinS$ $\ttw$! \\
     \end{tabular}
-         & Test &
+         &
+         \begin{tabular}{c}
+           \lstinline!(s $\inS$ $\ton$ $\diffS$ $\ttw$) $\in$ set  b! \\
+           \lstinline!($\ton$ $\diffS$ $\ttw$) $\in$ subterms (last b)! \\
+         \end{tabular}
+         &
          \begin{tabular}{@{}rl@{}}
                   & \lstinline!(s $\inS$ $\ttw$) $\in$ set b! \\
            $\lor$ & \lstinline!(s $\notinS$ $\ttw$) $\in$ set b! \\
          \end{tabular} \\
+         \addlinespace[0.6em]
+
     \begin{tabular}{@{}>{\raggedleft\arraybackslash}p{0.11\textwidth}c>{\raggedright\arraybackslash}p{0.11\textwidth}@{}}
       \\
       \midrule
       \lstinline!Var x $\inS$ $\ton$! \lstinline!Var x $\notinS$ $\ttw$! & \multirow{2}{*}{\rule[-0.4ex]{0.6pt}{4.8ex}} & \lstinline!Var x $\notinS$ $\ton$! \lstinline!Var x $\inS$ $\ttw$! \\
     \end{tabular}
-         & Test & Test \\
+         & 
+         \begin{tabular}{c}
+           \lstinline!($\ton$ $\neqS$ $\ttw$) $\in$ set b! \\
+           \lstinline!$\ton$ $\in$ subterms (last b)! \\
+           \lstinline!$\ttw$ $\in$ subterms (last b)! \\
+           \lstinline!x $\notin$ vars b! \\
+         \end{tabular}
+         &
+         \begin{tabular}{r@{\hspace{0.5em}}l}
+
+           \lstinline!$\exists$s.! & \lstinline!(s $\inS$ $\ton$) $\in$ set b $\land$! \\
+                                   & \lstinline!(s $\notinS$ $\ttw$) $\in$ set b! \\
+           \multicolumn{2}{c}{$\lor$} \\
+           \lstinline!$\exists$s.! & \lstinline!(s $\notinS$ $\ton$) $\in$ set b $\land$! \\
+                                   & \lstinline!(s $\inS$ $\ttw$) $\in$ set b! \\
+         \end{tabular}
+         \\
+         \bottomrule
   \end{tabular}
   \bigskip
   \caption{Branching expansion rules.\label{tab:bexpands}}
 \end{table*}
+After running out of linear rules apply, only the branching rules shown in \autoref{tab:bexpands} remain.
+A rule is applicable if its \textit{precondition} is met and, to prevent unnecessary branching, it is not subsumed as indicated by the \textit{subsumption condition}.
+These rules create multiple branches in the tableau so we represent the different possibilities \lstinline!bs'! to expand a branch \lstinline!b! as a set and write \lstinline!&\fexpands{bs'}{b}&!. 
+Accordingly, we get a new branch \lstinline!b' @ b! in the tableau for each \lstinline!b' $\in$ set bs'!.
+
+A linearly saturated branch where no further branching is possible is called a \textit{saturated} branch. 
+\begin{lstlisting}
+definition sat b $\equiv$ lin_sat b $\land$ ($\nexists$bs'. &\fexpands{bs'}{b}&)
+\end{lstlisting}
+
+Note that even branching rules are defined such that they never create new subterms with exception of the last rule, which adds a new variable to the branch.
+These variables serve to manifest an inequality so we call them \textit{witnesses}.
+\begin{lstlisting}
+definition wits :: 'a branch $\Rightarrow$ 'a set where
+  wits b $\equiv$ vars b - vars (last b)
+\end{lstlisting}
 
 \section{A Decision Procedure for MLSS}
 \begin{figure*}
@@ -828,7 +890,7 @@ Written as a formula, we have
   &\phantom{$\subseteq$}& {$\psi$ $\in$ set b. $\neg$ is_literal $\psi$}
   $\subseteq$ subfms (last b) $\cup$ $\fmNegSymbol$ ` subfms (last b).
 \end{lstlisting}
-Confirming that this is an invariant is an easy exercise of going through each of the propositional rules in Table TODO and the first two branching rules in Table TODO.
+Confirming that this is an invariant is an easy exercise of going through each of the propositional rules in \autoref{tab:lexpands} and the first two branching rules in \autoref{tab:bexpands}.
 Thus, we have
 \begin{lstlisting}
   &\phantom{$\leq$}& card {$\psi$ $\in$ set b. $\neg$ is_literal $\psi$}

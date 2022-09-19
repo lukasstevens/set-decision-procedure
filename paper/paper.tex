@@ -140,7 +140,12 @@
 \todo[inline]{\MLSS{} is multi-level syllogistics with singleton}
 
 \subsection{Related work}
-AFP entry~\cite{hybrid_logic_afp} and workshop paper in Isabelle 2022 workshop.
+AFP entry~\cite{hybrid_logic_afp} and article~\cite{hybrid_logic} and workshop paper in Isabelle 2022 workshop.
+A Verified Proof of Craig Interpolation for Basic Modal Logic via Tableaux in Lean.
+A Tableau for Ecumenical Propositional Logic.
+Automatization of the semantic tableau method.
+Formalisation de la logique temporelle dans le coq.
+\todo[inline]{Look at all articles of From}
 
 \subsection{Contributions}
 Fill the proof of Lemma 2. More explicit proof of the cardinality of a branch.
@@ -148,18 +153,33 @@ Fill the proof of Lemma 2. More explicit proof of the cardinality of a branch.
 \subsection{Notation}
 Isabelle/HOL~\cite{isabelle} conforms to everyday mathematical notation for the most part.
 For the benefit of the reader that is unfamiliar with Isabelle/HOL, we establish notation and in particular some essential datatypes together with their primitive operations that are specific to Isabelle/HOL.
-We write \lstinline!t :: 'a! to specify that the term \lstinline!t! has the type \lstinline!'a! and \lstinline!'a $\Rightarrow$ 'b! for the type of a total function from \lstinline!'a! to \lstinline!'b!.
-The types for booleans, natural numbers, and in integers are \lstinline!bool!, \lstinline!nat!, and \lstinline!int!, respectively.
+
+We write \lstinline!t :: 'a! to specify that the term \lstinline!t! has the type \lstinline!'a! and \lstinline!'a $\Rightarrow$ 'b! for the space of total functions from \lstinline!'a! to \lstinline!'b!.
+
 Sets with elements of type \lstinline!'a! have the type \lstinline!'a set!.
-Analogously, we use \lstinline!'a list! to describe lists, which are constructed as the empty list \lstinline![]! or with the infix constructor \lstinline!#!, and are appended with the infix operator \lstinline!@!.
+The cardinality of a set is determined with \lstinline!card! and \lstinline!f ` A! denotes the image of \lstinline!A! under \lstinline!f!.
+
+Analogously to sets, we use \lstinline!'a list! to describe the type of lists, which are constructed as the empty list \lstinline![]! or with the infix constructor \lstinline!#!, and are appended with the infix operator \lstinline!@!.
 The function \lstinline!set! converts a list into a set.
-For optional values, Isabelle/HOL offers the type \lstinline!option! where a term \lstinline!opt :: 'a option! is either \lstinline!None! or \lstinline!Some a! with \lstinline!a :: 'a!.
-Finally, we remark that \textbf{iff} is equivalent to \lstinline!$=$! on type \lstinline!bool! and \lstinline!$\equiv$! is definitional equality of the meta-logic of Isabelle/HOL, which is called Isabelle/Pure.
-\todo[inline]{Add arrows and bracket notation for Pure formulae}
+
+We remark that \textbf{iff} is equivalent to \lstinline!$=$! on type of booleans \lstinline!bool! and \lstinline!$\equiv$! is definitional equality of the meta-logic of Isabelle/HOL, which is called Isabelle/Pure.
+The other important constant of the meta-logic, apart from \lstinline!$\equiv$!, is the meta-implication \lstinline!$\Longrightarrow$!.
+A chain of implications
+\begin{lstlisting}
+  A$_\text{1}$ $\Longrightarrow$ $\cdots$ $\Longrightarrow$ A$_\text{k}$ $\Longrightarrow$ C
+\end{lstlisting}
+can be denoted more concisely by
+\begin{lstlisting}
+  $\llbracket$ A$_\text{1}$;$\,\ldots\,$;A$_\text{k}$ $\rrbracket$ $\Longrightarrow$ C.
+\end{lstlisting}
+
 \section{Syntax and Semantics of MLSS\label{sec:semantics}}
 \subsection{Syntax}
-At the heart of \MLSS{}, we have the type of set terms which is the disjoint union of the empty set and variables as well as the operations union, intersection, set difference, and \lstinline!Single!, which represents a singleton set containing the argument.
-\todo[inline]{Syntax for \lstinline!Single!?, overloading of \lstinline!vars_term!, \lstinline!vars_atom!}
+At the heart of \MLSS{}, we have the type of set terms which is the disjoint union of the empty set and variables as well as the operations union, intersection, set difference, and the singleton set represented by the constructor \lstinline!Single!.
+We keep the type of variables abstract by making it a parameter of the set term data type.
+The only restriction on the type of variables is that it needs to be infinite.
+Isabelle's data type package automatically defines a function that gives us the set of variables in a set term, which we name \lstinline!vars!.
+In what follows, we will overload the function \lstinline!vars! to also work on set atoms, formulae, and branches.
 \begin{lstlisting}
 datatype (vars: 'a) pset_term =
   $\emptyset$ | Var 'a | Single ('a pset_term)
@@ -173,10 +193,9 @@ datatype (vars: 'a) pset_atom =
   'a pset_term $\inS$ 'a pset_term
 | 'a pset_term $\eqS$ 'a pset_term
 \end{lstlisting}
-With the above operators we can also represent the subset operator \lstinline!$\subseteqS$! and enumerate finite sets as \lstinline!s $\subseteqS$ t! is equivalent to \lstinline!s $\unionS$ t $\eqS$ t! and a finite set of elements \lstinline!{t$_\text{1}$,$\ldots$,t$_\text{k}$}! can be expressed by \lstinline!Single t$_1$ $\unionS$ $\ldots$ $\unionS$ Single t$_k$!.
+With the above operators we can also represent the subset operator \lstinline!$\subseteqS$! and enumerate finite sets: \lstinline!s $\subseteqS$ t! is equivalent to \lstinline!s $\unionS$ t $\eqS$ t! and a finite set of elements \lstinline!{t$_\text{1}$,$\ldots$,t$_\text{k}$}! can be expressed by \lstinline!Single t$_1$ $\unionS$ $\ldots$ $\unionS$ Single t$_k$!.
 
-The unquantified fragment \MLSS{} of set theory is then formed by combining set atoms, which are injected into formulae with the constructor \lstinline!&\fmAtom&!, with propositional logical connectives.
-\todo[inline]{Cite Nipkow's Linear Quantifier Elimination?, literals}
+We use the propositional fragment of formulae due to \citeauthor{lqe}~\cite{lqe} with set atoms as propositional atoms to form the unquantified fragment \MLSS{} of set theory.
 \begin{lstlisting}
 datatype (atoms: 'a) fm =
   &\fmAtom& 'a | &\fmNeg{('a fm)}&
@@ -184,26 +203,18 @@ datatype (atoms: 'a) fm =
 
 type_synonym 'a pset_fm = 'a pset_atom fm
 \end{lstlisting}
-
-\begin{lstlisting}
-fun is_literal :: 'a fm $\Rightarrow$ bool where
-  is_literal (&\fmAtom& _) = True
-| is_literal (&\fmNeg{(\fmAtom{} \_)}&) = True
-| is_literal _ = False
-\end{lstlisting}
 We will often drop the atom constructor \lstinline!&\fmAtom{}&! to reduce clutter.
 Additionally, we use the abbreviations \lstinline!s $\notinS$ t! and \lstinline!s $\neqS$ t! to denote \lstinline!&\fmNeg{\fmAtom{} (s $\inS$ t)}&! and \lstinline!&\fmNeg{\fmAtom{} (s $\eqS$ t)}&!, respectively.
-Note that Isabelle's datatype package automatically defines a function \lstinline!atoms :: 'a fm $\Rightarrow$ 'a set! that allows us to obtain all set atoms in a formula.
-We combine these functions in order to define \lstinline!vars! that extracts all the variable names occuring in a set formula.
-\todo[inline]{Motivation: one rule introduces new variables, Mention vars polymorphic}
+
+Similarly to the function \lstinline!vars!, the automatically defined function \lstinline!atoms :: 'a fm $\Rightarrow$ 'a set! retrieves all set atoms in a formula.
+We combine these functions to extract all the variables occuring in a set formula.
 \begin{lstlisting}
 definition vars :: 'a pset_fm $\Rightarrow$ 'a set where
   vars $\phi$ $\equiv$ $\bigcup$(vars ` atoms $\phi$)
 \end{lstlisting}
 
-In addition to the variable names that appear in a formula, we will later also need to obtain those set terms that occur as subterms in a formula. 
-We first define a function that collects the subterms of a set term.
-\todo[inline]{Motivation: linear rules don't introduce subterms, \\ \lstinline!subterms b $\approx$ subterms (last b)!}
+In addition to the variable that appear in a formula, we will later also need to obtain those set terms that occur as subterms in a formula. 
+Like \lstinline!vars!, we overload the constant \lstinline!subterms!.
 \begin{lstlisting}
 fun subterms :: 'a pset_term
              $\Rightarrow$ 'a pset_term set where
@@ -231,7 +242,8 @@ definition subterms ::
     'a pset_fm $\Rightarrow$ 'a pset_term set where
   subterms $\phi$ $\equiv$ $\bigcup$(subterms ` atoms $\phi$)
 \end{lstlisting}
-The last function that we define computes the subformulae of a formula.
+
+Finally, we consider the subformulae of a formula and define a function that computes them.
 \begin{lstlisting}
 fun subfms :: 'a fm $\Rightarrow$ 'a fm set where
   subfms (&\fmAtom& a) = {&\fmAtom& a}
@@ -241,11 +253,16 @@ fun subfms :: 'a fm $\Rightarrow$ 'a fm set where
     {&\fmOr{p}{q}&} $\cup$ subfms p $\cup$ subfms q
 | subfms (&\fmNeg{q}&) = {&\fmNeg{q}&} $\cup$ subfms q
 \end{lstlisting}
-
+The \textit{literals} are a type of subformulae of particular importance so we define a predicate for them.
+\begin{lstlisting}
+fun is_literal :: 'a fm $\Rightarrow$ bool where
+  is_literal (&\fmAtom& _) = True
+| is_literal (&\fmNeg{(\fmAtom{} \_)}&) = True
+| is_literal _ = False
+\end{lstlisting}
 \subsection{Semantics}
 Formulae in \MLSS{} contain arbitrarily nested set terms.
-We account for this arbitrary nesting by basing the semantics on the von Neumann hierarchy $\mathcal{V}$ of sets that is defined inductively as
-\todo[inline]{Simplify definition by deleting cases?}
+We account for this nesting by basing the semantics on the von Neumann hierarchy $\mathcal{V}$ of sets that is defined inductively as
   \[
     \begin{array}{rclr}
       \mathcal{V}_0 & = & \emptyset, \\
@@ -259,7 +276,7 @@ The sets in $\mathcal{V}$ are well-founded meaning that there can be no membersh
 
 In Isabelle/HOL, which is simply typed, this definition is not accepted, though.
 A way to work around this limitiation is provided by Lawrence in an AFP entry~\cite{zfc_in_hol_afp}, which adds $\mathcal{V}$ to Isabelle/HOL by way of axiomatisation.
-An article by Lawrence~\cite{zfc_in_hol} provides some further context to this entry.
+Two articles~\cite{zfc_in_hol1,zfc_in_hol2} have been written that provide further context to this entry.
 The entry declares a type \lstinline!V! that comes with the following functionality:
 \begin{itemize}
   \item The function \lstinline!elts :: V $\Rightarrow$ V set! maps a set to its elements.
@@ -271,7 +288,7 @@ The entry declares a type \lstinline!V! that comes with the following functional
 \item Finally, the empty set coincides with the ordinal $0$ so it is denoted by \lstinline!0 :: V!.
 \end{itemize}
 
-Equipped with the above, we define the interpretation function \lstinline!&\Ist&! for set terms that interprets a set term with respect to a valuation function \lstinline!M :: 'a $\Rightarrow$ V! for variable.
+Equipped with the above, we define the interpretation function \lstinline!&\Ist&! for set terms that interprets a set term with respect to a valuation function \lstinline!M :: 'a $\Rightarrow$ V! for variables.
 \begin{lstlisting}
 fun &\Ist& :: ('a $\Rightarrow$ V) $\Rightarrow$ 'a pset_term $\Rightarrow$ V where
   &\Ist& M $\emptyset$ = 0
@@ -288,13 +305,15 @@ where
   &\Isa& M (s $\inS$ t) $\longleftrightarrow$ &\Ist& M s $\in$ elts (&\Ist& M t)
 | &\Isa& M (s $\eqS$ t) $\longleftrightarrow$ &\Ist& M s = &\Ist& M t
 \end{lstlisting}
+
 For formulae, we write \lstinline!M $\models$ $\phi$! for the judgement that $\phi$ holds under the valuation function \lstinline!M!.
-We omit the implementation of $\models$ for brevity.
-\todo[inline]{Add implementation? Add satisfiability!}
+The implementation of $\models$ coincides with the interpretation function of \citeauthor{lqe}~\cite{lqe}, so omit it for brevity.
+As usual, a formula \lstinline!$\phi$! is called \textit{satisfiable} if there exists a model \lstinline!$M$! with \lstinline!$M$ $\models$ $\phi$!.
+Otherwise, \lstinline!$\phi$! is called \textit{unsatisfiable}.
 
 \section{A Tableau Calculus for MLSS}
 We formalise the tableau calculus for \MLSS{} as described by \citeauthor{new_fast_tableau}~\cite{new_fast_tableau}.
-Inspired by the formalisation of a tableau calculus for Hybrid Logic by \citeauthor{hybrid_logic_afp}~\cite{hybrid_logic_afp}, we simply use a list to represent a branch of the tableau tree.
+Inspired by the formalisation of a tableau calculus for hybrid logic by \citeauthor{hybrid_logic_afp}~\cite{hybrid_logic_afp}, we simply use a list to represent a branch of the tableau tree.
 Note that formulae are added to the front of the list during branch expansion so \lstinline!last b! for a branch \lstinline!b! is always the formula that we are trying to disprove with the tableau. 
 \begin{lstlisting}
 type_synonym 'a branch = 'a pset_fm list
@@ -308,7 +327,7 @@ definition subterms ::
 definition vars :: 'a branch $\Rightarrow$ 'a set 
   vars b $\equiv$ $\bigcup$(vars ` set b)
 \end{lstlisting}
-In the standard tableau calculus for propositional logic, a branch is called \textit{closed} if it contains both the negation of a formula and the formula itself;
+In the standard tableau calculus for propositional logic as \citeauthor{tableau}~\cite{tableau} describes it, a branch is called \textit{closed} if it contains both the negation of a formula and the formula itself;
 conversely, it is called \textit{open} if it is not closed.
 For \MLSS{}, we extend the notion of closedness with three additional rules; the first two are straightforward while the last one states that a branch is closed when the branch contains a membership cycle
 \begin{lstlisting}
@@ -397,7 +416,7 @@ The calculus considers two kinds of branch expansion rules: \textit{linear} and 
 As the name suggests, branching rules lead to the creation of new branches in the tableau while linear rules only extend a branch \lstinline!b! with new formulae \lstinline[breaklines=true]!b' = [$\psi_1$,$\ldots$,$\psi_n$]!, which we denote by \lstinline!&\lexpands{b'}{b}&!.
 \autoref{tab:lexpands} shows all linear expansion rules.
 Note that, in the first two rules for \lstinline!$\eqS$!, \lstinline!l! is a literal occuring in the branch.
-Furthermore, the term-for-term substitution \lstinline!l{s/t}! is restricted to the top-level set terms of the literal;
+Furthermore, the term-for-term substitution \lstinline!l{s/t}! is restricted to the top-level set terms of \lstinline!l!;
 for example, given the literal
 \begin{lstlisting}
   l = &\fmNeg{((s $\unionS$ u) $\diffS$ s $\eqS$ s $\unionS$ u)}&
@@ -423,18 +442,18 @@ may only be used under the condition
 The purpose of this restriction is to prevent unbounded expansion of the branch.
 In fact, we give an explicit upper bound for the number of formulae in a branch in \autoref{sec:bound}.
 
-Due to boundedness, repeated application of linear rules eventually results in a \textit{linearly saturated} branch, i.e.\ a branch where no application of linear rules would produce new formulae.
+Due to boundedness, repeated expansion with linear rules eventually results in a \textit{linearly saturated} branch, i.e.\ a branch where no application of linear rules would produce new formulae.
 \begin{lstlisting}
 definition lin_sat b $\equiv$
   $\forall$b'. &\lexpands{b'}{b}& $\longrightarrow$ set b' $\subseteq$ set b
 \end{lstlisting}
 
-Finally, we remark that the original paper~\cite{new_fast_tableau} is missing the last propositional rules dealing with double negation.
+Finally, we remark that the original paper~\cite{new_fast_tableau} is missing the last propositional rule dealing with double negation.
 This rule is required for completeness, though, considering that the branch
 \begin{lstlisting}
   [&\fmNeg{\fmNeg{\fmNeg{p}}}&, p, &\fmAnd{\fmNeg{\fmNeg{\fmNeg{p}}}}{p}&]
 \end{lstlisting}
-is saturated --- neither linear nor branching rules apply --- and open but there is obviously no model for the initial formula \lstinline!&\fmAnd{\fmNeg{\fmNeg{\fmNeg{p}}}}{p}&!.
+is saturated --- neither linear nor branching rules apply --- and open but there clearly is no model for the initial formula \lstinline!&\fmAnd{\fmNeg{\fmNeg{\fmNeg{p}}}}{p}&!.
 
 \subsection{Branching Rules\label{sec:branching}}
 \begin{table*}
@@ -487,7 +506,7 @@ is saturated --- neither linear nor branching rules apply --- and open but there
     \end{tabular}
          &
          \begin{tabular}{c}
-           \lstinline!(s $\inS$ $\ton$ $\interS$ $\ttw$) $\in$ set  b! \\
+           \lstinline!(s $\inS$ $\ton$) $\in$ set  b! \\
            \lstinline!($\ton$ $\interS$ $\ttw$) $\in$ subterms (last b)! \\
          \end{tabular}
          &
@@ -504,7 +523,7 @@ is saturated --- neither linear nor branching rules apply --- and open but there
     \end{tabular}
          &
          \begin{tabular}{c}
-           \lstinline!(s $\inS$ $\ton$ $\diffS$ $\ttw$) $\in$ set  b! \\
+           \lstinline!(s $\inS$ $\ton$) $\in$ set  b! \\
            \lstinline!($\ton$ $\diffS$ $\ttw$) $\in$ subterms (last b)! \\
          \end{tabular}
          &
@@ -576,6 +595,7 @@ definition mlss_proc :: 'a pset_fm $\Rightarrow$ bool where
 \caption{Definition of the decision procedure through \lstinline|mlss_proc_branch| and \lstinline|mlss_proc|.\label{fig:alg}}
 \end{figure*}
 
+\todo[inline]{First give intuition then technical details}
 \noindent We abstractly specify the behaviour of the decision procedure, leaving an executable specification from which code can be generated to future work.
 The implementation as displayed in \autoref{fig:alg} uses a couple features of Isabelle's function package:
 instead of defining the function via pattern matching, we specify the equations of the function as conditional rewrite rules.
@@ -698,6 +718,7 @@ To prevent this, we assign the pure witnesses pairwise different values.
 The proof of \hyperref[lst:lemma_2]{\lstinline!lemma_2!} is more technical than interesting so we refer the reader to the formalisation.
 
 \subsection{Realisation of an Open Branch\label{sec:real}}
+\todo[inline]{Reformulate with initial formula}
 Remember that for completeness, we need to show that the realisation function for an open and saturated branch \lstinline!b! actually constitutes a model for all formulae in the branch.
 We start by verifying that the realisation function models all literals in the branch; more formally, the following propositions hold: 
 \begin{enumerate}[label=(\roman*)]
@@ -717,19 +738,19 @@ The proofs of all propositions translate well into Isabelle so we refer to the o
   &\phantom{$\Longrightarrow$}& realise s $\neq$ realise t
   $\Longrightarrow$ elts (realise s) $\neq$ elts (realise t).
 \end{lstlisting}
-  Without loss of generality --- the other case is symmetric ---, we obtain an \lstinline!a! such that
+  Without loss of generality --- the other case is symmetric ---, we obtain an \lstinline!e! such that
 \begin{lstlisting}
-  a $\in$ elts (realise s) $\land$ a $\notin$ elts (realise t). 
+  e $\in$ elts (realise s) $\land$ e $\notin$ elts (realise t). 
 \end{lstlisting}
-  Considering the fact that \lstinline!s $\in$ subterms' b! and the definition of \lstinline!realise!, we obtain an \lstinline!u! such that \lstinline!a = realise u! and \lstinline!u $\rightarrow_\text{bgraph b}$ s!.
+  Considering the fact that \lstinline!s $\in$ subterms' b! and the definition of \lstinline!realise!, we obtain an \lstinline!u! such that \lstinline!e = realise u! and \lstinline!u $\rightarrow_\text{bgraph b}$ s!.
   This, in turn, yields that \lstinline!u $\inS$ s! must be in \lstinline!b!.
-  Together with the assumption \lstinline!(s $\eqS$ t) $\in$ b! and the openness of \lstinline!b!, it follows that \lstinline!u $\inS$ t! must also be in \lstinline!b!.
+  Together with the assumption \lstinline!(s $\eqS$ t) $\in$ set b! and the saturation of \lstinline!b!, it follows that \lstinline!u $\inS$ t! must also be in \lstinline!b!.
   But then we have
 \begin{lstlisting}[columns=fixed]
   realise u $\in$ elts (realise t)
-        = a $\in$ elts (realise t)
+        = e $\in$ elts (realise t)
 \end{lstlisting}
-  using Proposition~\ref{it:at_mem}, which stands in contradiction to the assumption \lstinline!a $\notin$ elts (realise t)!.
+  using Proposition~\ref{it:at_mem}, which stands in contradiction to the assumption \lstinline!e $\notin$ elts (realise t)!.
 \end{proof}
 
 \noindent The results on literals can now be lowered to set terms.
@@ -758,8 +779,9 @@ The proofs of all propositions translate well into Isabelle so we refer to the o
 \begin{lstlisting}
   e = realise u $\land$ u $\rightarrow_\text{bgraph b}$ (s $\diffS$ t).
 \end{lstlisting}
-  We therefore have \lstinline!(u $\inS$ s $\diffS$ t) $\in$ set b! which, due to \lstinline!b! being saturated, implies that \lstinline!u $\inS$ s! and \lstinline!u $\notinS$ t! are in \lstinline!b!.
-  \todo[inline]{Explain latter of line above}
+  We therefore have \lstinline!(u $\inS$ s $\diffS$ t) $\in$ set b! which, due to \lstinline!b! being saturated, implies that \lstinline!u $\inS$ s! is in \lstinline!b!.
+  Furthermore, the fifth branching rule (see \autoref{tab:bexpands}) must have its subsumption condition met due to saturation of \lstinline!b!, meaning that either one of \lstinline!u $\inS$ t! or \lstinline!u $\notinS$ t! must be in the branch.
+  Only the latter, however, can be the case since the branch is open.
   By applying Proposition~\ref{it:at_mem} and~\ref{it:af_mem} we obtain
 \begin{lstlisting}
   realise u $\in$ realise s $\land$ realise u $\notin$ realise t
@@ -776,7 +798,7 @@ The proofs of all propositions translate well into Isabelle so we refer to the o
 \end{lstlisting}
   An immediate consequence is that \lstinline!u $\inS$ s! is in \lstinline!b!.
   Moreover, we claim that \lstinline!u $\notinS$ t! is also in \lstinline!b!.
-  To see that this is true, recall that \lstinline!b! is saturated and thus the subsumption condition of rule TODO needs to hold.
+  To see that this is true, recall that \lstinline!b! is saturated and thus the subsumption condition of the fifth branching rule must hold.
   This implies that either \lstinline!u $\inS$ t! or \lstinline!u $\notinS$ t! is in \lstinline!b! but the latter being in \lstinline!b! would be a contradiction to \lstinline!u $\nrightarrow_\text{bgraph b}$ t! meaning that the former must hold.
   Ultimately, we infer that \lstinline!u $\in$ s $\diffS$ t! is in \lstinline!b! by invoking saturation again.
   The last step is to apply Proposition~\ref{it:at_mem} in order to obtain the goal
@@ -801,6 +823,7 @@ lemma coherence:
   shows ($\lambda$x. realise (Var x)) $\models$ $\phi$
 \end{lstlisting}
 The coherence property finishes the proof of completeness of the calculus as it gives us a model for every formula in an open and saturated branch.
+\todo[inline]{In particular initial formula is satisfied}
 
 \section{Soundness of the Calculus\label{sec:sound}}
 Two aspects determine the soundness of the calculus: a closed branch must be unsatisfiable and all expansion rules must maintain satisfiability.
@@ -822,9 +845,9 @@ lemma bclosed_sound:
 \begin{lstlisting}
   &\Ist& M t$_\text{i}$ $\in$ elts (&\Ist& M t$_\text{i + 1 mod k + 1}$)
 \end{lstlisting}
-  for each \lstinline!i $\in$ {0,$\ldots$,k}!.
-  Therefore, the transitive closure of the membership relation \lstinline!{(x, y). x $\in$ elts y}! contains a cycle. 
-  This, however, is a contradiction since the membership relation of \lstinline!V! is well-founded (see \autoref{sec:semantics}) and well-foundedness is closed under transitive closure.
+  for each \lstinline!i $\in$ {0,$\,\ldots\,$,k}!.
+  Therefore, the transitive closure of the membership relation \lstinline!{(x, y). x $\in$ elts y}$^\text{+}$! contains a cycle. 
+  This, however, is a contradiction because the membership relation of \lstinline!V! is well-founded (see \autoref{sec:semantics}) and well-foundedness is closed under transitive closure.
 \end{proof}
 
 \noindent We are left with showing that both linear and branching expansion rules preserve satisfiability.
@@ -836,7 +859,7 @@ lemma lexpands_sound:
   shows M $\models$ $\phi$
 \end{lstlisting}
 A similar argument would work for the branching rules if it were not for the last rule adding new variables.
-Those variables need to be assigned specific values; hence, we modify the model as we will see in the proof below.
+Those variables need to be assigned specific values; hence, we modify the model as shown in the proof below.
 \begin{lstlisting}[belowskip=0pt, label={lst:bexpands_sound}]
 lemma bexpands_sound:
   assumes &\fexpands{bs'}{b}&
@@ -908,8 +931,8 @@ In addition, an atom is formed by combining two subterms occuring in the branch 
   $\leq$ 2 * 2 * (card (subterms b))$^\text{2}$.
 \end{lstlisting}
 Since no expansion rule introduces new subterms, we know the cardinality of the subterms in a branch \lstinline!b! is limited by the subterms of \lstinline!last b! plus the number of witnesses added to the branch.
-Regarding an upper bound for the witnesses, recognise that the last branching rule requires \lstinline!s $\neqS$ t! to be in \lstinline!b! for some \lstinline!s,t $\in$ subterms (last b)!.
-The subsumption condition then prohibits that the rule can be applied again for the combination of \lstinline!s! and \lstinline!t!, thus yielding an upper bound of \lstinline!(card (subterms (last b)))$^\text{2}$!.
+Note that the last branching rule requires \lstinline!s $\neqS$ t! to be in \lstinline!b! for some \lstinline!s,t $\in$ subterms (last b)!.
+The subsumption condition then prohibits that the rule can be applied again for the combination of \lstinline!s! and \lstinline!t!, thus yielding an upper bound of \lstinline!(card (subterms (last b)))$^\text{2}$! for the witnesses.
 This allows us to finish the calculation that justifies the second inequality:
 \begin{lstlisting}
   &\phantom{$\leq$}& 4 * (card (subterms b))$^\text{2}$
@@ -939,13 +962,13 @@ lemma mlss_proc_branch_dom_if_wf_branch:
   We proceed by strong induction on the difference between the upper bound due to \hyperref[lst:card_branch]{\lstinline!card_wf_branch_ub!} and \lstinline!card b!.
 
   We only have one inductive case where the induction hypothesis holds for all well-formed branches \lstinline!b'! where the difference between the upper bound and the cardinality is smaller than that of \lstinline!b!.
-  We strengthen those assumptions to obtain
+  We strengthen the assumptions of the induction hypothesis to obtain
 \begin{lstlisting}
   $\llbracket$ expandss b' b; set b $\subset$ set b' $\rrbracket$
   $\Longrightarrow$ mlss_proc_branch_dom b'
 \end{lstlisting}
 for all \lstinline!b'!.
-The former strengthening is admissable since, by definition, every expansion of a well-formed branch is again well-formed while the latter ensures that the cardinality of \lstinline!b'! is larger than the cardinality of \lstinline!b!, ensuring that the difference to the upper bound decreases.
+The former strengthening is admissable since, by definition, every expansion of a well-formed branch is again well-formed while the latter ensures that the cardinality of \lstinline!b'! is larger than the cardinality of \lstinline!b!, implying that the difference to the upper bound decreases.
 
 Now, consider the case where \lstinline!b! is saturated.
 Then, the procedure terminates without recursive calls and we immediately get \lstinline!mlss_proc_branch_dom b! using the corresponding introduction rule for the domain predicate.

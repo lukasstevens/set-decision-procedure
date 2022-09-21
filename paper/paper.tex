@@ -113,7 +113,7 @@
 
 \setcounter{tocdepth}{1}
 
-\title{Towards a Verified Tableau Prover for Multi-Level-Syllogistics}
+\title{Towards a Verified Tableau Prover for a Ground Fragment of Set Theory}
 \author{Lukas Stevens}
 \orcid{0000-0003-0222-6858}
 \affiliation{%
@@ -137,18 +137,52 @@
 \listoftodos{}
 
 \section{Introduction}
-\todo[inline]{\MLSS{} is multi-level syllogistics with singleton}
+In contrast to pen-and-paper proofs where we expect the reader to fill in trivial details, interactive theorem provers (ITPs) require us to justify each proof step rigorously.
+Manually reducing each proof step down to the axioms would be impractical, though;
+hence, ITPs usually offer a wide array of automated methods to deal with the proof goals that arise during interactive use.
 
-\subsection{Related work}
+In Isabelle/HOL, there are specialised procedures for dealing with e.g.\ natural numbers, linear arithmetic, and metric spaces.
+Some of these procedures have been verified in Isabelle/HOL such as a procedure for presburger arithmetic~\cite{presburger} that was later extended to mixed real-integer arithmetic~\cite{arithmetic}.
+This procedure, though, uses reflection to work on goals in Isabelle/HOL, which, during execution, either sacrifices speed by going through the simplifier or soundness by trusting generated code.
+More recently, \citeauthor{orders}~\cite{orders} presented a verified decision procedure for orders that produces certificates. 
+This approach offers efficient execution by using generated code as well as soundness because the certificates are replayed through Isabelle's inference kernel.
+
+The focus of this paper is another ubiquitous structure in mathematics, namely sets.
+In particular, we consider a ground fragment of set theory which \citeauthor{new_fast_tableau}~\cite{new_fast_tableau} call multi-level syllogistics with singleton (\MLSS{}).
+The fragment includes the usual set operations of union, intersection, difference, membership, equality and, in addition, it allows the construction of singleton sets.
+Due to the omnipresence of sets, we think that automation for this fragment will benefit the users of Isabelle, especially when integrated into the simplifier like the aforementioned order solver.
+We also expect that the generation of certificates will be straightforward since \MLSS{} admits a tableau calculus.
+
+\subsection{Contributions}
+In this paper, we present a formalisation in Isabelle/HOL of a tableau calculus for \MLSS{} due to \citeauthor{new_fast_tableau}~\cite{new_fast_tableau}\cite[Chapter 14]{set_theory}.
+We prove soundness and completeness of the calculus and give an abstract specification of a decision procedure that applies the rules of the calculus exhaustively.
+To obtain total correctness of the procedure, we prove its termination.
+The formalisation follows the paper closely but gives a more thorough account of some important details:
+\begin{itemize}
+  \item We deliver the omitted proof of Lemma~2 in the paper~\cite{new_fast_tableau}, which is key for the completeness proof of the calculus.
+  \item The formal proof of completeness lead to the discovery that the calculus was missing a rule for eliminating double negation. 
+  \item We derive an explicit upper bound for the number of formulae in a branch of the tableau.
+\end{itemize}
+
+All in all, the abstract specification of the decision procedure provides a stepping stone towards a refinement to an executable specification from which code can be generated.
+
+\subsection{Related Work}
 AFP entry~\cite{hybrid_logic_afp} and article~\cite{hybrid_logic} and workshop paper in Isabelle 2022 workshop.
 A Verified Proof of Craig Interpolation for Basic Modal Logic via Tableaux in Lean.
 A Tableau for Ecumenical Propositional Logic.
 Automatization of the semantic tableau method.
 Formalisation de la logique temporelle dans le coq.
+Procedure was later generalised to cartesian product etc.
+Procedure was also generate to add monotone functions.
 \todo[inline]{Look at all articles of From}
 
-\subsection{Contributions}
-Fill the proof of Lemma 2. More explicit proof of the cardinality of a branch.
+First time MLSS~\cite{mlss_first}.
+MLSS is in NP~\cite{mlss_np}.
+First MLSS Tableau~\cite{mlss_first_tableau}.
+Beckert~\cite{tableau_quantifier_free}, Diploma~\cite{tableau_quantifier_free_diploma}.
+Tableau-based MLSS with functions and quantification~\cite{mlss_functions_quantification}.
+MLSS with monotone functions~\cite{mlss_monotone_functions}, reduction to MLSS.
+Another generalisation with cartesion product and some map constructs~\cite{mlss_cartesian_map}.
 
 \subsection{Notation}
 Isabelle/HOL~\cite{isabelle} conforms to everyday mathematical notation for the most part.
@@ -406,7 +440,7 @@ A tableau is called \textit{closed} if all of its branches are closed.
     \lstinline!$\ton$ $\eqS$ $\ttw$, l! & $\Longrightarrow$ & \lstinline!l{$\ton$/$\ttw$}! \\
 
     \lstinline!s $\notinS$ Single t! & $\Longrightarrow$ & \lstinline!s $\neqS$ t! &&
-    \lstinline!s$_\text{1}$ $\inS$ t, s$_\text{2}$ $\inS$ t! & $\Longrightarrow$ & \lstinline!s$_\text{1}$ $\neqS$ s$_\text{2}$! \\
+    \lstinline!s$_\text{1}$ $\inS$ t, s$_\text{2}$ $\notinS$ t! & $\Longrightarrow$ & \lstinline!s$_\text{1}$ $\neqS$ s$_\text{2}$! \\
     \bottomrule
   \end{tabular}
   \bigskip
@@ -595,42 +629,46 @@ definition mlss_proc :: 'a pset_fm $\Rightarrow$ bool where
 \caption{Definition of the decision procedure through \lstinline|mlss_proc_branch| and \lstinline|mlss_proc|.\label{fig:alg}}
 \end{figure*}
 
-\todo[inline]{First give intuition then technical details}
-\noindent We abstractly specify the behaviour of the decision procedure, leaving an executable specification from which code can be generated to future work.
+\noindent The mechanics of the decision procedure are characteristical for a procedure based on a tableau calculus:
+it determines the satisfiability of a given formula \lstinline!$\phi$! by determining whether the formula has a closed tableau.
+More specifically, it initialises the tableau with the singleton branch \lstinline![$\phi$]! and checks whether this branch can be expanded to a closed tableau.
+
+We abstractly specify the behaviour of the decision procedure, leaving an executable specification from which code can be generated to future work.
 The implementation as displayed in \autoref{fig:alg} uses a couple features of Isabelle's function package:
 instead of defining the function via pattern matching, we specify the equations of the function as conditional rewrite rules.
 This requires us to prove that the assumptions of the equations are non-overlapping, which is done by automation.
 The other concern is that Isabelle requires functions to be total so a recursive function needs to terminate in order for it to be well-defined;
 nevertheless, the termination proof is separated from the definition of the function for modularity.
-The function package maintains the soundness of the definition by introducing a so-called domain predicate \lstinline!mlss_proc_branch_dom! which characterises where the function terminates.
+The function package maintains the soundness of the definition by introducing a so-called domain predicate \lstinline!mlss_proc_branch_dom! which characterises for which arguments the function terminates.
 Each equation of the function receives the assumption that the predicate holds for the argument.
 To be able to reason about this predicate, we pass the \lstinline!domintros! flag that instructs the function package to derive introduction rules for it.
 Before we go into more detail on how the termination is handled, we discuss the definition of \lstinline!mlss_proc_branch!.
 
-The purpose of the function is to take a branch and determine whether the branch can be expanded to a closed tableau.
+The purpose of the function is to determine whether a given branch can be expanded to a closed tableau.
 As stated before, we first use linear expansion rules in order to prevent premature branching;
-therefore, we recursively expand the branch with linear rules until the branch is linearly saturated.
+to this end, we recursively expand the branch with linear rules until the branch is linearly saturated.
 Note that we use Hilbert's $\varepsilon$-operator in the form of \lstinline!SOME! to choose some rule that actually adds new formulae to the branch. 
 As soon as the branch is linearly saturated, we terminate if the branch is closed as shown in the second equation.
 Otherwise, we choose an applicable branching rule and recursively check whether all newly created branches can be closed.
 The final equation applies once no further branch expansion is possible, in which case we just tests for closedness of the branch.
 
-Every unsatisfiable formula has a closed tableau so we can determine the satisfiability of a formula \lstinline!$\psi$! by passing the singleton branch \lstinline![$\psi$]! to \lstinline!mlss_proc_branch!. 
-Because this is the only context that \lstinline!mlss_proc_branch! is used in, it only encounters branches that result from applying branch expansion rules to a singleton branch.
+The procedure \lstinline!mlss_proc! then calls \lstinline!mlss_proc_branch! with a singleton branch \lstinline![$\phi$]! to determine the satisfiability of a given formula \lstinline!$\phi$!.
+
+This means that \lstinline!mlss_proc_branch! is only applied to branches that result from applying the expansion rules.
 We call this kind of branches \textit{well-formed}.
 In the definition, the expression \lstinline!&\expandss{b'}{b}&! denotes that \lstinline!b'! is one of the branches that results from applying (potentially zero) expansion rules to \lstinline!b!.
 \begin{lstlisting}
 definition wf_branch b $\equiv$ $\exists$$\phi$. &\expandss{b}{[$\phi$]}&
 \end{lstlisting}
-In particular, we will use this notion in \autoref{sec:bound} where derive an upper bound for the cardinality of a well-formed branch.
+
+In particular, we will use this notion in \autoref{sec:bound} where we derive an upper bound for the cardinality of a well-formed branch.
 This is then used in \autoref{sec:correct} to justify the termination of the decision procedure. 
 Before we come to that, though, we prove soundness and completeness in Section~\ref{sec:sound} and~\ref{sec:complete}, respectively.
 In \autoref{sec:correct}, we also show that both properties easily transfer to the decision procedure which, together with termination, gives us total correctness.
 
 \section{Completeness of the Calculus\label{sec:complete}}
-Once a branch \lstinline!b! is saturated and open at the same time, we are unable to expand the branch further in our calculus.
-Thus, to establish completeness of the calculus, we must construct a model \lstinline!M! such that \lstinline!M $\models$ $\phi$! for all \lstinline!$\phi$ $\in$ set b!.
-
+For completeness of the calculus, we need to show that every unsatisfiable formula has a closed tableau or, conversely, that the formula is satisfiable if there is a saturated and open branch in the tableau.
+To facilitate inductive reasoning, we show a stronger statement by constructing a model \lstinline!M! such that \lstinline!M $\models$ $\phi$! for all \lstinline!$\phi$ $\in$ set b!.
 At the core of the model, there is a \textit{realisation} function that maps set terms to sets of type \lstinline!V!.
 A subset of the witnesses, which we call \textit{pure} witnesses, receives special treatment from the realisation function for reasons that will become apparent in \autoref{sec:pwits}.
 The set terms of a branch can thus be partitioned into two collections as defined below.
@@ -718,10 +756,9 @@ To prevent this, we assign the pure witnesses pairwise different values.
 The proof of \hyperref[lst:lemma_2]{\lstinline!lemma_2!} is more technical than interesting so we refer the reader to the formalisation.
 
 \subsection{Realisation of an Open Branch\label{sec:real}}
-\todo[inline]{Reformulate with initial formula}
 Remember that for completeness, we need to show that the realisation function for an open and saturated branch \lstinline!b! actually constitutes a model for all formulae in the branch.
-We start by verifying that the realisation function models all literals in the branch; more formally, the following propositions hold: 
-\begin{enumerate}[label=(\roman*)]
+We start by verifying that the realisation function models all literals in the branch; more formally, the following propositions hold:
+\begin{enumerate}[label={(\roman*)}]
   \item\label{it:at_mem} We have \lstinline!realise s $\in$ elts (realise t)! if it holds that \lstinline!s $\inS$ t! is in \lstinline!b!. 
   \item\label{it:at_eq} We have \lstinline!realise s $=$ realise t! if \lstinline!s $\eqS$ t! is in \lstinline!b!.
   \item\label{it:af_eq} We have \lstinline!realise s $\neq$ realise t! if \lstinline!s $\neqS$ t! is in \lstinline!b!.
@@ -823,11 +860,20 @@ lemma coherence:
   shows ($\lambda$x. realise (Var x)) $\models$ $\phi$
 \end{lstlisting}
 The coherence property finishes the proof of completeness of the calculus as it gives us a model for every formula in an open and saturated branch.
-\todo[inline]{In particular initial formula is satisfied}
 
 \section{Soundness of the Calculus\label{sec:sound}}
-Two aspects determine the soundness of the calculus: a closed branch must be unsatisfiable and all expansion rules must maintain satisfiability.
-We can express the former aspect in Isabelle as follows.
+A tableau calculus is sound if, for any closed tableau, the corresponding formula is unsatisfiable. 
+We prove the following two properties to establish soundness.
+\begin{enumerate}[label={(\roman*)}]
+  \item A closed branch contains an unsatisfiable formula.
+  \item The expansion rules maintain satisfiability.
+\end{enumerate}
+To see that these are sufficient, consider a closed tableau for a formula \lstinline!$\phi$! but assume that \lstinline!$\phi$! is satisfiable.
+The second property ensures that all formulae are satisfiable in each branch of the tableau.
+But this is a contradiction since the closedness of each branch implies that one of these formulae must be unsatisfiable.
+Thus, \lstinline!$\phi$! must be unsatisfiable.
+
+We formalise the first property in Isabelle as follows.
 \begin{lstlisting}[belowskip=0pt,label={lst:bclosed_sound}]
 lemma bclosed_sound:
   assumes bclosed b shows $\exists$$\phi$ $\in$ set b. M $\not\models$ $\phi$
@@ -846,7 +892,11 @@ lemma bclosed_sound:
   &\Ist& M t$_\text{i}$ $\in$ elts (&\Ist& M t$_\text{i + 1 mod k + 1}$)
 \end{lstlisting}
   for each \lstinline!i $\in$ {0,$\,\ldots\,$,k}!.
-  Therefore, the transitive closure of the membership relation \lstinline!{(x, y). x $\in$ elts y}$^\text{+}$! contains a cycle. 
+  Therefore, the transitive closure of the membership relation
+\begin{lstlisting}
+  {(x, y). x $\in$ elts y}$^\text{+}$ 
+\end{lstlisting}
+  contains a cycle.
   This, however, is a contradiction because the membership relation of \lstinline!V! is well-founded (see \autoref{sec:semantics}) and well-foundedness is closed under transitive closure.
 \end{proof}
 
@@ -976,7 +1026,12 @@ Then, the procedure terminates without recursive calls and we immediately get \l
 If \lstinline!b! is not saturated, we can expand \lstinline!b! using a linear or a branching rule, which adds new formulae to the resulting branch(es).
 In the first case, we can thus, using \lstinline!SOME!, choose a branch \lstinline!b'! that linearly expands \lstinline!b!.
 Moreover, the domain predicate holds for \lstinline!b' @ b! since the assumptions of the modified induction hypothesis are fulfilled.
-Ultimately, we use the corresponding introduction rule for the domain predicate to obtain \lstinline!mlss_proc_branch b!.
+Ultimately, we use the corresponding introduction rule
+\begin{lstlisting}
+  $\llbracket$ $\neg$ lin_sat b; mlss_proc_branch_dom (b' @ b) $\rrbracket$
+  $\Longrightarrow$ mlss_proc_branch_dom b
+\end{lstlisting}
+for the domain predicate to obtain \lstinline!mlss_proc_branch b!.
 
 The case of a branching rule is analogous.
 \end{proof}
@@ -1052,12 +1107,16 @@ theorem mlss_proc_sound:
   shows $\neg$ mlss_proc $\phi$
 \end{lstlisting}
 
-\section{Future Work}
+\section{Conclusion and Future Work}
+By closely following a paper by \citeauthor{new_fast_tableau}~\cite{new_fast_tableau}, we developed a formalisation of a tableau calculus for a ground fragment of set theory called \MLSS{}.
+The formalisation includes an abstract description of a decision procedure that builds on the calculus.
+
+The refinement of the abstract description to an executable specification from which code can be exported is left for future work.
+This executable specification should generate certificates that can be replayed through Isabelle's inference kernel in order to facilitate the integration of the procedure into Isabelle.
+
 Challenges in obtaining an executable specification: membership cycle test unnecessary, fast branch membership test, proof reconstruction.
 Additional constructs such as finiteness and pairs.
 Optimisations for the algorithm.
-
-\section{Conclusion}
 
 \begin{acks}
   \todo[inline]{Acknowledge}

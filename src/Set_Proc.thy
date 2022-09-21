@@ -76,7 +76,6 @@ proof -
   then show ?thesis using finite_wits finite_subset by blast
 qed
 
-(* TODO: rename this *)
 definition subterms' :: "'a branch \<Rightarrow> 'a pset_term set" where
   "subterms' b \<equiv>
     subterms (last b) \<union> Var ` (wits b - wits' b)"
@@ -337,7 +336,6 @@ lemmas subterms_branch_subterms_fm_lastI =
 
 subsection \<open>\<open>wits_subterms\<close>\<close>
 
-(* TODO: consider renaming this, change into abbreviation *)
 definition wits_subterms :: "'a branch \<Rightarrow> 'a pset_term set" where
   "wits_subterms b \<equiv> Var ` wits b \<union> subterms (last b)"
 
@@ -376,7 +374,6 @@ fun is_literal :: "'a fm \<Rightarrow> bool" where
 | "is_literal (Neg (Atom _)) = True"
 | "is_literal _ = False"
 
-(* TODO: give the invariant P a proper name *)
 lemma lexpands_no_wits_if_not_literal:
   defines "P \<equiv> (\<lambda>b. \<forall>\<phi> \<in> set b. \<not> is_literal \<phi> \<longrightarrow> vars \<phi> \<inter> wits b = {})"
   assumes "lexpands b' b" "b \<noteq> []"
@@ -504,7 +501,6 @@ lemma bexpands_param_wits'_eq:
   unfolding wits'_def bexpands_param_wits_eq[OF assms] 
   by (auto simp: vars_fm_vars_branchI)
 
-(* TODO: give the invariant P a proper name *)
 lemma lemma_2_lexpands:
   defines "P \<equiv> (\<lambda>b c t. AT (Var c =\<^sub>s t) \<notin> set b \<and> AT (t =\<^sub>s Var c) \<notin> set b \<and> AT (t \<in>\<^sub>s Var c) \<notin> set b)"
   assumes "lexpands b' b" "b \<noteq> []"

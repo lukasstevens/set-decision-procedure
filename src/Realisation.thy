@@ -36,7 +36,7 @@ locale dag = digraph G for G +
   assumes acyclic: "\<nexists>c. cycle c"
 begin
 
-lemma ancestors_not_comm:
+lemma ancestors_asym:
   assumes "s \<in> ancestors G t"
   shows "t \<notin> ancestors G s"
 proof
@@ -52,7 +52,7 @@ qed
 lemma ancestors_strict_mono:
   assumes "s \<in> ancestors G t"
   shows "ancestors G s \<subset> ancestors G t"
-  using assms ancestors_mono ancestors_not_comm by blast
+  using assms ancestors_mono ancestors_asym by blast
 
 lemma card_ancestors_strict_mono:
   assumes "s \<rightarrow>\<^bsub>G\<^esub> t"

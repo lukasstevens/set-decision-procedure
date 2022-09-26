@@ -929,8 +929,8 @@ next
 qed
 
 definition I :: "'a pset_term \<Rightarrow> V" where
-  "I \<equiv> SOME f. inj_on f (Var ` wits' b)
-             \<and> (\<forall>p. card (elts (f p)) \<ge> card (Var ` wits' b \<union> subterms' b))"
+  "I \<equiv> SOME f. inj_on f (subterms b)
+             \<and> (\<forall>p. card (elts (f p)) > card (Var ` wits' b \<union> subterms' b))"
 
 lemma (in -) Ex_set_family:
   assumes "finite P"
@@ -948,18 +948,147 @@ proof -
 qed
 
 lemma
-  shows inj_on_I: "inj_on I (Var ` wits' b)"
-    and card_I: "card (elts (I p)) \<ge> card (Var ` wits' b \<union> subterms' b)"
+  shows inj_on_I: "inj_on I (subterms b)"
+    and card_I: "card (elts (I p)) > card (Var ` wits' b \<union> subterms' b)"
 proof -
-  have "\<exists>f. inj_on f (Var ` wits' b)
-    \<and> (\<forall>p. card (elts (f p)) \<ge> card (Var ` wits' b \<union> subterms' b))"
-    using Ex_set_family finite_imageI[OF finite_wits'] by blast
+  have "\<exists>f. inj_on f (subterms b)
+    \<and> (\<forall>p. card (elts (f p)) > card (Var ` wits' b \<union> subterms' b))"
+    using Ex_set_family finite_subterms_branch by (metis less_eq_Suc_le)
   from someI_ex[OF this]
-  show "inj_on I (Var ` wits' b)"
-       "card (elts (I p)) \<ge> card (Var ` wits' b \<union> subterms' b)"
+  show "inj_on I (subterms b)"
+       "card (elts (I p)) > card (Var ` wits' b \<union> subterms' b)"
     unfolding I_def by blast+
 qed
 
+definition "eq \<equiv> symcl ({(s, t). AT (s =\<^sub>s t) \<in> set b}\<^sup>=)"
+
+lemma refl_eq: "refl eq"
+  unfolding eq_def symcl_def refl_on_def by auto
+
+lemma trans_eq:
+  assumes "sat b" shows "trans eq"
+proof
+  fix s t u assume assms: "(s, t) \<in> eq" "(t, u) \<in> eq"
+  have "(s, u) \<in> eq" if "s \<noteq> t" "t \<noteq> u"
+  proof -
+    from that assms have
+      s_t: "AT (s =\<^sub>s t) \<in> set b \<or> AT (t =\<^sub>s s) \<in> set b" and
+      t_u: "AT (t =\<^sub>s u) \<in> set b \<or> AT (u =\<^sub>s t) \<in> set b"
+      unfolding eq_def symcl_def by fastforce+
+    note intros = lexpands_eq.intros(1,3)[
+        THEN lexpands.intros(6), THEN \<open>sat b\<close>[THEN satD(1), THEN lin_satD]]
+    note intros' = intros[where ?x="AT (s =\<^sub>s u)"] intros[where ?x="AT (u =\<^sub>s s)"]
+    from s_t t_u that have "AT (s =\<^sub>s u) \<in> set b \<or> AT (u =\<^sub>s s) \<in> set b"
+      by safe (simp_all add: intros')
+    then show ?thesis
+      unfolding eq_def symcl_def by auto
+  qed
+  with assms show "(s, u) \<in> eq"
+    by (cases "s \<noteq> t \<and> t \<noteq> u") (auto simp: eq_def)
+qed
+
+lemma sym_eq: "sym eq"
+  unfolding eq_def symcl_def sym_def by auto
+
+lemma equiv_eq: "sat b \<Longrightarrow> equiv UNIV eq"
+  by (rule equivI) (use refl_eq trans_eq sym_eq in safe)
+
+abbreviation "eq_class t \<equiv> eq `` {t}"
+
+function realise :: "'a pset_term \<Rightarrow> V" where
+  "realise t = vset (realise ` parents (bgraph b) t) \<squnion> vset (I ` eq_class t)"
+  by auto
+termination
+  by (relation "measure (\<lambda>t. card (ancestors (bgraph b) t))")
+     (simp_all add: dag_bgraph.card_ancestors_strict_mono)
+
+declare realise.simps[simp del]
+
+lemma parents_empty_if_wits':
+  assumes "x \<in> Var ` wits' b" shows "parents (bgraph b) x = {}"
+proof -
+  from assms obtain x' where "x = Var x'" "x' \<in> wits' b"
+    by blast
+  from lemma_2(3)[OF wf_branch this(2)] this(1) have "\<not> s \<rightarrow>\<^bsub>bgraph b\<^esub> x" for s
+    unfolding arcs_ends_def arc_to_ends_def by (auto simp: bgraph_def)
+  then show ?thesis
+    by auto
+qed
+  
+lemma eq_class_singleton_if_wits':
+  assumes "x \<in> Var ` wits' b" shows "eq_class x = {x}"
+proof -
+  from assms obtain x' where "x = Var x'" "x' \<in> wits' b"
+    by blast
+  have False if "eq_class x \<noteq> {x}"
+  proof -
+    have "x \<in> eq_class x"
+      by (simp add: eq_def symcl_def)
+    with that obtain y where "y \<in> eq_class x" "y \<noteq> x"
+      by auto
+    then have "AT (y =\<^sub>s x) \<in> set b \<or> AT (x =\<^sub>s y) \<in> set b"
+      unfolding eq_def symcl_def by auto
+    with lemma_2(1,2)[OF wf_branch \<open>x' \<in> wits' b\<close>] \<open>x = Var x'\<close> show False
+      by blast
+  qed
+  with assms show ?thesis by blast
+qed
+
+lemma realise_wits':
+  "x \<in> Var ` wits' b \<Longrightarrow> realise x = vset {I x}"
+  apply (subst realise.simps)
+  unfolding parents_empty_if_wits' eq_class_singleton_if_wits'
+  by simp
+
+lemma card_realisation_wits':
+  "x \<in> Var ` wits' b \<Longrightarrow> card (elts (realise x)) = 1"
+  by (simp add: realise_wits')
+
+lemma card_realisation_subterms':
+  "t \<in> subterms' b \<Longrightarrow> card (elts (realise t)) < card (Var ` wits' b \<union> subterms' b)"
+proof(induction t rule: realise.induct)
+  case (1 t)
+  then have "t \<in> verts (bgraph b)"
+    unfolding bgraph_def by simp
+  then have "parents (bgraph b) t \<subset> verts (bgraph b)"
+    using dag_bgraph.adj_not_same by auto
+  from psubset_card_mono[OF _ this] have "card (parents (bgraph b) t) < card (verts (bgraph b))"
+    by simp
+  then have "card (realise ` parents (bgraph b) t) < card (verts (bgraph b))"
+    using card_image_le[OF fin_digraph_bgraph.finite_parents, where ?f=realise and ?s1=t]
+    by linarith 
+  with 1 show ?case
+    apply(subst realise.simps)
+     sledgehammer
+    using P_T_partition_verts(2) by autoqed
+
+lemma
+  assumes "x \<in> Var ` wits' b" "y \<in> Var ` wits' b \<union> subterms' b"
+      and "x \<noteq> y"
+    shows "I x \<noteq> realise y"
+proof -
+  have "I x \<noteq> realise y" if "y \<in> Var ` wits' b"
+  proof -
+    note finite_Var_wits' = finite_imageI[where ?h=Var, OF finite_wits']
+    from that assms(1) have "{x, y} \<subseteq> Var ` wits' b"
+      by blast
+    with \<open>x \<noteq> y\<close> have "card (Var ` wits' b) \<ge> 2"
+      by (metis card_2_iff card_mono finite_Var_wits')
+    then have "card (Var ` wits' b \<union> subterms' b) \<ge> 2"
+      using finite_UnI[OF finite_Var_wits' finite_subterms']
+      by (metis card_mono dual_order.trans sup_ge1)
+    with assms(1) that show ?thesis
+      using card_I card_realisation_wits'
+      by (metis One_nat_def not_less_eq_eq numeral_2_eq_2)
+  qed
+  moreover have "I x \<noteq> realise y" if "y \<in> subterms' b"
+
+    then have "card (
+      find_theorems "finite (wits' _)"
+      by (metis Un_commute card_2_iff card_mono le_supI2)
+    using that assms(1,3)
+    apply(simp add: realise_wits')
+    sledgehammer
 
 sublocale realisation "bgraph b" "Var ` wits' b" "subterms' b" I
   rewrites "inj_on I (Var ` wits' b) \<equiv> True"

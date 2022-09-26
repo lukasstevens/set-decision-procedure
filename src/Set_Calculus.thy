@@ -27,6 +27,13 @@ fun tlvl_terms :: "'a pset_atom \<Rightarrow> 'a pset_term set" where
   "tlvl_terms (t1 \<in>\<^sub>s t2) = {t1, t2}"
 | "tlvl_terms (t1 =\<^sub>s t2) = {t1, t2}"
 
+lemma tlvl_intros[intro, simp]:
+  "t1 \<in> tlvl_terms (t1 \<in>\<^sub>s t2)"
+  "t2 \<in> tlvl_terms (t2 \<in>\<^sub>s t1)"
+  "t1 \<in> tlvl_terms (t1 =\<^sub>s t2)"
+  "t2 \<in> tlvl_terms (t2 =\<^sub>s t1)"
+  by auto
+  
 fun subst_tlvl :: "'a pset_term \<Rightarrow> 'a pset_term \<Rightarrow> 'a pset_atom \<Rightarrow> 'a pset_atom" where
   "subst_tlvl t1 t2 (s1 \<in>\<^sub>s s2) =
     (if s1 = t1 then t2 else s1) \<in>\<^sub>s (if s2 = t1 then t2 else s2)"

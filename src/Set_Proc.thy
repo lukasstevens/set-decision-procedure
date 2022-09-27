@@ -90,6 +90,9 @@ definition bgraph :: "'a branch \<Rightarrow> ('a pset_term, 'a pset_term \<time
         tail = fst,
         head = snd \<rparr>"
 
+lemma verts_bgraph: "verts (bgraph b) = Var ` wits' b \<union> subterms' b"
+  unfolding bgraph_def Let_def by simp
+
 lemma finite_subterms': "finite (subterms' b)"
   unfolding subterms'_def using finite_subterms_fm finite_wits
   by auto
@@ -930,7 +933,7 @@ qed
 
 definition I :: "'a pset_term \<Rightarrow> V" where
   "I \<equiv> SOME f. inj_on f (subterms b)
-             \<and> (\<forall>p. card (elts (f p)) > card (Var ` wits' b \<union> subterms' b))"
+             \<and> (\<forall>p. card (elts (f p)) > 2 * card (Var ` wits' b \<union> subterms' b))"
 
 lemma (in -) Ex_set_family:
   assumes "finite P"
@@ -949,15 +952,23 @@ qed
 
 lemma
   shows inj_on_I: "inj_on I (subterms b)"
-    and card_I: "card (elts (I p)) > card (Var ` wits' b \<union> subterms' b)"
+    and card_I: "card (elts (I p)) > 2 * card (Var ` wits' b \<union> subterms' b)"
 proof -
   have "\<exists>f. inj_on f (subterms b)
-    \<and> (\<forall>p. card (elts (f p)) > card (Var ` wits' b \<union> subterms' b))"
+    \<and> (\<forall>p. card (elts (f p)) > 2 * card (Var ` wits' b \<union> subterms' b))"
     using Ex_set_family finite_subterms_branch by (metis less_eq_Suc_le)
   from someI_ex[OF this]
   show "inj_on I (subterms b)"
-       "card (elts (I p)) > card (Var ` wits' b \<union> subterms' b)"
+       "card (elts (I p)) > 2 * card (Var ` wits' b \<union> subterms' b)"
     unfolding I_def by blast+
+qed
+
+lemma finite_elts_I: "finite (elts (I t))"
+proof -
+  from card_I have "card (elts (I t)) \<noteq> 0"
+    by (metis less_zeroE)
+  then show "finite (elts (I t))"
+    by (meson card_eq_0_iff)
 qed
 
 definition "eq \<equiv> symcl ({(s, t). AT (s =\<^sub>s t) \<in> set b}\<^sup>=)"
@@ -966,7 +977,7 @@ lemma refl_eq: "refl eq"
   unfolding eq_def symcl_def refl_on_def by auto
 
 lemma trans_eq:
-  assumes "sat b" shows "trans eq"
+  assumes "lin_sat b" shows "trans eq"
 proof
   fix s t u assume assms: "(s, t) \<in> eq" "(t, u) \<in> eq"
   have "(s, u) \<in> eq" if "s \<noteq> t" "t \<noteq> u"
@@ -976,7 +987,7 @@ proof
       t_u: "AT (t =\<^sub>s u) \<in> set b \<or> AT (u =\<^sub>s t) \<in> set b"
       unfolding eq_def symcl_def by fastforce+
     note intros = lexpands_eq.intros(1,3)[
-        THEN lexpands.intros(6), THEN \<open>sat b\<close>[THEN satD(1), THEN lin_satD]]
+        THEN lexpands.intros(6), THEN \<open>lin_sat b\<close>[THEN lin_satD]]
     note intros' = intros[where ?x="AT (s =\<^sub>s u)"] intros[where ?x="AT (u =\<^sub>s s)"]
     from s_t t_u that have "AT (s =\<^sub>s u) \<in> set b \<or> AT (u =\<^sub>s s) \<in> set b"
       by safe (simp_all add: intros')
@@ -990,7 +1001,7 @@ qed
 lemma sym_eq: "sym eq"
   unfolding eq_def symcl_def sym_def by auto
 
-lemma equiv_eq: "sat b \<Longrightarrow> equiv UNIV eq"
+lemma equiv_eq: "lin_sat b \<Longrightarrow> equiv UNIV eq"
   by (rule equivI) (use refl_eq trans_eq sym_eq in safe)
 
 abbreviation "eq_class t \<equiv> eq `` {t}"
@@ -1004,6 +1015,20 @@ termination
 
 declare realise.simps[simp del]
 
+lemma small_realisation_parents[simp, intro!]: "small (realise ` parents (bgraph b) t)"
+  using fin_digraph_bgraph.small_parents by blast
+
+lemma parents_empty_if_not_subterms:
+  assumes "t \<notin> Var ` wits' b \<union> subterms' b" shows "parents (bgraph b) t = {}"
+proof -
+  from assms verts_bgraph have "t \<notin> verts (bgraph b)"
+    by blast
+  then have "\<not> s \<rightarrow>\<^bsub>bgraph b\<^esub> t" for s
+    using fin_digraph_bgraph.adj_in_verts(2) by blast
+  then show ?thesis
+    by auto
+qed
+
 lemma parents_empty_if_wits':
   assumes "x \<in> Var ` wits' b" shows "parents (bgraph b) x = {}"
 proof -
@@ -1014,7 +1039,11 @@ proof -
   then show ?thesis
     by auto
 qed
-  
+
+lemma eq_class_subs_if_subterms': "x \<in> subterms' b \<Longrightarrow> eq_class x \<subseteq> subterms' b"
+  using in_subterms'_if_AT_eq_in_branch(1,2)[OF wf_branch] lemma_2[OF wf_branch]
+  by (fastforce simp: eq_def symcl_def)+
+
 lemma eq_class_singleton_if_wits':
   assumes "x \<in> Var ` wits' b" shows "eq_class x = {x}"
 proof -
@@ -1034,18 +1063,50 @@ proof -
   with assms show ?thesis by blast
 qed
 
+lemma eq_class_subs_if_mem_subterms:
+  "t \<in> Var ` wits' b \<union> subterms' b \<Longrightarrow> eq_class t \<subseteq> Var ` wits' b \<union> subterms' b"
+  using eq_class_singleton_if_wits' eq_class_subs_if_subterms' by blast
+
+lemma eq_class_singleton_if_not_mem_subterms:
+  "t \<notin> Var ` wits' b \<union> subterms' b \<Longrightarrow> eq_class t = {t}"
+  unfolding eq_def symcl_def
+  using in_subterms'_if_AT_eq_in_branch[OF wf_branch] by auto
+
+lemma finite_wits'_Un_subterms': "finite (Var ` wits' b \<union> subterms' b)"
+  using finite_UnI[OF finite_wits'[THEN finite_imageI] finite_subterms'] .
+
+lemma finite_eq_class: "finite (eq_class t)"
+  apply(cases "t \<in> Var ` wits' b \<union> subterms' b")
+  using eq_class_subs_if_mem_subterms finite_wits'_Un_subterms'
+  using eq_class_singleton_if_not_mem_subterms
+  by (auto intro: finite_subset)
+
 lemma realise_wits':
   "x \<in> Var ` wits' b \<Longrightarrow> realise x = vset {I x}"
   apply (subst realise.simps)
   unfolding parents_empty_if_wits' eq_class_singleton_if_wits'
   by simp
 
+lemma realise_subterms':
+  "t \<in> subterms' b \<Longrightarrow> realise t = vset (realise ` parents (bgraph b) t) \<squnion> vset (I ` eq_class t)"
+  using realise.simps by blast
+
+lemma realise_not_subterms:
+  "t \<notin> Var ` wits' b \<union> subterms' b \<Longrightarrow> realise t = vset {I t}"
+  apply(subst realise.simps)
+  using eq_class_singleton_if_not_mem_subterms parents_empty_if_not_subterms by auto
+
+lemmas realise_simps = realise_wits' realise_subterms' realise_not_subterms
+
 lemma card_realisation_wits':
   "x \<in> Var ` wits' b \<Longrightarrow> card (elts (realise x)) = 1"
   by (simp add: realise_wits')
 
+lemma small_I_image_eq_class[simp, intro]: "small (I ` eq_class t)"
+  using finite_elts_I finite_eq_class Finite_V by simp
+
 lemma card_realisation_subterms':
-  "t \<in> subterms' b \<Longrightarrow> card (elts (realise t)) < card (Var ` wits' b \<union> subterms' b)"
+  "t \<in> subterms' b \<Longrightarrow> card (elts (realise t)) < 2 * card (Var ` wits' b \<union> subterms' b)"
 proof(induction t rule: realise.induct)
   case (1 t)
   then have "t \<in> verts (bgraph b)"
@@ -1056,74 +1117,222 @@ proof(induction t rule: realise.induct)
     by simp
   then have "card (realise ` parents (bgraph b) t) < card (verts (bgraph b))"
     using card_image_le[OF fin_digraph_bgraph.finite_parents, where ?f=realise and ?s1=t]
-    by linarith 
-  with 1 show ?case
-    apply(subst realise.simps)
-     sledgehammer
-    using P_T_partition_verts(2) by autoqed
+    by linarith
+  moreover have "card (eq_class t) \<le> card (Var ` wits' b \<union> subterms' b)"
+    using 1 \<open>t \<in> verts (bgraph b)\<close> eq_class_subs_if_mem_subterms 
+    by (intro finite_wits'_Un_subterms'[THEN card_mono]) blast
+  with 1 have "card (I ` eq_class t) \<le> card (Var ` wits' b \<union> subterms' b)"
+    using card_image_le[OF finite_eq_class] order_trans by blast
+  moreover have "card (realise ` parents (bgraph b) t \<union> I ` eq_class t)
+              \<le> card (realise ` parents (bgraph b) t) + card (I ` eq_class t)"
+    using card_Un_le by blast
+  ultimately have "card (realise ` parents (bgraph b) t \<union> I ` eq_class t)
+                 < 2 * card (pset_term.Var ` wits' b \<union> subterms' b)"
+    using small_I_image_eq_class by (auto simp: bgraph_def)
+  then show ?case
+    using 1 small_I_image_eq_class
+    by (auto simp: realise_simps)
+qed
 
-lemma
-  assumes "x \<in> Var ` wits' b" "y \<in> Var ` wits' b \<union> subterms' b"
-      and "x \<noteq> y"
+lemma I_neq_realise:
+  assumes "x \<in> Var ` wits' b \<union> subterms' b" "y \<in> Var ` wits' b \<union> subterms' b"
     shows "I x \<noteq> realise y"
 proof -
   have "I x \<noteq> realise y" if "y \<in> Var ` wits' b"
   proof -
-    note finite_Var_wits' = finite_imageI[where ?h=Var, OF finite_wits']
-    from that assms(1) have "{x, y} \<subseteq> Var ` wits' b"
-      by blast
-    with \<open>x \<noteq> y\<close> have "card (Var ` wits' b) \<ge> 2"
-      by (metis card_2_iff card_mono finite_Var_wits')
-    then have "card (Var ` wits' b \<union> subterms' b) \<ge> 2"
-      using finite_UnI[OF finite_Var_wits' finite_subterms']
-      by (metis card_mono dual_order.trans sup_ge1)
-    with assms(1) that show ?thesis
-      using card_I card_realisation_wits'
-      by (metis One_nat_def not_less_eq_eq numeral_2_eq_2)
+    have "card (elts (realise y)) = 1"
+      using card_realisation_wits' that by blast
+    have "Var ` wits' b \<union> subterms' b \<noteq> {}"
+      using assms(1) by blast
+    then have "card (Var ` wits' b \<union> subterms' b) \<ge> 1"
+      using finite_wits'_Un_subterms'
+      by (metis card_eq_0_iff One_nat_def Suc_leI bot_nat_0.not_eq_extremum)
+    with card_I have "card (elts (I x)) > 1"
+      unfolding mult_2
+      by (metis card_Un_le le_antisym less_nat_zero_code less_one linorder_not_less sup_idem)
+    with card_realisation_wits' that show ?thesis
+      by force
   qed
   moreover have "I x \<noteq> realise y" if "y \<in> subterms' b"
+    using that card_I card_realisation_subterms'
+    by (metis le_antisym le_eq_less_or_eq nat_neq_iff)
+  ultimately show ?thesis
+    using assms(2) by blast
+qed
 
-    then have "card (
-      find_theorems "finite (wits' _)"
-      by (metis Un_commute card_2_iff card_mono le_supI2)
-    using that assms(1,3)
-    apply(simp add: realise_wits')
-    sledgehammer
+function height :: "'a pset_term \<Rightarrow> nat" where
+  "t \<in> Var ` wits' b \<Longrightarrow> height t = 0"
+| "t \<notin> Var ` wits' b \<Longrightarrow> \<forall>s. \<not> s \<rightarrow>\<^bsub>bgraph b\<^esub> t \<Longrightarrow> height t = 0"
+| "t \<notin> Var ` wits' b \<Longrightarrow> s \<rightarrow>\<^bsub>bgraph b\<^esub> t \<Longrightarrow> height t = Max (height ` parents (bgraph b) t) + 1"
+  by metis+
+termination
+  by (relation "measure (\<lambda>t. card (ancestors (bgraph b) t))")
+     (simp_all add: dag_bgraph.card_ancestors_strict_mono)
 
-sublocale realisation "bgraph b" "Var ` wits' b" "subterms' b" I
-  rewrites "inj_on I (Var ` wits' b) \<equiv> True"
-       and "(\<forall>x \<in> Var ` wits' b. \<forall>y \<in> Var ` wits' b \<union> subterms' b.
-               x \<noteq> y \<longrightarrow> I x \<noteq> realise y) \<equiv> True"
-       and "\<And>P. (True \<Longrightarrow> P) \<equiv> Trueprop P"
-       and "\<And>P Q. (True \<Longrightarrow> PROP P \<Longrightarrow> PROP Q) \<equiv> (PROP P \<Longrightarrow> True \<Longrightarrow> PROP Q)"
-proof -
-  let ?r = "realisation.realise (bgraph b) (pset_term.Var ` wits' b) (subterms' b) I"
+lemma height_cases':
+  obtains (P_0) "t \<in> Var ` wits' b" "height t = 0"
+    | (nP_0) "t \<notin> Var ` wits' b" "\<forall>s. \<not> s \<rightarrow>\<^bsub>bgraph b\<^esub> t" "height t = 0"
+    | (nP_Suc) s where "t \<notin> Var ` wits' b" "s \<rightarrow>\<^bsub>bgraph b\<^esub> t" "height t = height s + 1"
+proof(cases t rule: height.cases)
+  case (3 t s)
+  note Max_in[OF finite_imageI[where ?h=height, OF fin_digraph_bgraph.finite_parents]]
+  with 3 that show ?thesis
+    by (metis (no_types, lifting) empty_iff height.simps(3) image_iff mem_Collect_eq)
+qed simp_all
 
-  show real: "realisation (bgraph b) (pset_term.Var ` wits' b) (subterms' b)"
-    apply(unfold_locales)
-    using wits'_subterms'_disjnt by (fastforce simp: bgraph_def Let_def)+
-  
-  have "I x \<noteq> ?r y" if "x \<in> Var ` wits' b" "y \<in> Var ` wits' b" "x \<noteq> y" for x y
-  proof -
-    from that have "{x, y} \<subseteq> Var ` wits' b"
-      by blast
-    with \<open>x \<noteq> y\<close> realisation.finite_P_un_T[OF real]
-    have "card (Var ` wits' b \<union> subterms' b) \<ge> 2"
-      by (metis Un_commute card_2_iff card_mono le_supI2)
-    with card_I realisation.card_realisation_P[OF real that(2)] show ?thesis
-      by (metis Suc_1 not_less_eq_eq)
-  qed
-  moreover have "I x \<noteq> ?r y"
-    if "x \<in> Var ` wits' b" "y \<in> subterms' b" "x \<noteq> y" for x y
-    using card_I realisation.card_realisation_T_less_card_verts[OF real that(2)]
-    by (metis le_antisym nat_less_le)
-  ultimately have "(\<forall>x \<in> Var ` wits' b. \<forall>y \<in> Var ` wits' b \<union> subterms' b.
-                      x \<noteq> y \<longrightarrow> I x \<noteq> ?r y)"
-    by blast
-  then show "(\<forall>x \<in> Var ` wits' b. \<forall>y \<in> Var ` wits' b \<union> subterms' b.
-               x \<noteq> y \<longrightarrow> I x \<noteq> ?r y) \<equiv> True"
+lemma lemma1_1:
+  assumes "s \<in> Var ` wits' b \<union> subterms' b" "t \<in> subterms' b" "s \<rightarrow>\<^bsub>bgraph b\<^esub> t"
+  shows "height s < height t"
+proof(cases t rule: height.cases)
+  case (3 t u)
+  note Max_ge[OF finite_imageI[where ?h=height, OF fin_digraph_bgraph.finite_parents], of "height s" t]
+  with assms 3 show ?thesis
     by simp
-qed (use inj_on_I card_I in auto)
+qed (use assms(3) parents_empty_if_wits' in auto)
+
+lemma dominates_if_mem_realisation:
+  assumes "s \<in> Var ` wits' b \<union> subterms' b" "t \<in> Var ` wits' b \<union> subterms' b"
+  assumes "realise s \<in> elts (realise t)"
+  obtains s' where "s' \<rightarrow>\<^bsub>bgraph b\<^esub> t" "realise s = realise s'"
+  using assms
+proof(induction t rule: realise.induct)
+  case (1 u)
+  with I_neq_realise realise_wits' have "u \<in> subterms' b"
+    by (metis (no_types, lifting) UnE elts_of_set insertCI mem_not_sym singletonD)
+  with I_neq_realise have "realise s \<notin> I ` eq_class u"
+    using eq_class_subs_if_mem_subterms[THEN subsetD]
+    by safe (metis "1.prems"(2,3) Image_singleton_iff)+
+  with "1.prems"(4) have "realise s \<in> realise ` parents (bgraph b) u"
+    using realise_subterms'[OF \<open>u \<in> subterms' b\<close>] by auto
+  with 1 show ?case
+    by blast
+qed
+
+lemma lemma1_2':
+  assumes "t1 \<in> Var ` wits' b \<union> subterms' b" "t2 \<in> Var ` wits' b \<union> subterms' b"
+      and "realise t1 = realise t2"
+    shows "height t1 \<le> height t2"
+proof -
+  from assms(1,2) consider
+      "t1 \<in> Var ` wits' b"
+    | "t1 \<in> subterms' b" "t2 \<in> Var ` wits' b"
+    | "t1 \<in> subterms' b" "t2 \<in> subterms' b"
+    by blast
+  then show ?thesis
+  proof cases
+    case 1
+    with assms show ?thesis by auto
+  next
+    case 2
+    then have "I t2 \<notin> realise ` parents (bgraph b) t1"
+      using I_neq_realise fin_digraph_bgraph.adj_in_verts(1)
+      by (auto simp: verts_bgraph)
+    moreover have "elts (realise t1) = elts (realise t2)"
+      using assms(3) by simp
+    ultimately have "realise ` parents (bgraph b) t1 = {}"
+      using 2
+      by (simp add: realise_simps)
+         (metis (no_types, lifting) Un_iff imageI mem_Collect_eq singletonD)
+    with 2 show ?thesis
+      by (metis (no_types, lifting) Collect_empty_eq height_cases' image_is_empty le0)
+  next
+    case 3
+    then show ?thesis
+      using assms(3)
+    proof(induction "height t2" arbitrary: t1 t2 rule: less_induct)
+      case less
+      then show ?case
+      proof(cases "height t2")
+        case 0
+        with less.prems assms(2) show ?thesis
+          using wits'_subterms'_disjnt
+          apply(cases t2 rule: height_cases'; cases t1 rule: height_cases')
+                  apply (auto simp: vset_eq_0_iff[OF small_realisation_parents])
+             apply blast
+            apply blast
+          using "3"(2) apply blast
+          by (smt (verit, del_insts) UnCI dominates_if_mem_realisation elts_of_set elts_sup_iff fin_digraph_bgraph.adj_in_verts(1) imageI mem_Collect_eq realise.simps small_realisation_parents verts_bgraph)
+      next
+        case (Suc x)
+        then have "t2 \<notin> Var ` wits' b"
+          using less.prems(2) by fastforce
+        then show ?thesis
+        proof(cases t1 rule: height_cases')
+          case (nP_Suc s)
+          then have "s \<in> Var ` wits' b \<union> subterms' b"
+            using fin_digraph_bgraph.adj_in_verts(1) verts_bgraph by blast
+          from nP_Suc less.prems(1) have "realise s \<in> elts (realise t1)"
+            by (metis (no_types, lifting) elts_of_set elts_sup_iff image_subset_iff mem_Collect_eq
+                  realise.simps small_realisation_parents sup_ge1)
+          then obtain s' where s': "realise s' = realise s" "s' \<rightarrow>\<^bsub>bgraph b\<^esub> t2"
+            using dominates_if_mem_realisation \<open>s \<in> Var ` wits' b \<union> subterms' b\<close> less.prems assms(2)
+            by (metis Un_iff)
+          then have "s' \<in> Var ` wits' b \<union> subterms' b"
+            using fin_digraph_bgraph.adj_in_verts(1) verts_bgraph by blast
+
+          note lemma1_1[OF this(1) less.prems(2) \<open>s' \<rightarrow>\<^bsub>bgraph b\<^esub> t2\<close>]
+          from less(1)[OF this _ _ s'(1)[symmetric]] have "height s \<le> height s'" if "s \<in> subterms' b" "s' \<in> subterms' b"
+            using that fin_digraph_bgraph.adj_in_verts(1) nP_Suc(2) s'(2) by blast
+          with nP_Suc have ?thesis if "s \<in> subterms' b" "s' \<in> subterms' b"
+            using that \<open>height s' < height t2\<close> by linarith
+
+          moreover have "height s \<le> height s'" if "s \<in> subterms' b" "s' \<notin> subterms' b"
+          proof -
+            from that \<open>s' \<in> Var ` wits' b \<union> subterms' b\<close> have "s' \<in> Var ` wits' b"
+              by simp
+            with that show ?thesis
+            proof(cases s rule: height.cases)
+              case (3 _ u)
+              then have "u \<in> Var ` wits' b \<union> subterms' b"
+                using fin_digraph_bgraph.adj_in_verts(1) verts_bgraph by blast
+              with 3 that have "realise u \<in> elts (realise s)"
+                by (metis (no_types, lifting) elts_of_set elts_sup_iff image_subset_iff mem_Collect_eq
+                  realise.simps small_realisation_parents sup_ge1)
+              then obtain u' where "u' \<rightarrow>\<^bsub>bgraph b\<^esub> s'" "realise u' = realise u"
+                using dominates_if_mem_realisation s'(1)
+                by (metis \<open>s' \<in> Var ` wits' b \<union> subterms' b\<close> \<open>u \<in> Var ` wits' b \<union> subterms' b\<close>)
+
+              then show ?thesis
+                using \<open>realise u \<in> elts (realise s)\<close> \<open>s' \<in> Var ` wits' b\<close> assms(2) s'(1)
+                by (metis I_neq_realise \<open>s' \<in> Var ` wits' b \<union> subterms' b\<close> \<open>u \<in> pset_term.Var ` wits' b \<union> subterms' b\<close>
+                      elts_of_set realise_wits' singletonD small_empty small_insert_iff)
+              qed auto
+          qed
+          with nP_Suc have ?thesis if "s \<in> subterms' b" "s' \<notin> subterms' b"
+            using that \<open>height s' < height t2\<close> by linarith
+          ultimately show ?thesis
+            using nP_Suc Suc \<open>s \<in> Var ` wits' b \<union> subterms' b\<close> by auto
+        qed auto
+      qed
+    qed
+  qed
+qed
+
+lemma lemma1_2:
+  assumes "t1 \<in> Var ` wits' b \<union> subterms' b" "t2 \<in> Var ` wits' b \<union> subterms' b"
+      and "realise t1 = realise t2"
+  shows "height t1 = height t2"
+  using assms lemma1_2' le_antisym unfolding inj_on_def by metis
+
+lemma lemma1_3:
+  assumes "s \<in> Var ` wits' b \<union> subterms' b" "t \<in> Var ` wits' b \<union> subterms' b"
+      and "realise s \<in> elts (realise t)"
+  shows "height s < height t"
+proof -
+  from assms dominates_if_mem_realisation obtain s' where
+    s': "realise s' = realise s" "s' \<rightarrow>\<^bsub>bgraph b\<^esub> t" by metis
+  then have "s' \<in> Var ` wits' b \<union> subterms' b"
+    using fin_digraph_bgraph.adj_in_verts verts_bgraph by blast
+  from assms have "t \<in> subterms' b"
+    using dominates_if_mem_realisation parents_empty_if_wits'
+    by (metis (no_types, lifting) Collect_empty_eq Un_iff)
+  with lemma1_1[OF \<open>s' \<in> Var ` wits' b \<union> subterms' b\<close>] assms s' have "height s' < height t"
+    by auto
+  moreover from lemma1_2[OF \<open>s' \<in> Var ` wits' b \<union> subterms' b\<close> _ s'(1)] have "height s' = height s"
+    using assms by blast
+  ultimately show ?thesis
+    by linarith
+qed
 
 lemma AT_mem_branch_wits_subtermsD:
   assumes "AT (s \<in>\<^sub>s t) \<in> set b"
@@ -1159,7 +1368,7 @@ proof -
   from assms have "s \<rightarrow>\<^bsub>bgraph b\<^esub> t"
     unfolding arcs_ends_def arc_to_ends_def by (simp add: bgraph_def)
   ultimately show ?thesis
-    by auto
+    by (auto simp: realise_simps)
 qed
 
 lemma realisation_if_AT_eq:
@@ -1187,17 +1396,25 @@ proof -
     case subterms
     have "False" if "realise s \<noteq> realise t"
     proof -
-      from that have "elts (realise s) \<noteq> elts (realise t)"
-        by blast
-      from that obtain a s' t' where
-        a: "a \<in> elts (realise s')" "a \<notin> elts (realise t')"
+      from assms(2) have "s \<in> eq_class t"
+        unfolding eq_def symcl_def by auto
+      then have "eq_class s = eq_class t"
+        using equiv_eq[OF assms(1)] by (simp add: equiv_class_eq_iff)
+      then have "I ` eq_class s = I ` eq_class t"
+        by simp
+      moreover have "elts (realise s) \<noteq> elts (realise t)"
+        using that by blast
+      ultimately obtain a s' t' where
+        a: "a \<in> realise ` parents (bgraph b) s'"
+           "a \<notin> realise ` parents (bgraph b) t'"
+           "a \<notin> I ` eq_class t'"
         and s'_t': "s' = s \<and> t' = t \<or> s' = t \<and> t' = s"
-        by blast
-      with subterms have "s' \<in> subterms' b"
+        by (simp add: subterms[THEN realise_simps(2)]) blast
+      with subterms have "s' \<in> subterms' b" "t' \<in> subterms' b"
         by auto
-      then obtain u where u: "a = realise u" "u \<rightarrow>\<^bsub>bgraph b\<^esub> s'"
-        using subterms dominates_if_mem_realisation a small_realisation_parents
-        by auto
+      with a obtain u where u: "a = realise u" "u \<rightarrow>\<^bsub>bgraph b\<^esub> s'"
+        using subterms dominates_if_mem_realisation small_realisation_parents
+        by (auto simp: realise_simps)
       then have "u \<noteq> s'"
         using dag_bgraph.adj_not_same by blast
       from u have "AT (u \<in>\<^sub>s s') \<in> set b"
@@ -1208,8 +1425,8 @@ proof -
         by (auto split: if_splits)
       from realisation_if_AT_mem[OF this] \<open>a = realise u\<close> have "a \<in> elts (realise t')"
         by blast
-      with \<open>a \<notin> elts (realise t')\<close> show False
-        by blast
+      with a show False
+        unfolding realise_simps(2)[OF \<open>t' \<in> subterms' b\<close>] by simp
     qed
     then show ?thesis by blast
   qed
@@ -1236,22 +1453,28 @@ proof -
   proof cases
     case t1_param'
     then have "I t1 \<in> elts (realise t1)"
-      by simp
+      by (simp add: realise_simps)
     moreover from bopen assms(2) have "t1 \<noteq> t2"
       using neqSelf by blast
     then have "I t1 \<notin> elts (realise t2)"
       apply(cases t2 rule: realise.cases)
-      using t1_param' inj_on_I I_not_in_realisation by (auto simp: inj_on_contraD)
+      using t1_param' inj_on_I I_not_in_realisation
+      by (metis UnE \<open>t1 \<in> wits_subterms b\<close> \<open>t2 \<in> wits_subterms b\<close> elts_of_set inj_on_contraD
+          realise_wits' singletonD small_empty small_insert_iff subterms_branch_eq_if_wf_branch
+          wf_branch wits_subterms_eq_subterms')
     ultimately show ?thesis by auto
   next
     case t2_param'
     then have "I t2 \<in> elts (realise t2)"
-      by simp
+      by (simp add: realise_simps)
     moreover from bopen assms(2) have "t1 \<noteq> t2"
       using neqSelf by blast
     then have "I t2 \<notin> elts (realise t1)"
       apply(cases t1 rule: realise.cases)
-      using t2_param' inj_on_I I_not_in_realisation by (auto simp: inj_on_contraD)
+      using t2_param' inj_on_I I_not_in_realisation
+      by (metis UnE \<open>t1 \<in> wits_subterms b\<close> \<open>t2 \<in> wits_subterms b\<close> elts_of_set inj_on_contraD
+          realise_wits' singletonD small_empty small_insert_iff subterms_branch_eq_if_wf_branch
+          wf_branch wits_subterms_eq_subterms')
     ultimately show ?thesis by auto
   next
     case subterms
@@ -1364,7 +1587,9 @@ proof -
         then have "s1 \<in> subterms' b" "s2 \<in> subterms' b"
           using \<open>realise s1 = realise s2\<close> inj_on_contraD[OF inj_on_I \<open>s1 \<noteq> s2\<close>]
           using in_subterms'_if_AF_eq_in_branch[OF wf_branch \<open>AF (s2 =\<^sub>s s1) \<in> set b\<close>]
-          using I_not_in_realisation by auto blast+
+          using I_not_in_realisation
+          by (metis Un_iff elts_0 elts_vinsert empty_iff insert_iff realise_wits' set_of_elts
+                subterms_branch_eq_if_wf_branch wf_branch wits_subterms_eq_subterms')+
         with \<open>realise s1 = realise s2\<close> have "(s2, s1) \<in> \<Delta>"
           unfolding \<Delta>_def using \<open>AF (s2 =\<^sub>s s1) \<in> set b\<close> by auto
         moreover have "?h (s2, s1) < ?h (t1', t2')"
@@ -1397,7 +1622,9 @@ proof -
         then have "s1 \<in> subterms' b" "s2 \<in> subterms' b"
           using \<open>realise s1 = realise s2\<close> inj_on_contraD[OF inj_on_I \<open>s1 \<noteq> s2\<close>]
           using in_subterms'_if_AF_eq_in_branch[OF wf_branch \<open>AF (s1 =\<^sub>s s2) \<in> set b\<close>]
-          using I_not_in_realisation by auto blast+
+          using I_not_in_realisation
+          by (metis Un_iff elts_0 elts_vinsert insertI1 realise_wits' set_of_elts singletonD
+                subterms_branch_eq_if_wf_branch wf_branch wits_subterms_eq_subterms')+
         with \<open>realise s1 = realise s2\<close> have "(s1, s2) \<in> \<Delta>"
           unfolding \<Delta>_def using \<open>AF (s1 =\<^sub>s s2) \<in> set b\<close> by auto
         moreover have "?h (s1, s2) < ?h (t1', t2')"
@@ -1446,9 +1673,10 @@ proof -
   moreover have "\<emptyset> \<notin> Var ` wits' b"
     using wits'_def wits_def by blast
   then have "\<emptyset> \<in> subterms' b \<or> \<emptyset> \<notin> verts (bgraph b)"
-    by (simp add: P_T_partition_verts(2))
+    by (simp add: verts_bgraph)
   ultimately show "realise \<emptyset> = 0"
-    by (auto simp: P_T_partition_verts(2))
+    sledgehammer
+    by (auto simp: verts_bgraph realise_simps)
 qed
 
 lemma realisation_Union:

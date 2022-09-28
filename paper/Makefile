@@ -3,11 +3,11 @@ OUT  := build
 
 .PHONY: pdf
 pdf:
-	latexmk -bibtex -interaction=nonstopmode -outdir=$(OUT) -pdfxelatex -halt-on-error $(FILE)
+	latexmk -bibtex -interaction=nonstopmode -outdir=$(OUT) -pdflatex -halt-on-error $(FILE)
 
 .PHONY: watch
 watch:
-	latexmk -bibtex -interaction=nonstopmode -outdir=$(OUT) -pdfxelatex -pvc -halt-on-error $(FILE)
+	latexmk -bibtex -interaction=nonstopmode -outdir=$(OUT) -pdflatex -pvc -halt-on-error $(FILE)
 
 .PHONY: clean
 clean:

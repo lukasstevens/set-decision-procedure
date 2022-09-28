@@ -1,4 +1,9 @@
-\documentclass[sigplan,10pt,anonymous,review]{acmart}
+\documentclass[
+  sigplan,
+  10pt,
+  %anonymous,
+  %review,
+  ]{acmart}
 \settopmatter{printfolios=true,printccs=false,printacmref=false}
 
 \usepackage[british]{babel}
@@ -16,7 +21,6 @@
 
 \usepackage{tikz}
 \usepackage{pgfplots}
-\pgfplotsset{compat=1.16}
 
 \usepackage{enumitem}
 
@@ -65,12 +69,17 @@
 \hyphenation{Isa-belle}
 \hyphenation{tab-leau}
 
-% % LuaLatex on Arxiv: https://tex.stackexchange.com/questions/372154/lualatex-how-to-produce-pdf-acceptable-by-arxiv 
-% \hypersetup{%
-%   pdfcreator = {},
-%   pdfproducer = {}
-% }
-% \pdfvariable suppressoptionalinfo \numexpr 1+2+4+8+16+32+64+128+256+512 \relax
+% For arXiv: LuaLatex on Arxiv: https://tex.stackexchange.com/questions/372154/lualatex-how-to-produce-pdf-acceptable-by-arxiv 
+%\hypersetup{%
+%  pdfcreator = {},
+%  pdfproducer = {}
+%}
+%\pdfvariable suppressoptionalinfo \numexpr 1+2+4+8+16+32+64+128+256+512 \relax
+
+% For arXiv: Remove copyright information
+% \setcopyright{none}
+% \renewcommand\footnotetextcopyrightpermission[1]{}
+
 
 \usepackage{todonotes}
 
@@ -83,8 +92,8 @@
 
 \newlength{\trianglewidth}
 \settowidth{\trianglewidth}{\(\triangleleft\)}
-\newcommand{\lefttrianglebar}{\mathrel{\tikz[baseline]{\draw (1ex, 0.75ex) -- (0, 1.25ex) -- (0, 0.25ex) -- cycle; \draw (0, 0.75ex) -- (1ex, 0.75ex);}}}
-\newcommand{\lefttriangle}{\mathrel{\tikz[baseline]{\draw (1ex, 0.75ex) -- (0, 1.25ex) -- (0, 0.25ex) -- cycle;}}}
+\newcommand{\lefttrianglebar}{\mathrel{\includegraphics{./symbols/lefttrianglebar.pdf}}}
+\newcommand{\lefttriangle}{\mathrel{\includegraphics{./symbols/lefttriangle.pdf}}}
 
 \newcommand{\lexpands}[2]{#1 $\lefttriangle$ #2}
 \newcommand{\fexpands}[2]{#1 $\lefttrianglebar$ #2}
@@ -110,6 +119,9 @@
 \newcommand{\fmAtom}{\textbf{A}}
 
 \begin{document}
+
+% For arXiv: Remove conference/author in the header
+% \pagestyle{plain}
 
 \setcounter{tocdepth}{1}
 
@@ -181,7 +193,7 @@ In Lean, there is a verified tableau calculus for basic modal logic~\cite{modal_
 In Coq, there is a formalisation of a tableau calculus for ecumenical logic~\cite{ecumenical_logic}; it is, however, missing a completeness proof.
 Concerning Isabelle/HOL, there is formalisation of a sound and complete tableau calculus for hybrid logic~\cite{hybrid_logic} available in the \textit{Archive of Formal Proofs}~\cite{hybrid_logic_afp}.
 The termination proof is part of ongoing work~\cite{hybrid_logic_workshop}.
-% Formalisation de la logique temporelle dans le coq.
+% TODO: Formalisation de la logique temporelle dans le coq.
 
 \subsection{Notation}
 Isabelle/HOL~\cite{isabelle} conforms to everyday mathematical notation for the most part.
@@ -1117,7 +1129,7 @@ This executable specification should generate certificates that can be replayed 
 %Optimisations for the algorithm.
 
 \begin{acks}
-  \todo[inline]{Acknowledge}
+  The author thanks Kevin Kappelmann for his comments on a draft version of the paper.
 \end{acks}
 
 \bibliographystyle{ACM-Reference-Format}

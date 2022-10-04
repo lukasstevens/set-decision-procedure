@@ -8,9 +8,11 @@ abbreviation parents :: "('a,'b) pre_digraph \<Rightarrow> 'a \<Rightarrow> 'a s
 abbreviation ancestors :: "('a,'b) pre_digraph \<Rightarrow> 'a \<Rightarrow> 'a set"
   where "ancestors G s \<equiv> {u. u \<rightarrow>\<^sup>+\<^bsub>G\<^esub> s}"
 
+lemma (in fin_digraph) parents_subs_verts: "parents G s \<subseteq> verts G"
+  using reachable_in_verts by blast
+
 lemma (in fin_digraph) finite_parents[intro]: "finite (parents G s)"
-  using reachable_in_verts
-  by (auto intro: rev_finite_subset[where ?A="parents G s", OF finite_verts])
+  using finite_subset[OF parents_subs_verts finite_verts] .
 
 lemma (in fin_digraph) small_parents[intro]: "small (parents G s)"
   using finite_imp_small finite_parents by blast

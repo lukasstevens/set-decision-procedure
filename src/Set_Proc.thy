@@ -1099,35 +1099,35 @@ lemma realisation_if_AF_eq:
 proof -
   note AF_eq_branch_wits_subtermsD[OF assms(2)]
   then consider
-    (t1_param') c where "t1 = Var c" "c \<in> wits' b" |
-    (t2_param') c where "t2 = Var c" "c \<in> wits' b" "t1 \<in> Var ` wits' b \<union> subterms' b" |
+    (wits'_t1) c where "t1 = Var c" "c \<in> wits' b" |
+    (wits'_t2) c where "t2 = Var c" "c \<in> wits' b" "t1 \<in> Var ` wits' b \<union> subterms' b" |
     (subterms) "t1 \<in> subterms' b" "t2 \<in> subterms' b"
     by (metis Un_iff image_iff wits_subterms_eq_subterms')
   then show ?thesis
   proof cases
-    case t1_param'
+    case wits'_t1
     then have "I t1 \<in> elts (realise t1)"
       by simp
     moreover from bopen assms(2) have "t1 \<noteq> t2"
       using neqSelf by blast
     then have "I t1 \<notin> elts (realise t2)"
       apply(cases t2 rule: realise.cases)
-      using t1_param' inj_on_I I_not_in_realisation by (auto simp: inj_on_contraD)
+      using wits'_t1 inj_on_I I_not_in_realisation by (auto simp: inj_on_contraD)
     ultimately show ?thesis by auto
   next
-    case t2_param'
+    case wits'_t2
     then have "I t2 \<in> elts (realise t2)"
       by simp
     moreover from bopen assms(2) have "t1 \<noteq> t2"
       using neqSelf by blast
     then have "I t2 \<notin> elts (realise t1)"
       apply(cases t1 rule: realise.cases)
-      using t2_param' inj_on_I I_not_in_realisation by (auto simp: inj_on_contraD)
+      using wits'_t2 inj_on_I I_not_in_realisation by (auto simp: inj_on_contraD)
     ultimately show ?thesis by auto
   next
     case subterms
-    define \<Delta> where "\<Delta> \<equiv> {(\<tau>\<^sub>1, \<tau>\<^sub>2) \<in> subterms' b \<times> subterms' b.
-                            AF (\<tau>\<^sub>1 =\<^sub>s \<tau>\<^sub>2) \<in> set b \<and> realise \<tau>\<^sub>1 = realise \<tau>\<^sub>2}"
+    define \<Delta> where "\<Delta> \<equiv> {(t1, t2) \<in> subterms' b \<times> subterms' b.
+                            AF (t1 =\<^sub>s t2) \<in> set b \<and> realise t1 = realise t2}"
     have "finite \<Delta>"
     proof -
       have "\<Delta> \<subseteq> subterms' b \<times> subterms' b"
@@ -1136,7 +1136,7 @@ proof -
       ultimately show ?thesis
         using finite_subset by blast
     qed
-    let ?h = "\<lambda>(\<tau>\<^sub>1, \<tau>\<^sub>2). min (height \<tau>\<^sub>1) (height \<tau>\<^sub>2)"
+    let ?h = "\<lambda>(t1, t2). min (height t1) (height t2)"
     have False if "\<Delta> \<noteq> {}"
     proof -
       obtain t1 t2 where t1_t2: "(t1, t2) = arg_min_on ?h \<Delta>"
@@ -1212,7 +1212,7 @@ proof -
  
       from finite_vars_branch infinite_vars obtain x where "x \<notin> vars b"
         using ex_new_if_finite by blast
-      from bexpands_param.intros[OF t1'_t2'(3,1,2) _ _ this] \<open>sat b\<close>[unfolded sat_def] consider
+      from bexpands_param.intros[OF t1'_t2'(3,1,2) _ _ this] \<open>sat b\<close>[THEN satD(2)] consider
         s1 where "AT (s1 \<in>\<^sub>s t1') \<in> set b" "AF (s1 \<in>\<^sub>s t2') \<in> set b" |
         s2 where "AF (s2 \<in>\<^sub>s t1') \<in> set b" "AT (s2 \<in>\<^sub>s t2') \<in> set b"
         using bexpands.intros(2-) by metis 
@@ -1227,9 +1227,9 @@ proof -
           by (metis AF_eq_branch_wits_subtermsD(2) wits_subterms_eq_subterms')
         then have "AT (s2 \<in>\<^sub>s t2') \<in> set b"
           unfolding bgraph_def Let_def by auto
-        with \<open>AF (s1 \<in>\<^sub>s t2') \<in> set b\<close> \<open>sat b\<close>[unfolded sat_def]
+        with \<open>AF (s1 \<in>\<^sub>s t2') \<in> set b\<close> \<open>sat b\<close>[THEN satD(1), THEN lin_satD]
         have "AF (s2 =\<^sub>s s1) \<in> set b"
-          using lexpands_eq.intros(5)[THEN lexpands.intros(6)] lin_satD by fastforce
+          using lexpands_eq.intros(5)[THEN lexpands.intros(6)] by fastforce
         then have "s1 \<noteq> s2"
           using neqSelf bopen by blast           
         then have "s1 \<in> subterms' b" "s2 \<in> subterms' b"

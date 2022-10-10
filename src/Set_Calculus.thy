@@ -15,7 +15,7 @@ fun member_cycle :: "'a pset_atom list \<Rightarrow> bool" where
 
 inductive bclosed :: "'a branch \<Rightarrow> bool" where
   contr: "\<lbrakk> \<phi> \<in> set b; Neg \<phi> \<in> set b \<rbrakk> \<Longrightarrow> bclosed b"
-| memEmpty: "AT (t \<in>\<^sub>s \<emptyset>) \<in> set b \<Longrightarrow> bclosed b"
+| memEmpty: "AT (t \<in>\<^sub>s (\<emptyset> n)) \<in> set b \<Longrightarrow> bclosed b"
 | neqSelf: "AF (t =\<^sub>s t) \<in> set b \<Longrightarrow> bclosed b"
 | memberCycle: "\<lbrakk> member_cycle cs; set cs \<subseteq> Atoms (set b) \<rbrakk> \<Longrightarrow> bclosed b"
 
@@ -138,7 +138,7 @@ lemma lexpands_induct[consumes 1]:
     (\<And>p q b. Or p q \<in> set b \<Longrightarrow> Neg q \<in> set b \<Longrightarrow> P [p] b) \<Longrightarrow>
     (\<And>p q b. Neg (And p q) \<in> set b \<Longrightarrow> p \<in> set b \<Longrightarrow> P [Neg q] b) \<Longrightarrow>
     (\<And>p q b. Neg (And p q) \<in> set b \<Longrightarrow> q \<in> set b \<Longrightarrow> P [Neg p] b) \<Longrightarrow>
-    (\<And>p q b. Neg (Neg p) \<in> set b \<Longrightarrow> P [p] b) \<Longrightarrow>
+    (\<And>p b. Neg (Neg p) \<in> set b \<Longrightarrow> P [p] b) \<Longrightarrow>
     (\<And>s t1 t2 b. AF (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set b \<Longrightarrow> P [AF (s \<in>\<^sub>s t1), AF (s \<in>\<^sub>s t2)] b) \<Longrightarrow>
     (\<And>s t1 b t2. AT (s \<in>\<^sub>s t1) \<in> set b \<Longrightarrow> t1 \<squnion>\<^sub>s t2 \<in> subterms (last b) \<Longrightarrow> P [AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2)] b) \<Longrightarrow>
     (\<And>s t2 b t1. AT (s \<in>\<^sub>s t2) \<in> set b \<Longrightarrow> t1 \<squnion>\<^sub>s t2 \<in> subterms (last b) \<Longrightarrow> P [AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2)] b) \<Longrightarrow>
@@ -201,7 +201,7 @@ inductive bexpands_param ::
   "\<lbrakk> AF (t1 =\<^sub>s t2) \<in> set b; t1 \<in> subterms (last b); t2 \<in> subterms (last b);
      \<nexists>x. AT (x \<in>\<^sub>s t1) \<in> set b \<and> AF (x \<in>\<^sub>s t2) \<in> set b;
      \<nexists>x. AT (x \<in>\<^sub>s t2) \<in> set b \<and> AF (x \<in>\<^sub>s t1) \<in> set b;
-     x \<notin> vars b \<rbrakk>
+     x \<notin> vars b; \<not> urelem (last b) t1; \<not> urelem (last b) t2 \<rbrakk>
     \<Longrightarrow> bexpands_param t1 t2 x {[AT (Var x \<in>\<^sub>s t1), AF (Var x \<in>\<^sub>s t2)],
                                [AT (Var x \<in>\<^sub>s t2), AF (Var x \<in>\<^sub>s t1)]} b"
 

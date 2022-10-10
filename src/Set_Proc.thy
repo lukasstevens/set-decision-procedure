@@ -211,7 +211,7 @@ lemma Var_mem_subterms_branch_and_not_in_wits:
 lemma subterms_branch_cases:
   assumes "t \<in> subterms b" "t \<notin> Var ` wits b"
   obtains
-    (Empty) "t = \<emptyset>"
+    (Empty) n where "t = (\<emptyset> n)"
   | (Union) t1 t2 where "t = t1 \<squnion>\<^sub>s t2"
   | (Inter) t1 t2 where "t = t1 \<sqinter>\<^sub>s t2"
   | (Diff) t1 t2 where "t = t1 -\<^sub>s t2"
@@ -225,7 +225,7 @@ proof(cases t)
 qed (use assms that in auto)
 
 lemma no_new_subterms_casesI[case_names Empty Union Inter Diff Single]:
-  assumes "\<emptyset> \<in> subterms b \<Longrightarrow> \<emptyset> \<in> subterms (last b)"
+  assumes "\<And>n. (\<emptyset> n) \<in> subterms b \<Longrightarrow> (\<emptyset> n) \<in> subterms (last b)"
   assumes "\<And>t1 t2. t1 \<squnion>\<^sub>s t2 \<in> subterms b \<Longrightarrow> t1 \<squnion>\<^sub>s t2 \<in> subterms (last b)"
   assumes "\<And>t1 t2. t1 \<sqinter>\<^sub>s t2 \<in> subterms b \<Longrightarrow> t1 \<sqinter>\<^sub>s t2 \<in> subterms (last b)"
   assumes "\<And>t1 t2. t1 -\<^sub>s t2 \<in> subterms b \<Longrightarrow> t1 -\<^sub>s t2 \<in> subterms (last b)"
@@ -239,7 +239,7 @@ qed
 
 lemma no_new_subtermsD:
   assumes "no_new_subterms b"
-  shows "\<emptyset> \<in> subterms b \<Longrightarrow> \<emptyset> \<in> subterms (last b)"
+  shows "\<And>n. (\<emptyset> n) \<in> subterms b \<Longrightarrow> (\<emptyset> n) \<in> subterms (last b)"
         "\<And>t1 t2. t1 \<squnion>\<^sub>s t2 \<in> subterms b \<Longrightarrow> t1 \<squnion>\<^sub>s t2 \<in> subterms (last b)"
         "\<And>t1 t2. t1 \<sqinter>\<^sub>s t2 \<in> subterms b \<Longrightarrow> t1 \<sqinter>\<^sub>s t2 \<in> subterms (last b)"
         "\<And>t1 t2. t1 -\<^sub>s t2 \<in> subterms b \<Longrightarrow> t1 -\<^sub>s t2 \<in> subterms (last b)"
@@ -769,8 +769,64 @@ proof -
     by safe
 qed
 
+subsection \<open>Urelements\<close>
+
+lemma urelemD:
+  "urelem (And p q) x \<Longrightarrow> urelem p x"
+  "urelem (And p q) x \<Longrightarrow> urelem q x"
+  "urelem (Or p q) x \<Longrightarrow> urelem p x"
+  "urelem (Or p q) x \<Longrightarrow> urelem q x"
+  "urelem (Neg p) x \<Longrightarrow> urelem p x"
+  unfolding urelem_def types_pset_fm_def
+  by (meson fm.set_intros)+
+
+lemma urelemI:
+  "urelem p x \<Longrightarrow> urelem (Neg p) x"
+  unfolding urelem_def types_pset_fm_def
+  by simp
+
+lemma
+  assumes "lexpands b' b" "\<phi> \<in> set b'"
+  assumes "\<forall>\<phi> \<in> set b. urelem \<phi> x"
+  shows "urelem \<phi> x"
+  using assms
+proof(induction rule: lexpands.induct)
+  case (1 b' b)
+  then show ?case
+    apply(induction rule: lexpands_fm.induct)
+    apply(force dest: urelemD intro!: urelemI)+
+    done 
+next
+  case (2 b' b)
+  then show ?case
+    apply(induction rule: lexpands_un.induct)
+
+next
+  case (3 b' b)
+  then show ?case sorry
+next
+  case (4 b' b)
+  then show ?case sorry
+next
+  case (5 b' b)
+  then show ?case sorry
+next
+  case (6 b' b)
+  then show ?case sorry
+qed
 
 subsection \<open>Realization of an Open Branch\<close>
+
+(*
+lemma
+  assumes "wf_branch b" "urelem (last b) x" "AT (c \<in>\<^sub>s x) \<in> set b"
+    shows "c \<in> Var ` wits b"
+proof(rule ccontr)
+  assume "c \<notin> Var ` wits b"
+  with no_new_subterms_if_wf_branch[OF \<open>wf_branch b\<close>] have "c \<in> subterms (last b)"
+    using AT_mem_subterms_branchD(1)[OF assms(3)] no_new_subterms_def by blast
+  with assms have " *)
+  
 
 definition "empty_vars b \<equiv> {x. AT (Var x =\<^sub>s \<emptyset>) \<in> set b \<or> AT (\<emptyset> =\<^sub>s Var x) \<in> set b}"
 definition "base_vars b \<equiv> {x \<in> vars b. \<nexists>t. AT (t \<in>\<^sub>s Var x) \<in> set b}"

@@ -771,6 +771,7 @@ qed
 
 subsection \<open>Urelements\<close>
 
+(*
 lemma urelemD:
   "urelem (And p q) x \<Longrightarrow> urelem p x"
   "urelem (And p q) x \<Longrightarrow> urelem q x"
@@ -784,6 +785,7 @@ lemma urelemI:
   "urelem p x \<Longrightarrow> urelem (Neg p) x"
   unfolding urelem_def types_pset_fm_def
   by simp
+*)
 
 term All
 (*
@@ -835,37 +837,45 @@ proof(rule ccontr)
     using AT_mem_subterms_branchD(1)[OF assms(3)] no_new_subterms_def by blast
   with assms have " *)
   
+definition "urelems b \<equiv> {x. urelem (last b) x}"
 
-definition "empty_vars b \<equiv> {x. AT (Var x =\<^sub>s \<emptyset>) \<in> set b \<or> AT (\<emptyset> =\<^sub>s Var x) \<in> set b}"
-definition "base_vars b \<equiv> {x \<in> vars b. \<nexists>t. AT (t \<in>\<^sub>s Var x) \<in> set b}"
-
-lemma finite_empty_vars: "finite (empty_vars b)"
+lemma finite_urelems: "finite (urelems b)"
 proof -
-  have "empty_vars b \<subseteq> vars b"
-    unfolding empty_vars_def by (auto simp: vars_fm_vars_branchI)
-  from finite_subset[OF this finite_vars_branch] show ?thesis .
+  have "urelems b \<subseteq> subterms (last b)"
+    unfolding urelems_def urelem_def by blast
+  with finite_subset finite_subterms_fm show ?thesis
+    by blast
 qed
 
+lemma urelems_subs_subterms:
+  "urelems b \<subseteq> subterms (last b)"
+  unfolding urelems_def urelem_def by blast
+
+lemma urelems_subs_vars: "urelems b \<subseteq> Var ` vars b"
+  sorry
+
+definition "base_vars b \<equiv> Var ` wits' b \<union> urelems b"
+
 lemma finite_base_vars: "finite (base_vars b)"
-  using finite_vars_branch [[simproc add: finite_Collect]]
-  unfolding base_vars_def by auto
+  unfolding base_vars_def finite_Un
+  using finite_wits'[THEN finite_imageI] finite_urelems by blast
 
 lemma wits'_subs_base_vars:
-  assumes "wf_branch b"
-  shows "wits' b \<subseteq> base_vars b"
-  using lemma_2[OF assms]
-  by (auto simp: base_vars_def dest: wits'D(1)[unfolded wits_def])
+  shows "Var ` wits' b \<subseteq> base_vars b"
+  unfolding base_vars_def
+  by blast
 
-lemma base_vars_subs_vars: "base_vars b \<subseteq> vars b"
-  unfolding base_vars_def by simp
+lemma base_vars_subs_vars: "base_vars b \<subseteq> Var ` vars b"
+  unfolding base_vars_def wits'_def wits_def
+  using urelems_subs_vars by blast
 
 definition subterms' :: "'a branch \<Rightarrow> 'a pset_term set" where
-  "subterms' b \<equiv> subterms b - Var ` base_vars b"
+  "subterms' b \<equiv> subterms b - base_vars b"
 
 definition bgraph :: "'a branch \<Rightarrow> ('a pset_term, 'a pset_term \<times> 'a pset_term) pre_digraph" where
   "bgraph b \<equiv>
     let
-      vs = Var ` base_vars b \<union> subterms' b
+      vs = base_vars b \<union> subterms' b
     in
       \<lparr> verts = vs,
         arcs = {(s, t). AT (s \<in>\<^sub>s t) \<in> set b},
@@ -885,15 +895,15 @@ lemma subterms'D:
 *)
 
 lemma base_vars_Un_subterms'_eq_subterms:
-  "Var ` base_vars b \<union> subterms' b = subterms b"
+  "base_vars b \<union> subterms' b = subterms b"
   unfolding subterms'_def
   using base_vars_subs_vars vars_branch_subs_subterms_branch by fastforce
 
-lemma finite_base_vars_Un_subterms': "finite (Var ` base_vars b \<union> subterms' b)"
+lemma finite_base_vars_Un_subterms': "finite (base_vars b \<union> subterms' b)"
   unfolding base_vars_Un_subterms'_eq_subterms
   using finite_subterms_branch .
 
-lemma verts_bgraph: "verts (bgraph b) = Var ` base_vars b \<union> subterms' b"
+lemma verts_bgraph: "verts (bgraph b) = base_vars b \<union> subterms' b"
   unfolding bgraph_def Let_def by simp
 
 lemma verts_bgraph_eq_subterms: "verts (bgraph b) = subterms b"
@@ -903,12 +913,12 @@ lemma finite_subterms': "finite (subterms' b)"
   unfolding subterms'_def using finite_base_vars finite_subterms_branch
   by auto
 
-lemma base_vars_subterms'_disjnt: "Var ` base_vars b \<inter> subterms' b = {}"
+lemma base_vars_subterms'_disjnt: "base_vars b \<inter> subterms' b = {}"
   unfolding subterms'_def by fastforce
 
 lemma wits_subterms_eq_base_vars_Un_subterms':
   assumes "wf_branch b"
-  shows "wits_subterms b = Var ` base_vars b \<union> subterms' b"
+  shows "wits_subterms b = base_vars b \<union> subterms' b"
   unfolding subterms_branch_eq_if_wf_branch[OF assms, symmetric] subterms'_def
   using base_vars_subs_vars vars_branch_subs_subterms_branch by fastforce
 
@@ -916,8 +926,8 @@ lemma wits_subterms_eq_base_vars_Un_subterms':
 lemma in_subterms'_if_AT_mem_in_branch:
   assumes "wf_branch b"
   assumes "AT (s \<in>\<^sub>s t) \<in> set b"
-  shows "s \<in> Var ` base_vars b \<union> subterms' b"
-    and "t \<in> Var ` base_vars b \<union> subterms' b"
+  shows "s \<in> base_vars b \<union> subterms' b"
+    and "t \<in> base_vars b \<union> subterms' b"
   using assms
   using wits_subterms_eq_base_vars_Un_subterms' AT_mem_subterms_branchD subterms_branch_eq_if_wf_branch
   by blast+
@@ -925,8 +935,8 @@ lemma in_subterms'_if_AT_mem_in_branch:
 lemma in_subterms'_if_AF_mem_in_branch:
   assumes "wf_branch b"
   assumes "AF (s \<in>\<^sub>s t) \<in> set b"
-  shows "s \<in> Var ` base_vars b \<union> subterms' b"
-    and "t \<in> Var ` base_vars b \<union> subterms' b"
+  shows "s \<in> base_vars b \<union> subterms' b"
+    and "t \<in> base_vars b \<union> subterms' b"
   using assms
   using wits_subterms_eq_base_vars_Un_subterms' AF_mem_subterms_branchD subterms_branch_eq_if_wf_branch
   by blast+
@@ -934,8 +944,8 @@ lemma in_subterms'_if_AF_mem_in_branch:
 lemma in_subterms'_if_AT_eq_in_branch:
   assumes "wf_branch b"
   assumes "AT (s =\<^sub>s t) \<in> set b"
-  shows "s \<in> Var ` base_vars b \<union> subterms' b"
-    and "t \<in> Var ` base_vars b \<union> subterms' b"
+  shows "s \<in> base_vars b \<union> subterms' b"
+    and "t \<in> base_vars b \<union> subterms' b"
   using assms
   using wits_subterms_eq_base_vars_Un_subterms' AT_eq_subterms_branchD subterms_branch_eq_if_wf_branch
   by blast+
@@ -943,8 +953,8 @@ lemma in_subterms'_if_AT_eq_in_branch:
 lemma in_subterms'_if_AF_eq_in_branch:
   assumes "wf_branch b"
   assumes "AF (s =\<^sub>s t) \<in> set b"
-  shows "s \<in> Var ` base_vars b \<union> subterms' b"
-    and "t \<in> Var ` base_vars b \<union> subterms' b"
+  shows "s \<in> base_vars b \<union> subterms' b"
+    and "t \<in> base_vars b \<union> subterms' b"
   using assms
   using wits_subterms_eq_base_vars_Un_subterms' AF_eq_subterms_branchD subterms_branch_eq_if_wf_branch
   by blast+
@@ -1028,7 +1038,7 @@ qed
 
 definition I :: "'a pset_term \<Rightarrow> V" where
   "I \<equiv> SOME f. inj_on f (subterms b)
-             \<and> (\<forall>p. card (elts (f p)) > 2 * card (Var ` base_vars b \<union> subterms' b))"
+             \<and> (\<forall>p. card (elts (f p)) > 2 * card (base_vars b \<union> subterms' b))"
 
 lemma (in -) Ex_set_family:
   assumes "finite P"
@@ -1047,14 +1057,14 @@ qed
 
 lemma
   shows inj_on_I: "inj_on I (subterms b)"
-    and card_I: "card (elts (I p)) > 2 * card (Var ` base_vars b \<union> subterms' b)"
+    and card_I: "card (elts (I p)) > 2 * card (base_vars b \<union> subterms' b)"
 proof -
   have "\<exists>f. inj_on f (subterms b)
-    \<and> (\<forall>p. card (elts (f p)) > 2 * card (Var ` base_vars b \<union> subterms' b))"
+    \<and> (\<forall>p. card (elts (f p)) > 2 * card (base_vars b \<union> subterms' b))"
     using Ex_set_family finite_subterms_branch by (metis less_eq_Suc_le)
   from someI_ex[OF this]
   show "inj_on I (subterms b)"
-       "card (elts (I p)) > 2 * card (Var ` base_vars b \<union> subterms' b)"
+       "card (elts (I p)) > 2 * card (base_vars b \<union> subterms' b)"
     unfolding I_def by blast+
 qed
 
@@ -1108,9 +1118,9 @@ lemma I_eq_class_nonempty: "I ` eq_class t \<noteq> {}"
   using eq_class_nonempty by auto
 
 function realise :: "'a pset_term \<Rightarrow> V" where
-  "x \<in> Var ` base_vars b \<Longrightarrow> realise x = vset (realise ` parents (bgraph b) x) \<squnion> vset (I ` eq_class x)"
+  "x \<in> base_vars b \<Longrightarrow> realise x = vset (realise ` parents (bgraph b) x) \<squnion> vset (I ` eq_class x)"
 | "t \<in> subterms' b \<Longrightarrow> realise t = vset (realise ` parents (bgraph b) t)"
-| "t \<notin> Var ` base_vars b \<union> subterms' b \<Longrightarrow> realise t = 0"
+| "t \<notin> base_vars b \<union> subterms' b \<Longrightarrow> realise t = 0"
   using base_vars_subterms'_disjnt
   by fastforce+
 termination
@@ -1121,7 +1131,7 @@ lemma small_realisation_parents[simp, intro!]: "small (realise ` parents (bgraph
   using fin_digraph_bgraph.small_parents by blast
 
 lemma parents_empty_if_not_subterms:
-  assumes "t \<notin> Var ` base_vars b \<union> subterms' b" shows "parents (bgraph b) t = {}"
+  assumes "t \<notin> base_vars b \<union> subterms' b" shows "parents (bgraph b) t = {}"
 proof -
   from assms verts_bgraph have "t \<notin> verts (bgraph b)"
     by blast
@@ -1174,7 +1184,7 @@ lemma finite_eq_class: "finite (eq_class t)"
 
 lemma realise_wits':
   "x \<in> Var ` wits' b \<Longrightarrow> realise x = vset {I x}"
-  using wits'_subs_base_vars[OF wf_branch, THEN image_mono[where ?f=Var]]
+  unfolding realise.simps(1)[OF wits'_subs_base_vars[THEN subsetD]]
   by (auto simp: eq_class_singleton_if_wits' parents_empty_if_wits')
 
 lemma card_realisation_wits':
@@ -1246,11 +1256,11 @@ proof -
 qed
 
 lemma I_in_realise_if_base_vars[simp]:
-  "s \<in> Var ` base_vars b \<Longrightarrow> I s \<in> elts (realise s)"
+  "s \<in> base_vars b \<Longrightarrow> I s \<in> elts (realise s)"
   using refl_eq by (simp add: refl_on_def)
 
 lemma realise_neq_if_base_vars_and_subterms':
-  assumes "s \<in> Var ` base_vars b" "t \<in> subterms' b"
+  assumes "s \<in> base_vars b" "t \<in> subterms' b"
   shows "realise s \<noteq> realise t"
 proof -
   from assms have "I s \<notin> elts (realise t)"
@@ -1314,7 +1324,7 @@ proof(induction rule: finite_induct)
 qed blast
 
 lemma lemma1_2':
-  assumes "t1 \<in> Var ` base_vars b \<union> subterms' b" "t2 \<in> Var ` base_vars b \<union> subterms' b"
+  assumes "t1 \<in> base_vars b \<union> subterms' b" "t2 \<in> base_vars b \<union> subterms' b"
       and "realise t1 = realise t2"
     shows "height t1 \<le> height t2"
   using assms
@@ -1339,9 +1349,9 @@ proof(induction "height t1" arbitrary: t1 t2 rule: less_induct)
     qed
     moreover
     have "height w \<le> height v"
-      if "w \<rightarrow>\<^bsub>bgraph b\<^esub> t1" "v \<in> Var ` base_vars b \<union> subterms' b" "realise w = realise v" for w v
+      if "w \<rightarrow>\<^bsub>bgraph b\<^esub> t1" "v \<in> base_vars b \<union> subterms' b" "realise w = realise v" for w v
     proof -
-      have "w \<in> Var ` base_vars b \<union> subterms' b"
+      have "w \<in> base_vars b \<union> subterms' b"
         using that fin_digraph_bgraph.adj_in_verts verts_bgraph by blast
       from "less.hyps"[OF lemma1_1, OF that(1) this that(2,3)] show ?thesis .
     qed
@@ -1367,13 +1377,13 @@ proof(induction "height t1" arbitrary: t1 t2 rule: less_induct)
 qed
 
 lemma lemma1_2:
-  assumes "t1 \<in> Var ` base_vars b \<union> subterms' b" "t2 \<in> Var ` base_vars b \<union> subterms' b"
+  assumes "t1 \<in> base_vars b \<union> subterms' b" "t2 \<in> base_vars b \<union> subterms' b"
       and "realise t1 = realise t2"
   shows "height t1 = height t2"
   using assms lemma1_2' le_antisym unfolding inj_on_def by metis
 
 lemma lemma1_3:
-  assumes "s \<in> Var ` base_vars b \<union> subterms' b" "t \<in> Var ` base_vars b \<union> subterms' b"
+  assumes "s \<in> base_vars b \<union> subterms' b" "t \<in> base_vars b \<union> subterms' b"
       and "realise s \<in> elts (realise t)"
   shows "height s < height t"
 proof -
@@ -1412,13 +1422,19 @@ lemma realisation_if_AT_mem:
   assumes "AT (s \<in>\<^sub>s t) \<in> set b"
   shows "realise s \<in> elts (realise t)"
 proof -
-  from assms have "t \<in> Var ` base_vars b \<union> subterms' b"
+  from assms have "t \<in> base_vars b \<union> subterms' b"
     using in_subterms'_if_AT_mem_in_branch(2) wf_branch by blast
   moreover from assms have "s \<rightarrow>\<^bsub>bgraph b\<^esub> t"
     unfolding arcs_ends_def arc_to_ends_def by (simp add: bgraph_def)
   ultimately show ?thesis
     by (cases t rule: realise.cases) auto
 qed
+
+lemma
+  assumes "AT (s =\<^sub>s t) \<in> set b" "s \<in> base_vars b"
+  shows "s \<in> urelems b" "t \<in> urelems b"
+  sorry
+  
 
 lemma realisation_if_AT_eq:
   assumes "lin_sat b"
@@ -1428,8 +1444,8 @@ proof -
   consider
     (base_vars) s' t' where "s = Var s'" "s' \<in> base_vars b" "t = Var t'" "t' \<in> base_vars b" |
     (subterms') "s \<in> subterms' b" "t \<in> subterms' b" |
-    "s \<in> subterms' b" "t \<in> Var ` base_vars b" |
-    "t \<in> subterms' b" "s \<in> Var ` base_vars b"
+    "s \<in> subterms' b" "t \<in> base_vars b" |
+    "t \<in> subterms' b" "s \<in> base_vars b"
       using in_subterms'_if_AT_eq_in_branch(1,2)[OF wf_branch assms(2)]
       by blast
   then show ?thesis

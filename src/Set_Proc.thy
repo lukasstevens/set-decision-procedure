@@ -785,35 +785,43 @@ lemma urelemI:
   unfolding urelem_def types_pset_fm_def
   by simp
 
-lemma
+term All
+(*
+lemma types_lexpands:
+  assumes "lexpands b' b" "\<phi> \<in> set b'"
+  assumes "\<forall>(\<phi> :: 'a pset_fm) \<in> set b. v \<turnstile> \<phi>"
+  shows "v \<turnstile> \<phi>"
+  sorry
+
+lemma urelem_lexpands:
   assumes "lexpands b' b" "\<phi> \<in> set b'"
   assumes "\<forall>\<phi> \<in> set b. urelem \<phi> x"
   shows "urelem \<phi> x"
-  using assms
-proof(induction rule: lexpands.induct)
-  case (1 b' b)
-  then show ?case
-    apply(induction rule: lexpands_fm.induct)
-    apply(force dest: urelemD intro!: urelemI)+
-    done 
-next
-  case (2 b' b)
-  then show ?case
-    apply(induction rule: lexpands_un.induct)
+  sorry
 
-next
-  case (3 b' b)
+lemma urelem_bexpands_noparam:
+  assumes "bexpands_noparam bs' b" "b' \<in> bs'" "\<phi> \<in> set b'"
+  assumes "\<forall>\<phi> \<in> set b. urelem \<phi> x"
+  shows "urelem \<phi> x"
+  sorry
+
+lemma urelem_bexpands_param:
+  assumes "bexpands_param t1 t2 c bs' b" "b' \<in> bs'" "\<phi> \<in> set b'"
+  assumes "\<forall>\<phi> \<in> set b. urelem \<phi> x"
+  shows "urelem \<phi> x"
+  using assms
+proof(induction rule: bexpands_param.induct)
+  case (1 b)
   then show ?case sorry
-next
-  case (4 b' b)
-  then show ?case sorry
-next
-  case (5 b' b)
-  then show ?case sorry
-next
-  case (6 b' b)
-  then show ?case sorry
-qed
+qed *)
+
+lemma urelem_wf_branch:
+  assumes "wf_branch b" "\<phi> \<in> set b" 
+  assumes "urelem (last b) x"
+  shows "urelem \<phi> x"
+  sorry
+
+(* What about urelement x with t \<in> Single x? *)
 
 subsection \<open>Realization of an Open Branch\<close>
 

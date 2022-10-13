@@ -1434,24 +1434,40 @@ lemma
   assumes "AT (s =\<^sub>s t) \<in> set b" "s \<in> base_vars b"
   shows "s \<in> urelems b" "t \<in> urelems b"
   sorry
-  
+
+lemma AT_eq_cases:
+  assumes "AT (s =\<^sub>s t) \<in> set b"
+  obtains (urelems) "t \<in> urelems b" "s \<in> urelems b" |
+          (subterms') "s \<in> subterms' b" "t \<in> subterms' b"
+  sorry
+
+lemma not_AT_mem_if_urelem:
+  assumes "t \<in> urelems b"
+  shows "AT (s \<in>\<^sub>s t) \<notin> set b"
+  sorry
+
+lemma parents_empty_if_urelems:
+  assumes "t \<in> urelems b"
+  shows "parents (bgraph b) t = {}"
+  using not_AT_mem_if_urelem[OF assms]
+  unfolding arcs_ends_def arc_to_ends_def by (auto simp: bgraph_def)
 
 lemma realisation_if_AT_eq:
   assumes "lin_sat b"
   assumes "AT (s =\<^sub>s t) \<in> set b"
   shows "realise s = realise t"
 proof -
-  consider
-    (base_vars) s' t' where "s = Var s'" "s' \<in> base_vars b" "t = Var t'" "t' \<in> base_vars b" |
-    (subterms') "s \<in> subterms' b" "t \<in> subterms' b" |
-    "s \<in> subterms' b" "t \<in> base_vars b" |
-    "t \<in> subterms' b" "s \<in> base_vars b"
-      using in_subterms'_if_AT_eq_in_branch(1,2)[OF wf_branch assms(2)]
-      by blast
-  then show ?thesis
-  proof(cases)
-    case base_vars
-    show ?thesis sorry
+  from assms(2) show ?thesis
+  proof(cases rule: AT_eq_cases)
+    case urelems
+    then have "s \<in> base_vars b" "t \<in> base_vars b"
+      by (simp_all add: base_vars_def)
+    moreover from assms have "(s, t) \<in> eq"
+      unfolding eq_def symcl_def by blast
+    then have "I ` eq_class s = I ` eq_class t"
+      using equiv_eq[OF assms(1)] by (simp add: equiv_class_eq_iff)
+    ultimately show ?thesis 
+      using urelems by (simp add: parents_empty_if_urelems)
   next
     case subterms'
     have "False" if "realise s \<noteq> realise t"
@@ -1487,8 +1503,7 @@ qed
 lemma I_not_in_realisation:
   assumes "t \<in> subterms' b"
   shows "I x \<notin> elts (realise t)"
-  using assms card_elts_realisation_T[OF assms] card_I
-  by (metis le_antisym le_eq_less_or_eq nat_neq_iff)
+  using assms I_neq_realise open_branch_axioms by fastforce
 
 lemma realisation_if_AF_eq:
   assumes "sat b"
@@ -1497,36 +1512,32 @@ lemma realisation_if_AF_eq:
 proof -
   note AF_eq_branch_wits_subtermsD[OF assms(2)]
   then consider
-    (t1_param') c where "t1 = Var c" "c \<in> wits' b" |
-    (t2_param') c where "t2 = Var c" "c \<in> wits' b" "t1 \<in> Var ` wits' b \<union> subterms' b" |
+    (t1_param') "t1 \<in> base_vars b" |
+    (t2_param') "t2 \<in> base_vars b" "t1 \<in> base_vars b \<union> subterms' b" |
     (subterms) "t1 \<in> subterms' b" "t2 \<in> subterms' b"
-    by (metis Un_iff image_iff wits_subterms_eq_base_vars_Un_subterms')
+    by (metis UnE wf_branch wits_subterms_eq_base_vars_Un_subterms')
   then show ?thesis
   proof cases
     case t1_param'
     then have "I t1 \<in> elts (realise t1)"
-      by (simp add: realise_simps)
+      using I_in_realise_if_base_vars by simp
     moreover from bopen assms(2) have "t1 \<noteq> t2"
       using neqSelf by blast
     then have "I t1 \<notin> elts (realise t2)"
       apply(cases t2 rule: realise.cases)
       using t1_param' inj_on_I I_not_in_realisation
-      by (metis UnE \<open>t1 \<in> wits_subterms b\<close> \<open>t2 \<in> wits_subterms b\<close> elts_of_set inj_on_contraD
-          realise_wits' singletonD small_empty small_insert_iff subterms_branch_eq_if_wf_branch
-          wf_branch wits_subterms_eq_base_vars_Un_subterms')
+      sorry
     ultimately show ?thesis by auto
   next
     case t2_param'
     then have "I t2 \<in> elts (realise t2)"
-      by (simp add: realise_simps)
+      using I_in_realise_if_base_vars by simp
     moreover from bopen assms(2) have "t1 \<noteq> t2"
       using neqSelf by blast
     then have "I t2 \<notin> elts (realise t1)"
       apply(cases t1 rule: realise.cases)
       using t2_param' inj_on_I I_not_in_realisation
-      by (metis UnE \<open>t1 \<in> wits_subterms b\<close> \<open>t2 \<in> wits_subterms b\<close> elts_of_set inj_on_contraD
-          realise_wits' singletonD small_empty small_insert_iff subterms_branch_eq_if_wf_branch
-          wf_branch wits_subterms_eq_base_vars_Un_subterms')
+      sorry
     ultimately show ?thesis by auto
   next
     case subterms

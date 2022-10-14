@@ -15,7 +15,7 @@ fun member_cycle :: "'a pset_atom list \<Rightarrow> bool" where
 
 inductive bclosed :: "'a branch \<Rightarrow> bool" where
   contr: "\<lbrakk> \<phi> \<in> set b; Neg \<phi> \<in> set b \<rbrakk> \<Longrightarrow> bclosed b"
-| memEmpty: "AT (t \<in>\<^sub>s \<emptyset>) \<in> set b \<Longrightarrow> bclosed b"
+| memEmpty: "AT (t \<in>\<^sub>s (\<emptyset> n)) \<in> set b \<Longrightarrow> bclosed b"
 | neqSelf: "AF (t =\<^sub>s t) \<in> set b \<Longrightarrow> bclosed b"
 | memberCycle: "\<lbrakk> member_cycle cs; set cs \<subseteq> Atoms (set b) \<rbrakk> \<Longrightarrow> bclosed b"
 

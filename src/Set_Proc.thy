@@ -787,13 +787,8 @@ lemma urelemI:
   by simp
 *)
 
-(*
-lemma types_lexpands:
-  assumes "lexpands b' b" "\<phi> \<in> set b'"
-  assumes "\<forall>(\<phi> :: 'a pset_fm) \<in> set b. v \<turnstile> \<phi>"
-  shows "v \<turnstile> \<phi>"
-  sorry
 
+(*
 lemma urelem_lexpands:
   assumes "lexpands b' b" "\<phi> \<in> set b'"
   assumes "\<forall>\<phi> \<in> set b. urelem \<phi> x"

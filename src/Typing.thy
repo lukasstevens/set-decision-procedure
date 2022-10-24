@@ -4,63 +4,6 @@ begin
 
 section \<open>Typing\<close>
 
-(*
-datatype 'a lvl = is_GT: GT 'a | EQ 'a
-
-fun eq_lvl :: "nat lvl \<Rightarrow> nat lvl \<Rightarrow> nat lvl option" where
-  "eq_lvl (GT l) (GT k) = Some (GT (max l k))"
-| "eq_lvl (GT l) (EQ k) = (if k > l then Some (EQ k) else None)"
-| "eq_lvl (EQ k) (GT l) = (if k > l then Some (EQ k) else None)"
-| "eq_lvl (EQ l) (EQ k) = (if l = k then Some (EQ k) else None)"
-
-fun suc_lvl :: "nat lvl \<Rightarrow> nat lvl \<Rightarrow> bool" where
-  "suc_lvl (GT l) (GT k) \<longleftrightarrow> True"
-| "suc_lvl (GT l) (EQ k) \<longleftrightarrow> k \<ge> Suc (Suc l)"
-| "suc_lvl (EQ l) (GT k) \<longleftrightarrow> l \<ge> k"
-| "suc_lvl (EQ l) (EQ k) \<longleftrightarrow> Suc l = k"
-*)
-
-fun type_term :: "('a \<Rightarrow> nat) \<Rightarrow> 'a pset_term \<Rightarrow> nat option" where
-    "type_term _ (\<emptyset> n) = Some (Suc n)"
-  | "type_term v (Var x) = Some (v x)"
-  | "type_term v (Single t) = map_option Suc (type_term v t)"
-  | "type_term v (s \<squnion>\<^sub>s t) = do {
-                              ts <- type_term v s;
-                              tt <- type_term v t;
-                              if ts = tt \<and> ts \<noteq> 0 then Some ts else None
-                            }"
-  | "type_term v (s \<sqinter>\<^sub>s t) = do {
-                              ts <- type_term v s;
-                              tt <- type_term v t;
-                              if ts = tt \<and> ts \<noteq> 0 then Some ts else None
-                            }"
-  | "type_term v (s -\<^sub>s t) = do {
-                              ts <- type_term v s;
-                              tt <- type_term v t;
-                              if ts = tt \<and> ts \<noteq> 0 then Some ts else None
-                            }"
-
-declare type_term.simps[simp del]
-
-consts types :: "('a \<Rightarrow> nat) \<Rightarrow> 'b \<Rightarrow> bool" ("_ \<turnstile> _" 45)
-
-inductive types_pset_atom :: "('a \<Rightarrow> nat) \<Rightarrow> 'a pset_atom \<Rightarrow> bool" where
-  "\<lbrakk> type_term v s = Some l; type_term v t = Some l \<rbrakk> \<Longrightarrow> types_pset_atom v (s =\<^sub>s t)"
-| "\<lbrakk> type_term v s = Some l; type_term v t = Some (Suc l)\<rbrakk> \<Longrightarrow> types_pset_atom v (s \<in>\<^sub>s t)"
-
-adhoc_overloading types types_pset_atom
-
-inductive_cases types_pset_atom_Member_cases:
-  "v \<turnstile> s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2" "v \<turnstile> s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2" "v \<turnstile> s \<in>\<^sub>s t1 -\<^sub>s t2" "v \<turnstile> s \<in>\<^sub>s Single t"
-
-definition types_pset_fm :: "('a \<Rightarrow> nat) \<Rightarrow> 'a pset_fm \<Rightarrow> bool" where
-  "types_pset_fm v \<phi> \<equiv> (\<forall>a \<in> atoms \<phi>. v \<turnstile> a)"
-
-adhoc_overloading types types_pset_fm
-
-definition urelem :: "'a pset_fm \<Rightarrow> 'a pset_term \<Rightarrow> bool" where
-  "urelem \<phi> t \<equiv> (\<exists>v. v \<turnstile> \<phi> \<and> t \<in> subterms \<phi> \<and> type_term v t = Some 0)"
-
 lemma is_Var_if_type_term_0: "type_term v t = Some 0 \<Longrightarrow> is_Var t"
   by (induction t) (auto simp: type_term.simps split: if_splits Option.bind_splits)
 
@@ -83,25 +26,6 @@ lemma types_fmI:
   "v \<turnstile> a \<Longrightarrow> v \<turnstile> Atom a"
   unfolding types_pset_fm_def using fm.set_intros by auto
 
-
-(*
-lemma type_term_Elem_the_I:
-  assumes "type_term v s = Some ls"
-          "\<not> Option.is_none (type_term v t)" "suc_lvl ls (the (type_term v t))"
-  shows "v \<turnstile> s \<in>\<^sub>s t"
-  using assms types_pset_atom.intros(2)
-  by (metis Option.is_none_def option.exhaust_sel) *)
-
-(*
-lemma type_term_suc_lvl_D:
-  assumes "type_term v s = Some ls" "type_term v (f t1 t2) = Some lt" "f \<in> {(\<squnion>\<^sub>s), (\<sqinter>\<^sub>s), (-\<^sub>s)}"
-  assumes "suc_lvl ls lt"
-  shows "\<not> Option.is_none (type_term v t1) \<and> suc_lvl ls (the (type_term v t1))"
-        "\<not> Option.is_none (type_term v t2) \<and> suc_lvl ls (the (type_term v t2))"
-  using assms
-  by (fastforce simp: type_term.simps dest: suc_lvlD_if_eq_lvl split: if_splits Option.bind_splits)+
-*)
-
 lemma types_pset_atom_Member_D:
   assumes "v \<turnstile> s \<in>\<^sub>s f t1 t2" "f \<in> {(\<squnion>\<^sub>s), (\<sqinter>\<^sub>s), (-\<^sub>s)}"
   shows "v \<turnstile> s \<in>\<^sub>s t1" "v \<turnstile> s \<in>\<^sub>s t2"
@@ -123,20 +47,18 @@ lemma type_term_eq_if_mem_subterms:
   fixes \<phi> :: "'a pset_fm"
   assumes "v \<turnstile> \<phi>"
   assumes "f t1 t2 \<in> subterms \<phi>" "f \<in> {(\<squnion>\<^sub>s), (\<sqinter>\<^sub>s), (-\<^sub>s)}"
-  shows "\<not> Option.is_none (type_term v t1)"
+  shows "type_term v t1 \<noteq> None"
         "type_term v t1 = type_term v t2"
 proof -
   from assms obtain a :: "'a pset_atom" where atom: "v \<turnstile> a" "f t1 t2 \<in> subterms a"
     unfolding types_pset_fm_def by (induction \<phi>) auto
-  then obtain g s t where "g \<in> {(\<in>\<^sub>s), (=\<^sub>s)}" "a = g s t"
-    by (cases a) auto
   obtain t' l where "type_term v t' = Some l" "f t1 t2 \<in> subterms t'"
     apply(rule types_pset_atom.cases[OF \<open>v \<turnstile> a\<close>])
     using atom(2) by auto
-  then have "\<not> Option.is_none (type_term v t1) \<and> type_term v t1 = type_term v t2"
-  by (induction t' arbitrary: l)
-     (use assms(3) in \<open>(auto simp: type_term.simps split: if_splits Option.bind_splits)\<close>)
-  then show "\<not> Option.is_none (type_term v t1)" "type_term v t1 = type_term v t2"
+  then have "type_term v t1 \<noteq> None \<and> type_term v t1 = type_term v t2"
+    by (induction t' arbitrary: l)
+       (use assms(3) in \<open>(auto simp: type_term.simps split: if_splits Option.bind_splits)\<close>)
+  then show "type_term v t1 \<noteq> None" "type_term v t1 = type_term v t2"
     by blast+
 qed
 
@@ -156,7 +78,24 @@ proof -
     using assms
     by (auto simp: type_term.simps types_pset_atom.simps)
 qed
-  
+
+lemma types_subst_tlvl:
+  fixes l :: "'a pset_atom"
+  assumes "v \<turnstile> AT (t1 =\<^sub>s t2)" "v \<turnstile> l"
+  shows "v \<turnstile> subst_tlvl t1 t2 l"
+proof -
+  from assms obtain lt where "type_term v t1 = Some lt" "type_term v t2 = Some lt"
+    by (auto simp: types_pset_atom.simps dest!: types_fmD(6))
+  with assms(2) show ?thesis
+    by (cases "(t1, t2, l)" rule: subst_tlvl.cases)
+       (auto simp: types_pset_atom.simps)
+qed
+
+lemma types_sym_Equal:
+  assumes "v \<turnstile> t1 =\<^sub>s t2"
+  shows "v \<turnstile> t2 =\<^sub>s t1"
+  using assms by (auto simp: types_pset_atom.simps)
+
 lemma types_lexpands:
   assumes "lexpands b' b" "b \<noteq> []" "\<phi> \<in> set b'"
   assumes "\<And>(\<phi> :: 'a pset_fm). \<phi> \<in> set b \<Longrightarrow> v \<turnstile> \<phi>"
@@ -297,32 +236,204 @@ next
 next
   case (5 b' b)
   then show ?case
-  proof(induction rule: lexpands_single.induct)
-    case (1 t1 b)
-    then have "v \<turnstile> last b"
+  proof(cases rule: lexpands_single.cases)
+    case (1 t1)
+    with 5 have "v \<turnstile> last b"
       by auto
     with \<open>Single t1 \<in> subterms (last b)\<close> obtain a :: "'a pset_atom"
-      where a: "a \<in> atoms (last b)" "Single t1 \<in> subterms a" "v \<turnstile> a"
+      where atom: "a \<in> atoms (last b)" "Single t1 \<in> subterms a" "v \<turnstile> a"
       unfolding types_pset_fm_def by (metis UN_E subterms_fm_def)
-    then obtain f s t where
-      "a = f s t" "f \<in> {(=\<^sub>s), (\<in>\<^sub>s)}"
-      by (metis insertCI pset_atom.exhaust)
-    
-    then have "\<not> Option.is_none (type_term v t1)"
-      
-      apply(induction "last b")
-      apply(auto simp: type_term.simps split: if_splits Option.bind_splits) 
-    then show ?case  sorry
-  next
-    case (2 s t1 b)
-    then show ?case sorry
-  next
-    case (3 s t1 b)
-    then show ?case sorry
-  qed
+    obtain t' l where "type_term v t' = Some l" "Single t1 \<in> subterms t'"
+      apply(rule types_pset_atom.cases[OF \<open>v \<turnstile> a\<close>])
+      using atom(2) by auto
+    then have "type_term v t1 \<noteq> None"
+      by (induction t' arbitrary: l)
+         (auto simp: type_term.simps split: if_splits Option.bind_splits)
+    then obtain lt1 where "type_term v t1 = Some lt1"
+      by force
+    then have "type_term v (Single t1) = Some (Suc lt1)"
+      by (auto simp: type_term.simps)
+    with \<open>type_term v t1 = Some lt1\<close> 5 1 show ?thesis
+      using types_pset_atom.intros(2) types_pset_fm_def by fastforce
+  qed (auto simp: types_pset_atom.simps type_term.simps
+            dest!: types_fmD(5,6) "5"(4) intro!: types_fmI(3,4))
 next
   case (6 b' b)
-  then show ?case sorry
+  then show ?case
+  proof(cases rule: lexpands_eq.cases)
+    case (5 s t s')
+    with 6 show ?thesis
+      by (auto dest!: "6"(4) types_fmD(5,6) simp: types_pset_atom.simps intro!: types_fmI(3,4))
+  qed (auto simp: types_sym_Equal dest!: "6"(4) types_fmD(5,6)
+            intro!: types_fmI(3,4) types_subst_tlvl)
 qed
 
+lemma types_bexpands_noparam:
+  assumes "bexpands_noparam bs' b" "b' \<in> bs'" "\<phi> \<in> set b'"
+  assumes "\<And>(\<phi> :: 'a pset_fm). \<phi> \<in> set b \<Longrightarrow> v \<turnstile> \<phi>"
+  shows "v \<turnstile> \<phi>"
+  using assms(1)
+proof(cases rule: bexpands_noparam.cases)
+  case (1 p q)
+  from assms "1"(2) show ?thesis
+    unfolding "1"(1)
+    by (auto dest!: assms(4) types_fmD(3) intro!: types_fmI(3))
+next
+  case (2 p q)
+  from assms "2"(2) show ?thesis
+    unfolding "2"(1)
+    by (auto dest!: assms(4) types_fmD(5) dest: types_fmD(1,2) intro!: types_fmI(3))
+next
+  case (3 s t1 t2)
+  from assms "3"(2,3) show ?thesis
+    unfolding "3"(1) using types_pset_atom_Member_Union_D(1)[of v s t1 t2]
+    by (auto dest!: types_fmD(6) assms(4) intro!: types_fmI(3,4))
+next
+  case (4 s t1 t2)
+  with assms have "v \<turnstile> last b"
+    by (metis empty_iff empty_set last_in_set)
+  from assms "4"(2,3) show ?thesis
+    unfolding "4"(1)
+    using types_if_types_Member_and_subterms[where ?f="(\<sqinter>\<^sub>s)", OF _ \<open>v \<turnstile> last b\<close> "4"(3),
+                                             THEN types_pset_atom_Member_Inter_D(2)]
+    by (force dest!: types_fmD(6) assms(4) intro!: types_fmI(3,4))
+next
+  case (5 s t1 t2)
+  with assms have "v \<turnstile> last b"
+    by (metis empty_iff empty_set last_in_set)
+  from assms "5"(2,3) show ?thesis
+    unfolding "5"(1)
+    using types_if_types_Member_and_subterms[where ?f="(-\<^sub>s)", OF _ \<open>v \<turnstile> last b\<close> "5"(3),
+                                             THEN types_pset_atom_Member_Diff_D(2)]
+    by (force dest!: types_fmD(6) assms(4) intro!: types_fmI(3,4))
+qed
+
+lemma type_term_if_on_vars_eq:
+  assumes "\<forall>x \<in> vars t. v' x = v x"
+  shows "type_term v' t = type_term v t"
+  using assms
+  apply(induction t)
+       apply(auto simp: type_term.simps split: if_splits Option.bind_splits)
+  done
+
+lemma types_pset_atom_if_on_vars_eq:
+  fixes a :: "'a pset_atom"
+  assumes "\<forall>x \<in> vars a. v' x = v x"
+  shows "v' \<turnstile> a \<longleftrightarrow> v \<turnstile> a"
+  using assms
+  apply (auto simp: ball_Un types_pset_atom.simps)
+     apply (metis type_term_if_on_vars_eq)+
+  done
+
+lemma types_pset_fm_if_on_vars_eq:
+  fixes \<phi> :: "'a pset_fm"
+  assumes "\<forall>x \<in> vars \<phi>. v' x = v x"
+  shows "v' \<turnstile> \<phi> \<longleftrightarrow> v \<turnstile> \<phi>"
+  using assms types_pset_atom_if_on_vars_eq
+  unfolding types_pset_fm_def vars_fm_def by fastforce
+
+lemma type_term_fun_upd:
+  assumes "x \<notin> vars t"
+  shows "type_term (v(x := l)) t = type_term v t"
+  using assms type_term_if_on_vars_eq by (metis fun_upd_other)
+
+lemma types_pset_atom_fun_upd:
+  fixes a :: "'a pset_atom"
+  assumes "x \<notin> vars a"
+  shows "v(x := l) \<turnstile> a \<longleftrightarrow> v \<turnstile> a"
+  using assms types_pset_atom_if_on_vars_eq by (metis fun_upd_other)
+
+lemma types_pset_fm_fun_upd:
+  fixes \<phi> :: "'a pset_fm"
+  assumes "x \<notin> vars \<phi>"
+  shows "v(x := l) \<turnstile> \<phi> \<longleftrightarrow> v \<turnstile> \<phi>"
+  using assms types_pset_fm_if_on_vars_eq by (metis fun_upd_other)
+
+lemma types_bexpands_param:
+  assumes "bexpands_param t1 t2 x bs' b" "b \<noteq> []"
+  assumes "\<And>(\<phi> :: 'a pset_fm). \<phi> \<in> set b \<Longrightarrow> v \<turnstile> \<phi>"
+  obtains l where "\<forall>\<phi> \<in> set b. v(x := l) \<turnstile> \<phi>"
+                  "\<forall>b' \<in> bs'. \<forall>\<phi> \<in> set b'. v(x := l) \<turnstile> \<phi>"
+  using assms(1)
+proof(cases rule: bexpands_param.cases)
+  case 1
+  from assms(3)[OF "1"(2)] have
+    "type_term v t1 = type_term v t2" "type_term v t1 \<noteq> None" "type_term v t2 \<noteq> None"
+    by (auto dest!: types_fmD simp: types_pset_atom.simps)
+  moreover from 1 assms(2,3) have "type_term v t1 \<noteq> Some 0" "type_term v t2 \<noteq> Some 0"
+    unfolding urelem_def using last_in_set by blast+
+  ultimately obtain lt where lt:
+    "type_term v t1 = Some (Suc lt)" "type_term v t2 = Some (Suc lt)"
+    using not0_implies_Suc by fastforce
+  with assms(3) have "\<forall>\<phi> \<in> set b. v(x := lt) \<turnstile> \<phi>"
+    using types_pset_fm_fun_upd \<open>x \<notin> vars b\<close> by (metis vars_fm_vars_branchI)
+  moreover from \<open>x \<notin> vars b\<close> \<open>AF (t1 =\<^sub>s t2) \<in> set b\<close> have "x \<notin> vars t1" "x \<notin> vars t2"
+    using assms(2) by (auto simp: vars_fm_vars_branchI)
+  then have "\<forall>b' \<in> bs'. \<forall>\<phi> \<in> set b'. v(x := lt) \<turnstile> \<phi>"
+    using lt unfolding "1"(1)
+    by (auto intro!: types_fmI simp: type_term_fun_upd types_pset_atom.simps type_term.simps)
+  ultimately show ?thesis
+    using that by blast
+qed
+
+lemma types_expandss:
+  assumes "expandss b' b" "b \<noteq> []"
+  assumes "\<And>\<phi>. \<phi> \<in> set b \<Longrightarrow> v \<turnstile> \<phi>"
+  obtains v' where "\<forall>x \<in> vars b. v' x = v x" "\<forall>\<phi> \<in> set b'. v' \<turnstile> \<phi>"
+  using assms
+proof(induction b' b arbitrary: thesis rule: expandss.induct)
+  case (1 b)
+  then show ?case by blast
+next
+  case (2 b3 b2 b1)
+  then obtain v' where v': "\<forall>x \<in> vars b1. v' x = v x" "\<forall>\<phi> \<in> set b2. v' \<turnstile> \<phi>"
+    by blast
+  with types_lexpands[OF \<open>lexpands b3 b2\<close>] have "\<forall>\<phi> \<in> set b3. v' \<turnstile> \<phi>"
+    using expandss_not_Nil[OF \<open>expandss b2 b1\<close> \<open>b1 \<noteq> []\<close>] by blast
+  with v' "2.prems" show ?case
+    by force
+next
+  case (3 bs b2 b3 b1)
+  then obtain v' where v': "\<forall>x \<in> vars b1. v' x = v x" "\<forall>\<phi> \<in> set b2. v' \<turnstile> \<phi>"
+    by blast
+  from \<open>bexpands bs b2\<close> show ?case
+  proof(cases rule: bexpands.cases)
+    case 1
+    from types_bexpands_noparam[OF this] v' \<open>b3 \<in> bs\<close> have "\<forall>\<phi> \<in> set b3. v' \<turnstile> \<phi>"
+      by blast
+    with v' "3.prems" show ?thesis
+      by force
+  next
+    case (2 t1 t2 x)
+    from types_bexpands_param[OF this] v' \<open>b3 \<in> bs\<close> obtain l where "\<forall>\<phi> \<in> set b3. v'(x := l) \<turnstile> \<phi>"
+      using expandss_not_Nil[OF \<open>expandss b2 b1\<close> \<open>b1 \<noteq> []\<close>] by metis
+    moreover from bexpands_paramD(7)[OF 2] have "x \<notin> vars b1"
+      using expandss_mono[OF \<open>expandss b2 b1\<close>] unfolding vars_branch_def by blast
+    then have "\<forall>y \<in> vars b1. (v'(x := l)) y = v y"
+      using v'(1) by simp
+    moreover from \<open>x \<notin> vars b2\<close> v'(2) have "\<forall>\<phi> \<in> set b2. v'(x := l) \<turnstile> \<phi>"
+      by (meson types_pset_fm_fun_upd vars_fm_vars_branchI)
+    ultimately show ?thesis
+      using v' "3.prems"(1)[where ?v'="v'(x := l)"] by fastforce
+  qed
+qed
+
+lemma urelem_invar_if_wf_branch:
+  assumes "wf_branch b" "\<phi> \<in> set b" "x \<in> subterms \<phi>"
+  assumes "urelem (last b) x"
+  shows "urelem \<phi> x"
+proof -
+  from assms obtain v where v: "v \<turnstile> last b" "x \<in> subterms (last b)" "type_term v x = Some 0"
+    unfolding urelem_def by blast
+  moreover from assms have "expandss b [last b]"
+    by (metis expandss_last_eq last.simps list.distinct(1) wf_branch_def)
+  from types_expandss[OF this, simplified] v obtain v' where
+    "\<forall>x \<in> vars (last b). v' x = v x" "\<forall>\<phi> \<in> set b. v' \<turnstile> \<phi>"
+    by (metis list.set_intros(1) vars_fm_vars_branchI)
+  ultimately show ?thesis
+    unfolding urelem_def using assms(2,3)
+    by (metis mem_vars_fm_if_mem_subterm_fm type_term_if_on_vars_eq)
+qed
+
+  
 end

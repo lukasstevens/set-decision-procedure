@@ -1,5 +1,5 @@
 theory Set_Calculus
-  imports Set_Semantics "HOL-Library.Sublist"
+  imports Set_Semantics Typing_Defs "HOL-Library.Sublist"
 begin
 
 section \<open>Closedness\<close>
@@ -295,5 +295,28 @@ lemmas expandss_mono = set_mono_suffix[OF expandss_suffix]
 lemma expandss_last_eq[simp]:
   "expandss b' b \<Longrightarrow> b \<noteq> [] \<Longrightarrow> last b' = last b"
   by (metis expandss_suffix last_appendR suffix_def)
+
+lemma expandss_not_Nil:
+  "expandss b' b \<Longrightarrow> b \<noteq> [] \<Longrightarrow> b' \<noteq> []"
+  using expandss_suffix suffix_bot.extremum_uniqueI by blast
+
+
+section \<open>Well-Formed Branch\<close>
+
+definition "wf_branch b \<equiv> \<exists>\<phi>. expandss b [\<phi>]"
+
+lemma wf_branch_singleton[simp]: "wf_branch [\<phi>]"
+  unfolding wf_branch_def using expandss.intros(1) by blast
+
+lemma wf_branch_not_Nil[simp, intro?]: "wf_branch b \<Longrightarrow> b \<noteq> []"
+  unfolding wf_branch_def
+  using expandss_suffix suffix_bot.extremum_uniqueI by blast
+
+lemma wf_branch_expandss: "wf_branch b \<Longrightarrow> expandss b' b \<Longrightarrow> wf_branch b'"
+  using expandss_trans wf_branch_def by blast
+
+lemma wf_branch_lexpands:
+  "wf_branch b \<Longrightarrow> lexpands b' b \<Longrightarrow> set b \<subset> set (b' @ b) \<Longrightarrow> wf_branch (b' @ b)"
+  by (metis expandss.simps wf_branch_expandss)
 
 end

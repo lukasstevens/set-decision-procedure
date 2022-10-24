@@ -1,5 +1,5 @@
 theory Set_Proc                
-  imports Set_Calculus Realisation
+  imports Set_Calculus Typing Realisation
 begin
 
 section \<open>Basic Definitions\<close>
@@ -22,22 +22,6 @@ lemma satD:
   assumes "sat b"
   shows "lin_sat b" "\<nexists>bs'. bexpands bs' b"
   using assms unfolding sat_def by auto
-
-definition "wf_branch b \<equiv> \<exists>\<phi>. expandss b [\<phi>]"
-
-lemma wf_branch_singleton[simp]: "wf_branch [\<phi>]"
-  unfolding wf_branch_def using expandss.intros(1) by blast
-
-lemma wf_branch_not_Nil[simp, intro?]: "wf_branch b \<Longrightarrow> b \<noteq> []"
-  unfolding wf_branch_def
-  using expandss_suffix suffix_bot.extremum_uniqueI by blast
-
-lemma wf_branch_expandss: "wf_branch b \<Longrightarrow> expandss b' b \<Longrightarrow> wf_branch b'"
-  using expandss_trans wf_branch_def by blast
-
-lemma wf_branch_lexpands:
-  "wf_branch b \<Longrightarrow> lexpands b' b \<Longrightarrow> set b \<subset> set (b' @ b) \<Longrightarrow> wf_branch (b' @ b)"
-  by (metis expandss.simps wf_branch_expandss)
                             
 definition wits :: "'a branch \<Rightarrow> 'a set" where
   "wits b \<equiv> vars b - vars (last b)"
@@ -211,7 +195,7 @@ lemma Var_mem_subterms_branch_and_not_in_wits:
 lemma subterms_branch_cases:
   assumes "t \<in> subterms b" "t \<notin> Var ` wits b"
   obtains
-    (Empty) n where "t = \<emptyset>"
+    (Empty) n where "t = \<emptyset> n"
   | (Union) t1 t2 where "t = t1 \<squnion>\<^sub>s t2"
   | (Inter) t1 t2 where "t = t1 \<sqinter>\<^sub>s t2"
   | (Diff) t1 t2 where "t = t1 -\<^sub>s t2"
@@ -225,7 +209,7 @@ proof(cases t)
 qed (use assms that in auto)
 
 lemma no_new_subterms_casesI[case_names Empty Union Inter Diff Single]:
-  assumes "\<And>n. \<emptyset> \<in> subterms b \<Longrightarrow> \<emptyset> \<in> subterms (last b)"
+  assumes "\<And>n. \<emptyset> n \<in> subterms b \<Longrightarrow> \<emptyset> n \<in> subterms (last b)"
   assumes "\<And>t1 t2. t1 \<squnion>\<^sub>s t2 \<in> subterms b \<Longrightarrow> t1 \<squnion>\<^sub>s t2 \<in> subterms (last b)"
   assumes "\<And>t1 t2. t1 \<sqinter>\<^sub>s t2 \<in> subterms b \<Longrightarrow> t1 \<sqinter>\<^sub>s t2 \<in> subterms (last b)"
   assumes "\<And>t1 t2. t1 -\<^sub>s t2 \<in> subterms b \<Longrightarrow> t1 -\<^sub>s t2 \<in> subterms (last b)"
@@ -239,7 +223,7 @@ qed
 
 lemma no_new_subtermsD:
   assumes "no_new_subterms b"
-  shows "\<And>n. \<emptyset> \<in> subterms b \<Longrightarrow> \<emptyset> \<in> subterms (last b)"
+  shows "\<And>n. \<emptyset> n \<in> subterms b \<Longrightarrow> \<emptyset> n \<in> subterms (last b)"
         "\<And>t1 t2. t1 \<squnion>\<^sub>s t2 \<in> subterms b \<Longrightarrow> t1 \<squnion>\<^sub>s t2 \<in> subterms (last b)"
         "\<And>t1 t2. t1 \<sqinter>\<^sub>s t2 \<in> subterms b \<Longrightarrow> t1 \<sqinter>\<^sub>s t2 \<in> subterms (last b)"
         "\<And>t1 t2. t1 -\<^sub>s t2 \<in> subterms b \<Longrightarrow> t1 -\<^sub>s t2 \<in> subterms (last b)"
@@ -770,66 +754,6 @@ proof -
 qed
 
 subsection \<open>Urelements\<close>
-
-(*
-lemma urelemD:
-  "urelem (And p q) x \<Longrightarrow> urelem p x"
-  "urelem (And p q) x \<Longrightarrow> urelem q x"
-  "urelem (Or p q) x \<Longrightarrow> urelem p x"
-  "urelem (Or p q) x \<Longrightarrow> urelem q x"
-  "urelem (Neg p) x \<Longrightarrow> urelem p x"
-  unfolding urelem_def types_pset_fm_def
-  by (meson fm.set_intros)+
-
-lemma urelemI:
-  "urelem p x \<Longrightarrow> urelem (Neg p) x"
-  unfolding urelem_def types_pset_fm_def
-  by simp
-*)
-
-
-(*
-lemma urelem_lexpands:
-  assumes "lexpands b' b" "\<phi> \<in> set b'"
-  assumes "\<forall>\<phi> \<in> set b. urelem \<phi> x"
-  shows "urelem \<phi> x"
-  sorry
-
-lemma urelem_bexpands_noparam:
-  assumes "bexpands_noparam bs' b" "b' \<in> bs'" "\<phi> \<in> set b'"
-  assumes "\<forall>\<phi> \<in> set b. urelem \<phi> x"
-  shows "urelem \<phi> x"
-  sorry
-
-lemma urelem_bexpands_param:
-  assumes "bexpands_param t1 t2 c bs' b" "b' \<in> bs'" "\<phi> \<in> set b'"
-  assumes "\<forall>\<phi> \<in> set b. urelem \<phi> x"
-  shows "urelem \<phi> x"
-  using assms
-proof(induction rule: bexpands_param.induct)
-  case (1 b)
-  then show ?case sorry
-qed *)
-
-lemma urelem_wf_branch:
-  assumes "wf_branch b" "\<phi> \<in> set b" 
-  assumes "urelem (last b) x"
-  shows "urelem \<phi> x"
-  sorry
-
-(* What about urelement x with t \<in> Single x? *)
-
-subsection \<open>Realization of an Open Branch\<close>
-
-(*
-lemma
-  assumes "wf_branch b" "urelem (last b) x" "AT (c \<in>\<^sub>s x) \<in> set b"
-    shows "c \<in> Var ` wits b"
-proof(rule ccontr)
-  assume "c \<notin> Var ` wits b"
-  with no_new_subterms_if_wf_branch[OF \<open>wf_branch b\<close>] have "c \<in> subterms (last b)"
-    using AT_mem_subterms_branchD(1)[OF assms(3)] no_new_subterms_def by blast
-  with assms have " *)
   
 definition "urelems b \<equiv> {x. urelem (last b) x}"
 
@@ -845,8 +769,39 @@ lemma urelems_subs_subterms:
   "urelems b \<subseteq> subterms (last b)"
   unfolding urelems_def urelem_def by blast
 
-lemma urelems_subs_vars: "urelems b \<subseteq> Var ` vars b"
-  sorry
+lemma vars_term_if_is_Var_and_subterms:
+  fixes t :: "'a pset_term"
+  assumes "is_Var x" "x \<in> subterms t"
+  shows "x \<in> Var ` vars t"
+  using assms by (induction t) auto
+
+lemma vars_atom_if_is_Var_and_subterms:
+  fixes a :: "'a pset_atom"
+  assumes "is_Var x" "x \<in> subterms a"
+  shows "x \<in> Var ` vars a"
+  using assms vars_term_if_is_Var_and_subterms by (cases a) auto
+
+lemma vars_fm_if_is_Var_and_subterms:
+  fixes \<phi> :: "'a pset_fm"
+  assumes "is_Var x" "x \<in> subterms \<phi>"
+  shows "x \<in> Var ` vars \<phi>"
+  using assms vars_atom_if_is_Var_and_subterms by (induction \<phi>) auto
+
+lemma urelems_subs_vars: "b \<noteq> [] \<Longrightarrow> urelems b \<subseteq> Var ` vars b"
+proof -
+  assume "b \<noteq> []"
+  with urelems_subs_subterms is_Var_if_urelem
+  have "urelems b \<subseteq> {x. is_Var x \<and> x \<in> subterms (last b)}"
+    unfolding urelems_def by auto
+  with vars_fm_if_is_Var_and_subterms have "urelems b \<subseteq> Var ` vars (last b)"
+    by auto
+  moreover from \<open>b \<noteq> []\<close> have "Var ` vars (last b) \<subseteq> Var ` vars b"
+    unfolding vars_branch_def by (induction b) auto
+  ultimately show ?thesis
+    by blast
+qed
+
+subsection \<open>Realization of an Open Branch\<close>
 
 definition "base_vars b \<equiv> Var ` wits' b \<union> urelems b"
 
@@ -859,7 +814,7 @@ lemma wits'_subs_base_vars:
   unfolding base_vars_def
   by blast
 
-lemma base_vars_subs_vars: "base_vars b \<subseteq> Var ` vars b"
+lemma base_vars_subs_vars: "b \<noteq> [] \<Longrightarrow> base_vars b \<subseteq> Var ` vars b"
   unfolding base_vars_def wits'_def wits_def
   using urelems_subs_vars by blast
 
@@ -889,18 +844,18 @@ lemma subterms'D:
 *)
 
 lemma base_vars_Un_subterms'_eq_subterms:
-  "base_vars b \<union> subterms' b = subterms b"
+  "b \<noteq> [] \<Longrightarrow> base_vars b \<union> subterms' b = subterms b"
   unfolding subterms'_def
   using base_vars_subs_vars vars_branch_subs_subterms_branch by fastforce
 
-lemma finite_base_vars_Un_subterms': "finite (base_vars b \<union> subterms' b)"
+lemma finite_base_vars_Un_subterms': "b \<noteq> [] \<Longrightarrow> finite (base_vars b \<union> subterms' b)"
   unfolding base_vars_Un_subterms'_eq_subterms
   using finite_subterms_branch .
 
 lemma verts_bgraph: "verts (bgraph b) = base_vars b \<union> subterms' b"
   unfolding bgraph_def Let_def by simp
 
-lemma verts_bgraph_eq_subterms: "verts (bgraph b) = subterms b"
+lemma verts_bgraph_eq_subterms: "b \<noteq> [] \<Longrightarrow> verts (bgraph b) = subterms b"
   unfolding verts_bgraph base_vars_Un_subterms'_eq_subterms ..
 
 lemma finite_subterms': "finite (subterms' b)"
@@ -914,8 +869,8 @@ lemma wits_subterms_eq_base_vars_Un_subterms':
   assumes "wf_branch b"
   shows "wits_subterms b = base_vars b \<union> subterms' b"
   unfolding subterms_branch_eq_if_wf_branch[OF assms, symmetric] subterms'_def
-  using base_vars_subs_vars vars_branch_subs_subterms_branch by fastforce
-
+  using base_vars_subs_vars vars_branch_subs_subterms_branch
+  by (metis Diff_partition assms dual_order.trans wf_branch_not_Nil)
 
 lemma in_subterms'_if_AT_mem_in_branch:
   assumes "wf_branch b"
@@ -1068,7 +1023,7 @@ lemma
 proof -
   from base_vars_Un_subterms'_eq_subterms have
     "base_vars b \<subseteq> subterms b" "subterms' b \<subseteq> subterms b"
-    by blast+
+    using wf_branch_not_Nil[OF wf_branch] by blast+
   with inj_on_I show "inj_on I (base_vars b)" "inj_on I (subterms' b)"
     unfolding inj_on_def by blast+
 qed
@@ -1111,8 +1066,6 @@ qed
 lemma sym_eq: "sym eq"
   unfolding eq_def symcl_def sym_def by auto
 
-abbreviation "I_eq \<equiv> (\<lambda>(x, y). (I x, I y)) ` eq"
-
 lemma equiv_eq: "lin_sat b \<Longrightarrow> equiv UNIV eq"
   by (rule equivI) (use refl_eq trans_eq sym_eq in safe)
 
@@ -1144,7 +1097,13 @@ lemma parents_empty_if_wits':
 lemma not_AT_mem_if_urelem:
   assumes "t \<in> urelems b"
   shows "AT (s \<in>\<^sub>s t) \<notin> set b"
-  sorry
+proof
+  assume "AT (s \<in>\<^sub>s t) \<in> set b"
+  from urelem_invar_if_wf_branch[OF wf_branch this] have "urelem (AT (s \<in>\<^sub>s t)) t"
+    using assms[unfolded urelems_def] by auto
+  then show False
+    unfolding urelem_def by (auto dest!: types_fmD simp: types_pset_atom.simps)
+qed
 
 lemma not_dominated_if_urelems:
   assumes "t \<in> urelems b"
@@ -1216,14 +1175,15 @@ proof(induction t rule: realise.induct)
   also have "\<dots> \<le> card (subterms b) + card (eq_class x)"
     using fin_digraph_bgraph.parents_subs_verts[unfolded verts_bgraph_eq_subterms]
     using card_mono[OF finite_subterms_branch]
-    by (metis add_le_mono1)
+    by (simp add: "1.hyps" not_dominated_if_base_vars)
   also have "\<dots> \<le> card (subterms b) + card ({x} \<union> subterms b)"
     apply (intro add_le_mono card_mono[where ?B="{x} \<union> subterms b"])
     using eq_class_subs_subterms finite_subterms_branch by auto
   also have "\<dots> \<le> 2 * card (subterms b)"
   proof -
     from 1 have "x \<in> subterms b"
-      by (metis "1.prems" UnCI verts_bgraph verts_bgraph_eq_subterms)
+      using "1.prems" verts_bgraph verts_bgraph_eq_subterms wf_branch_not_Nil[OF wf_branch]
+      by blast
     then show ?thesis
       unfolding mult_2 by (metis insert_absorb insert_is_Un order_refl)
   qed
@@ -1235,8 +1195,9 @@ next
   also have "\<dots> \<le> card (parents (bgraph b) t)"
     using card_image_le by blast
   also have "\<dots> \<le> card (subterms b)"
-    using fin_digraph_bgraph.parents_subs_verts unfolding verts_bgraph_eq_subterms
-    by (simp add: card_mono finite_subterms_branch)
+    using fin_digraph_bgraph.parents_subs_verts wf_branch_not_Nil[OF wf_branch]
+    unfolding verts_bgraph_eq_subterms
+    by (metis card_mono fin_digraph_bgraph.finite_verts verts_bgraph_eq_subterms)
   finally show ?case
     unfolding base_vars_Un_subterms'_eq_subterms by auto
 next
@@ -1248,7 +1209,8 @@ lemma I_neq_realise: "I x \<noteq> realise y"
 proof -
   note card_realisation[of y]
   moreover have "card (elts (I x)) > 2 * card (subterms b)"
-    using card_I by (metis base_vars_Un_subterms'_eq_subterms)
+    using card_I
+    by (simp add: subterms_branch_eq_if_wf_branch wf_branch wits_subterms_eq_base_vars_Un_subterms')
   ultimately show ?thesis
     by (metis linorder_not_le)
 qed
@@ -1352,9 +1314,22 @@ qed
 
 lemma AT_eq_cases:
   assumes "AT (s =\<^sub>s t) \<in> set b"
-  obtains (urelems) "t \<in> urelems b" "s \<in> urelems b" |
+  obtains (urelems) "s \<in> urelems b" "t \<in> urelems b" |
           (subterms') "s \<in> subterms' b" "t \<in> subterms' b"
-  sorry
+proof(cases "s \<in> urelems b")
+  case True
+  with urelem_invar_if_wf_branch[OF wf_branch assms] have "urelem (AT (s =\<^sub>s t)) s"
+    unfolding urelems_def by force
+  then have "urelem (AT (s =\<^sub>s t)) t"
+    unfolding urelem_def
+    by (auto dest!: types_fmD intro!: types_fmI simp: types_pset_atom.simps)
+  with True that show ?thesis
+    sorry
+next
+  case False
+  then show ?thesis sorry
+qed
+
 
 lemma AF_eq_cases:
   assumes "AF (s =\<^sub>s t) \<in> set b"
@@ -1680,25 +1655,25 @@ proof
     by simp
 qed
 
-lemma realisation_Empty: "realise \<emptyset> = 0"
+lemma realisation_Empty: "realise (\<emptyset> n) = 0"
 proof -
-  from bopen have "AT (s \<in>\<^sub>s \<emptyset>) \<notin> set b" for s
+  from bopen have "AT (s \<in>\<^sub>s \<emptyset> n) \<notin> set b" for s
     using bclosed.intros by blast
-  then have "parents (bgraph b) \<emptyset> = {}"
+  then have "parents (bgraph b) (\<emptyset> n) = {}"
     unfolding bgraph_def Let_def by auto
   moreover
-  have "\<emptyset> \<notin> base_vars b"
+  have "(\<emptyset> n) \<notin> base_vars b"
   proof -
-    have "\<emptyset> \<notin> Var ` wits' b"
+    have "(\<emptyset> n) \<notin> Var ` wits' b"
       using wits'_def wits_def by blast
-    moreover have "\<emptyset> \<notin> urelems b"
+    moreover have "(\<emptyset> n) \<notin> urelems b"
       unfolding urelems_def using is_Var_if_urelem by force
     ultimately show ?thesis
       unfolding base_vars_def by blast
   qed
-  then have "\<emptyset> \<in> subterms' b \<or> \<emptyset> \<notin> verts (bgraph b)"
+  then have "(\<emptyset> n) \<in> subterms' b \<or> (\<emptyset> n) \<notin> verts (bgraph b)"
     by (simp add: verts_bgraph)
-  ultimately show "realise \<emptyset> = 0"
+  ultimately show "realise (\<emptyset> n) = 0"
     by (auto simp: verts_bgraph)
 qed
 
@@ -1713,7 +1688,7 @@ proof -
     by simp
   then have mem_subterms': "t1 \<squnion>\<^sub>s t2 \<in> subterms' b"
   proof -
-    from urelems_subs_vars have "t1 \<squnion>\<^sub>s t2 \<notin> base_vars b"
+    from urelems_subs_vars[OF wf_branch_not_Nil[OF wf_branch]] have "t1 \<squnion>\<^sub>s t2 \<notin> base_vars b"
       unfolding base_vars_def by blast
     then show ?thesis
       by (simp add: assms(2) subterms'_def)

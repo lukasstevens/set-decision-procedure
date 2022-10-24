@@ -755,51 +755,136 @@ qed
 
 subsection \<open>Urelements\<close>
   
-definition "urelems b \<equiv> {x. urelem (last b) x}"
+definition "urelems b \<equiv> {x \<in> subterms b. \<forall>\<phi> \<in> set b. urelem \<phi> x}"
 
 lemma finite_urelems: "finite (urelems b)"
 proof -
-  have "urelems b \<subseteq> subterms (last b)"
+  have "urelems b \<subseteq> subterms b"
     unfolding urelems_def urelem_def by blast
-  with finite_subset finite_subterms_fm show ?thesis
+  with finite_subset finite_subterms_branch show ?thesis
     by blast
 qed
 
-lemma urelems_subs_subterms:
-  "urelems b \<subseteq> subterms (last b)"
-  unfolding urelems_def urelem_def by blast
+lemma urelems_subs_subterms: "urelems b \<subseteq> subterms b"
+  unfolding urelems_def by blast
 
-lemma vars_term_if_is_Var_and_subterms:
-  fixes t :: "'a pset_term"
-  assumes "is_Var x" "x \<in> subterms t"
-  shows "x \<in> Var ` vars t"
-  using assms by (induction t) auto
+lemma is_Var_if_mem_urelems: "t \<in> urelems b \<Longrightarrow> is_Var t"
+  unfolding urelems_def subterms_branch_def
+  using is_Var_if_urelem by auto
 
-lemma vars_atom_if_is_Var_and_subterms:
+lemma urelems_subs_vars: "urelems b \<subseteq> Var ` vars b"
+proof
+  fix t assume "t \<in> urelems b"
+  with urelems_subs_subterms have "t \<in> subterms b"
+    by blast
+  moreover note is_Var_if_mem_urelems[OF \<open>t \<in> urelems b\<close>]
+  then obtain x where "t = Var x"
+    by (meson is_Var_def)
+  ultimately have "x \<in> vars b"
+    unfolding Un_vars_term_subterms_branch_eq_vars_branch[symmetric]
+    by force
+  with \<open>t = Var x\<close> show "t \<in> Var ` vars b"
+    by blast
+qed
+
+term "(f :: 'a \<Rightarrow> nat) \<squnion> g"
+
+lemma type_term_inf:
+  assumes "type_term v1 t = Some l1" "type_term v2 t = Some l2"
+  shows "type_term (v1 \<sqinter> v2) t = Some (l1 \<sqinter> l2)"
+  using assms
+  apply(induction t arbitrary: l1 l2)
+       apply(auto simp: type_term.simps inf_min split: if_splits Option.bind_splits)
+  done
+
+lemma types_pset_atom_inf:
   fixes a :: "'a pset_atom"
-  assumes "is_Var x" "x \<in> subterms a"
-  shows "x \<in> Var ` vars a"
-  using assms vars_term_if_is_Var_and_subterms by (cases a) auto
+  assumes "v1 \<turnstile> a" "v2 \<turnstile> a"
+  shows "v1 \<sqinter> v2 \<turnstile> a"
+  using assms
+  by (auto simp: type_term_inf types_pset_atom.simps inf_nat_def)
 
-lemma vars_fm_if_is_Var_and_subterms:
+lemma types_pset_fm_inf:
   fixes \<phi> :: "'a pset_fm"
-  assumes "is_Var x" "x \<in> subterms \<phi>"
-  shows "x \<in> Var ` vars \<phi>"
-  using assms vars_atom_if_is_Var_and_subterms by (induction \<phi>) auto
+  assumes "v1 \<turnstile> \<phi>" "v2 \<turnstile> \<phi>"
+  shows "v1 \<sqinter> v2 \<turnstile> \<phi>"
+  using assms types_pset_atom_inf
+  unfolding types_pset_fm_def by blast
 
-lemma urelems_subs_vars: "b \<noteq> [] \<Longrightarrow> urelems b \<subseteq> Var ` vars b"
+lemma
+  assumes "wf_branch b" "v \<turnstile> last b"
+  obtains v' where "\<forall>\<phi> \<in> set b. v' \<turnstile> \<phi>" "\<forall>u \<in> urelems b. type_term v' u = Some 0"
 proof -
-  assume "b \<noteq> []"
-  with urelems_subs_subterms is_Var_if_urelem
-  have "urelems b \<subseteq> {x. is_Var x \<and> x \<in> subterms (last b)}"
-    unfolding urelems_def by auto
-  with vars_fm_if_is_Var_and_subterms have "urelems b \<subseteq> Var ` vars (last b)"
-    by auto
-  moreover from \<open>b \<noteq> []\<close> have "Var ` vars (last b) \<subseteq> Var ` vars b"
-    unfolding vars_branch_def by (induction b) auto
-  ultimately show ?thesis
-    by blast
-qed
+  from assms have "expandss b [last b]"
+    unfolding wf_branch_def by force
+
+  define V where "V \<equiv> {v. (\<forall>\<phi> \<in> set b. v \<turnstile> \<phi>) \<and> (\<forall>x. x \<notin> vars b \<longrightarrow> v x = 0)}"
+  have "V \<noteq> {}"
+    sorry
+    
+
+  define m_x where "m_x \<equiv> \<lambda>x. (SOME v. v \<in> V \<and> (\<forall>v' \<in> V. v x \<le> v' x))"
+
+  have "\<exists>v. v \<in> V \<and> (\<forall>v' \<in> V. v x \<le> v' x)" if "x \<in> vars b" for x
+  proof -
+    define m_x_ord where "m_x_ord \<equiv> {(v, w). w x \<le> v x \<and> (w x = v x \<longrightarrow> w \<le> v) \<and> w \<in> V \<and> v \<in> V}"
+
+    have Field[simp]: "Field m_x_ord = V"
+      unfolding m_x_ord_def Field_def by auto
+    
+    have "Partial_order m_x_ord"
+    proof -
+      have "trans m_x_ord"
+        unfolding m_x_ord_def by (auto intro: transI)
+      moreover have "Refl m_x_ord"
+        unfolding refl_on_def Field by (auto simp: m_x_ord_def)
+      moreover have "antisym m_x_ord"
+        by (auto simp: m_x_ord_def intro!: antisymI)
+      ultimately show ?thesis
+        unfolding partial_order_on_def preorder_on_def by blast
+    qed
+    moreover have "\<exists>u \<in> V. \<forall>a \<in> C. (a, u) \<in> m_x_ord"
+      if "C \<in> Chains m_x_ord" "C \<noteq> {}" for C
+    proof -
+      define U where "U \<equiv> {w. w \<in> C \<and> (\<forall>v \<in> C. w x \<le> v x)}"
+
+      from that have "U \<noteq> {}"
+        unfolding U_def Chains_def apply(auto simp: m_x_ord_def)
+        
+
+
+
+  define M_x where "M_x \<equiv> (\<lambda>x. \<Sqinter>((\<sqinter>) (m_x x) ` V))"
+
+
+  have "(INF v \<in> V. v x) \<le> v x" if "v \<in> V" for v x
+    using that by (simp add: cInf_lower)
+  then have "m_x x x \<le> v x" if "v \<in> V" for v x
+    unfolding m_x_def using that by auto
+
+  have "m_x x = (SOME v. v \<in> V)" if "x \<notin> vars b" for x
+  proof -
+    from that have "(INF v \<in> V. v x) = 0"
+      unfolding V_def 
+    using that unfolding m_x_def 
+
+  define v' where "v' \<equiv> Min {v. (\<forall>\<phi> \<in> set b. v \<turnstile> \<phi>)}"
+  term v'
+  then have "\<forall>\<phi> \<in> set b. v' \<turnstile> \<phi>"
+
+  then have "\<exists>v'. (\<forall>\<phi> \<in> set b. v' \<turnstile> \<phi>) \<and> (\<forall>u \<in> urelems b. type_term v' u = Some 0)"
+    using \<open>v \<turnstile> last b\<close>
+  proof(induction b "[last b]" arbitrary: b rule: expandss.induct)
+    case (1 b)
+    then show ?case sorry
+  next
+    case (2 b3 b2)
+    then show ?case sorry
+  next
+    case (3 bs b2 b3)
+    then show ?case sorry
+  qed
+
 
 subsection \<open>Realization of an Open Branch\<close>
 
@@ -814,7 +899,7 @@ lemma wits'_subs_base_vars:
   unfolding base_vars_def
   by blast
 
-lemma base_vars_subs_vars: "b \<noteq> [] \<Longrightarrow> base_vars b \<subseteq> Var ` vars b"
+lemma base_vars_subs_vars: "base_vars b \<subseteq> Var ` vars b"
   unfolding base_vars_def wits'_def wits_def
   using urelems_subs_vars by blast
 
@@ -844,18 +929,18 @@ lemma subterms'D:
 *)
 
 lemma base_vars_Un_subterms'_eq_subterms:
-  "b \<noteq> [] \<Longrightarrow> base_vars b \<union> subterms' b = subterms b"
+  "base_vars b \<union> subterms' b = subterms b"
   unfolding subterms'_def
   using base_vars_subs_vars vars_branch_subs_subterms_branch by fastforce
 
-lemma finite_base_vars_Un_subterms': "b \<noteq> [] \<Longrightarrow> finite (base_vars b \<union> subterms' b)"
+lemma finite_base_vars_Un_subterms': "finite (base_vars b \<union> subterms' b)"
   unfolding base_vars_Un_subterms'_eq_subterms
   using finite_subterms_branch .
 
 lemma verts_bgraph: "verts (bgraph b) = base_vars b \<union> subterms' b"
   unfolding bgraph_def Let_def by simp
 
-lemma verts_bgraph_eq_subterms: "b \<noteq> [] \<Longrightarrow> verts (bgraph b) = subterms b"
+lemma verts_bgraph_eq_subterms: "verts (bgraph b) = subterms b"
   unfolding verts_bgraph base_vars_Un_subterms'_eq_subterms ..
 
 lemma finite_subterms': "finite (subterms' b)"
@@ -870,7 +955,7 @@ lemma wits_subterms_eq_base_vars_Un_subterms':
   shows "wits_subterms b = base_vars b \<union> subterms' b"
   unfolding subterms_branch_eq_if_wf_branch[OF assms, symmetric] subterms'_def
   using base_vars_subs_vars vars_branch_subs_subterms_branch
-  by (metis Diff_partition assms dual_order.trans wf_branch_not_Nil)
+  by fastforce
 
 lemma in_subterms'_if_AT_mem_in_branch:
   assumes "wf_branch b"
@@ -1099,8 +1184,8 @@ lemma not_AT_mem_if_urelem:
   shows "AT (s \<in>\<^sub>s t) \<notin> set b"
 proof
   assume "AT (s \<in>\<^sub>s t) \<in> set b"
-  from urelem_invar_if_wf_branch[OF wf_branch this] have "urelem (AT (s \<in>\<^sub>s t)) t"
-    using assms[unfolded urelems_def] by auto
+  with urelem_invar_if_wf_branch[OF wf_branch this] have "urelem (AT (s \<in>\<^sub>s t)) t"
+    using assms[unfolded urelems_def] by blast
   then show False
     unfolding urelem_def by (auto dest!: types_fmD simp: types_pset_atom.simps)
 qed
@@ -1318,11 +1403,7 @@ lemma AT_eq_cases:
           (subterms') "s \<in> subterms' b" "t \<in> subterms' b"
 proof(cases "s \<in> urelems b")
   case True
-  with urelem_invar_if_wf_branch[OF wf_branch assms] have "urelem (AT (s =\<^sub>s t)) s"
-    unfolding urelems_def by force
-  then have "urelem (AT (s =\<^sub>s t)) t"
-    unfolding urelem_def
-    by (auto dest!: types_fmD intro!: types_fmI simp: types_pset_atom.simps)
+  
   with True that show ?thesis
     sorry
 next

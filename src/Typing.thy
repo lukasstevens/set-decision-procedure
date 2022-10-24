@@ -2,8 +2,6 @@ theory Typing
   imports Set_Calculus
 begin
 
-section \<open>Typing\<close>
-
 lemma is_Var_if_type_term_0: "type_term v t = Some 0 \<Longrightarrow> is_Var t"
   by (induction t) (auto simp: type_term.simps split: if_splits Option.bind_splits)
 
@@ -405,7 +403,8 @@ next
       by force
   next
     case (2 t1 t2 x)
-    from types_bexpands_param[OF this] v' \<open>b3 \<in> bs\<close> obtain l where "\<forall>\<phi> \<in> set b3. v'(x := l) \<turnstile> \<phi>"
+    from types_bexpands_param[OF this] v' \<open>b3 \<in> bs\<close> obtain l
+      where "\<forall>\<phi> \<in> set b3. v'(x := l) \<turnstile> \<phi>"
       using expandss_not_Nil[OF \<open>expandss b2 b1\<close> \<open>b1 \<noteq> []\<close>] by metis
     moreover from bexpands_paramD(7)[OF 2] have "x \<notin> vars b1"
       using expandss_mono[OF \<open>expandss b2 b1\<close>] unfolding vars_branch_def by blast
@@ -420,10 +419,10 @@ qed
 
 lemma urelem_invar_if_wf_branch:
   assumes "wf_branch b" "\<phi> \<in> set b" "x \<in> subterms \<phi>"
-  assumes "urelem (last b) x"
+  assumes "urelem (last b) x" "x \<in> subterms (last b)"
   shows "urelem \<phi> x"
 proof -
-  from assms obtain v where v: "v \<turnstile> last b" "x \<in> subterms (last b)" "type_term v x = Some 0"
+  from assms obtain v where v: "v \<turnstile> last b" "type_term v x = Some 0"
     unfolding urelem_def by blast
   moreover from assms have "expandss b [last b]"
     by (metis expandss_last_eq last.simps list.distinct(1) wf_branch_def)
@@ -431,9 +430,8 @@ proof -
     "\<forall>x \<in> vars (last b). v' x = v x" "\<forall>\<phi> \<in> set b. v' \<turnstile> \<phi>"
     by (metis list.set_intros(1) vars_fm_vars_branchI)
   ultimately show ?thesis
-    unfolding urelem_def using assms(2,3)
+    unfolding urelem_def using assms(2,3,5)
     by (metis mem_vars_fm_if_mem_subterm_fm type_term_if_on_vars_eq)
 qed
-
   
 end

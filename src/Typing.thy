@@ -5,8 +5,11 @@ begin
 lemma is_Var_if_type_term_0: "type_term v t = Some 0 \<Longrightarrow> is_Var t"
   by (induction t) (auto simp: type_term.simps split: if_splits Option.bind_splits)
 
+lemma is_Var_if_urelem': "urelem' v \<phi> t \<Longrightarrow> is_Var t"
+  using is_Var_if_type_term_0 by blast
+
 lemma is_Var_if_urelem: "urelem \<phi> t \<Longrightarrow> is_Var t"
-  unfolding urelem_def using is_Var_if_type_term_0 by blast
+  unfolding urelem_def using is_Var_if_urelem' by blast
 
 lemma types_fmD:
   "v \<turnstile> And p q \<Longrightarrow> v \<turnstile> p"
@@ -418,9 +421,9 @@ next
 qed
 
 lemma urelem_invar_if_wf_branch:
-  assumes "wf_branch b" "\<phi> \<in> set b" "x \<in> subterms \<phi>"
+  assumes "wf_branch b"
   assumes "urelem (last b) x" "x \<in> subterms (last b)"
-  shows "urelem \<phi> x"
+  shows "\<exists>v. \<forall>\<phi> \<in> set b. urelem' v \<phi> x"
 proof -
   from assms obtain v where v: "v \<turnstile> last b" "type_term v x = Some 0"
     unfolding urelem_def by blast
@@ -430,7 +433,7 @@ proof -
     "\<forall>x \<in> vars (last b). v' x = v x" "\<forall>\<phi> \<in> set b. v' \<turnstile> \<phi>"
     by (metis list.set_intros(1) vars_fm_vars_branchI)
   ultimately show ?thesis
-    unfolding urelem_def using assms(2,3,5)
+    unfolding urelem_def using assms
     by (metis mem_vars_fm_if_mem_subterm_fm type_term_if_on_vars_eq)
 qed
   

@@ -40,7 +40,9 @@ definition types_pset_fm :: "('a \<Rightarrow> nat) \<Rightarrow> 'a pset_fm \<R
 
 adhoc_overloading types types_pset_fm
 
+abbreviation "urelem' v (\<phi> :: 'a pset_fm) t \<equiv> v \<turnstile> \<phi> \<and> type_term v t = Some 0"
+
 definition urelem :: "'a pset_fm \<Rightarrow> 'a pset_term \<Rightarrow> bool" where
-  "urelem \<phi> t \<equiv> (\<exists>v. v \<turnstile> \<phi> \<and> type_term v t = Some 0)"
+  "urelem \<phi> t \<equiv> (\<exists>v. urelem' v \<phi> t)"
 
 end

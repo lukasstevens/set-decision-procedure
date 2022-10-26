@@ -436,5 +436,48 @@ proof -
     unfolding urelem_def using assms
     by (metis mem_vars_fm_if_mem_subterm_fm type_term_if_on_vars_eq)
 qed
-  
+
+lemma type_term_neq_Some_0:
+  fixes s :: "'a pset_term"
+  assumes "f t1 t2 \<in> subterms s" "f \<in> {(\<sqinter>\<^sub>s), (\<squnion>\<^sub>s), (-\<^sub>s)}"
+  assumes "type_term v (f t1 t2) \<noteq> None"
+  shows "type_term v t1 \<noteq> Some 0" "type_term v t2 \<noteq> Some 0"
+  using assms
+  by (induction s)
+     (auto simp: type_term.simps split: if_splits Option.bind_splits)
+
+lemma subterms_type_term_not_None:
+  assumes "t \<in> subterms s"
+  assumes "type_term v s \<noteq> None"
+  shows "type_term v t \<noteq> None"
+  using assms
+  by (induction s) (auto simp: type_term.simps split: if_splits Option.bind_splits)
+
+lemma subterms_type_pset_atom_not_None:
+  fixes a :: "'a pset_atom"
+  assumes "t \<in> subterms a"
+  assumes "v \<turnstile> a"
+  shows "type_term v t \<noteq> None"
+  using assms subterms_type_term_not_None
+  by (cases a) (fastforce simp: types_pset_atom.simps)+
+
+lemma subterms_type_pset_fm_not_None:
+  fixes \<phi> :: "'a pset_fm"
+  assumes "t \<in> subterms \<phi>"
+  assumes "v \<turnstile> \<phi>"
+  shows "type_term v t \<noteq> None"
+  using assms subterms_type_pset_atom_not_None
+  by (induction \<phi>) (auto dest: types_fmD(1-5) dest!: types_fmD(6))
+
+lemma not_urelem_if_compound:
+  assumes "f t1 t2 \<in> subterms \<phi>" "f \<in> {(\<sqinter>\<^sub>s), (\<squnion>\<^sub>s), (-\<^sub>s)}"
+  shows "\<not> urelem \<phi> t1" "\<not> urelem \<phi> t2"
+proof -
+  from assms have "type_term v t1 \<noteq> Some 0" "type_term v t2 \<noteq> Some 0" if "v \<turnstile> \<phi>" for v
+    using that type_term_neq_Some_0[OF _ _ subterms_type_pset_fm_not_None]
+    using subterms_refl by blast+
+  then show "\<not> urelem \<phi> t1" "\<not> urelem \<phi> t2"
+    unfolding urelem_def by blast+
+qed
+
 end

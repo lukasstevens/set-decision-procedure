@@ -40,9 +40,9 @@ proof -
     by blast+
 qed
 
-lemmas types_pset_atom_Member_Union_D[simplified] = types_pset_atom_Member_D[where ?f="(\<squnion>\<^sub>s)"]
-   and types_pset_atom_Member_Inter_D[simplified] = types_pset_atom_Member_D[where ?f="(\<sqinter>\<^sub>s)"]
-   and types_pset_atom_Member_Diff_D[simplified] = types_pset_atom_Member_D[where ?f="(-\<^sub>s)"]
+lemmas types_pset_atom_Member_Union_D = types_pset_atom_Member_D[where ?f="(\<squnion>\<^sub>s)", simplified]
+   and types_pset_atom_Member_Inter_D = types_pset_atom_Member_D[where ?f="(\<sqinter>\<^sub>s)", simplified]
+   and types_pset_atom_Member_Diff_D = types_pset_atom_Member_D[where ?f="(-\<^sub>s)", simplified]
 
 lemma type_term_eq_if_mem_subterms:
   fixes \<phi> :: "'a pset_fm"
@@ -469,7 +469,7 @@ lemma subterms_type_pset_fm_not_None:
   using assms subterms_type_pset_atom_not_None
   by (induction \<phi>) (auto dest: types_fmD(1-5) dest!: types_fmD(6))
 
-lemma not_urelem_if_compound:
+lemma not_urelem_comps_if_compound:
   assumes "f t1 t2 \<in> subterms \<phi>" "f \<in> {(\<sqinter>\<^sub>s), (\<squnion>\<^sub>s), (-\<^sub>s)}"
   shows "\<not> urelem \<phi> t1" "\<not> urelem \<phi> t2"
 proof -

@@ -3,5 +3,6 @@ session Set_Proc = HOL +
     "HOL-Library"
     Graph_Theory
     ZFC_in_HOL
+    Fresh_Identifiers
   theories
     Set_Proc

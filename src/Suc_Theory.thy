@@ -6,6 +6,12 @@ datatype 'a suc_term = Var 'a | Zero | Succ nat "'a suc_term"
 
 datatype 'a suc_atom = is_Eq: Eq "'a suc_term" "'a suc_term" | is_NEq: NEq "'a suc_term" "'a suc_term"
 
+lemma finite_set_suc_term[simp]: "finite (set_suc_term t)"
+  by (induction t) auto
+
+lemma finite_set_suc_atom[simp]: "finite (set_suc_atom a)"
+  by (cases a) auto
+
 fun succ :: "nat \<Rightarrow> 'a suc_term \<Rightarrow> 'a suc_term" where
   "succ n (Succ k t) = succ (n + k) t"
 | "succ 0 t = t"
@@ -248,7 +254,7 @@ lemma I_atom_fun_updI:
   shows "I_atom (v(x := s)) a"
   using assms I_atom_fun_upd by metis
 
-lemma I_atom_assign_if_solve:
+lemma I_atom_assign_if_solve_Some:
   assumes "solve es = Some ss" "\<forall>a \<in> set es. is_normal a"
   shows "\<forall>a \<in> set ss. I_atom (assign ss) a"
   using assms
@@ -275,10 +281,9 @@ next
     by (auto simp: Let_def I_term_succ I_atom_fun_upd assign_succ split: if_splits)
 qed auto
 
-lemma I_atom_if_I_atom_solve:
+lemma I_atom_iff_if_I_atom_solve_Some:
   assumes "solve es = Some ss" "\<forall>a \<in> set es. is_normal a"
-  assumes "\<forall>a \<in> set ss. I_atom v a"
-  shows "\<forall>a \<in> set es. I_atom v a"
+  shows "(\<forall>a \<in> set ss. I_atom v a) \<longleftrightarrow> (\<forall>a \<in> set es. I_atom v a)"
   using assms
 proof(induction es arbitrary: ss rule: solve.induct)
   case (2 x y es)
@@ -298,7 +303,8 @@ next
     by (auto simp: I_term_succ I_atom_subst_atom split: if_splits)
 qed auto
 
-lemma assign_minimal_if_solve:
+
+lemma assign_minimal_if_solve_Some:
   assumes "solve es = Some ss" "\<forall>a \<in> set es. is_normal a"
   assumes "\<forall>a \<in> set ss. I_atom v a"
   shows "assign ss z \<le> v z"
@@ -368,11 +374,6 @@ lemma I_atom_if_I_atom_elim_NEq_Zero:
   using assms I_atom_if_I_atom_elim_NEq_Zero_aux
   unfolding elim_NEq_Zero_def by blast
 
-lemma aux:
-  assumes "I_atom v (NEq (Var x) Zero)" "x \<noteq> fx"
-  shows "I_atom (v(fx := nat.pred (v x))) (Eq (Var x) (Succ 1 (Var fx)))"
-  using assms by auto
-
 lemma I_term_if_eq_on_set_suc_term:
   assumes "\<forall>x \<in> set_suc_term t. v' x = v x"
   shows "I_term v' t = I_term v t"
@@ -390,96 +391,109 @@ lemma I_atom_if_eq_on_set_suc_atom:
    apply (metis I_term_if_eq_on_set_suc_term UnI1 UnI2)+
   done
 
-lemma
+lemma not_mem_set_suc_atom_elim_NEq_zero_aux:
   assumes "finite us" "\<Union>(set_suc_atom ` set es) \<subseteq> us"
   assumes "a \<in> set (elim_NEq_Zero_aux us es)"
-  assumes "x \<in> us"
-  shows "fresh us x \<notin> set_suc_atom a"
+  assumes "x \<in> us - \<Union>(set_suc_atom ` set es)"
+  shows "x \<notin> set_suc_atom a"
   using assms
-proof(induction us es rule: elim_NEq_Zero_aux.induct)
-  case (1 uu)
-  then show ?case by simp
-next
-  case (2 us y es)
-  then have "fresh (insert (fresh us y) us) x \<notin> set_suc_atom a"
-    if "a \<in> set (elim_NEq_Zero_aux (insert (fresh us y) us) es)"
-    using that by (simp add: subset_insertI2)
-  from 2 have "set_suc_atom a \<subseteq> insert (fresh us y) us"
-        if "a \<in> set (elim_NEq_Zero_aux (insert (fresh us y) us) es)"
-    using that apply(auto) 
-  from "2"(2-) show ?case apply(simp) sorry
-qed (use fresh_notIn in \<open>force+\<close>)
+  apply(induction us es arbitrary: x rule: elim_NEq_Zero_aux.induct)
+        apply(auto simp: fresh_notIn Let_def)
+  done
 
-lemma
+lemma I_atom_elim_NEq_Zero_aux_if_I_atom:
   assumes "\<Union>(set_suc_atom ` set es) \<subseteq> us" "finite us"
   assumes "\<forall>a \<in> set es. I_atom v a"
   obtains v' where "\<forall>a \<in> set (elim_NEq_Zero_aux us es). I_atom v' a"
                    "\<forall>x \<in> us. v' x = v x"
   using assms
-(*
-proof(induction es arbitrary: us thesis)
-  case Nil
-  then show ?case sorry
-next
-  case (Cons e es)
-  consider
-    x where "e = NEq (Var x) Zero" | "\<forall>x. e \<noteq> NEq (Var x) Zero"
-    by blast
-  then show ?case
-  proof cases
-    case 1
-    then show ?thesis sorry
-  next
-    case 2
-    then show ?thesis sorry
-  qed
-qed
-*)
 proof(induction us es arbitrary: thesis rule: elim_NEq_Zero_aux.induct)
   case (1 us)
-  then show ?case  sorry
+  then show ?case by auto
 next
   case (2 us x es thesis)
   then obtain v' where
     v': "\<forall>a \<in> set (elim_NEq_Zero_aux (insert (fresh us x) us) es). I_atom v' a"
         "\<forall>x \<in> insert (fresh us x) us. v' x = v x"
     by (auto simp: subset_insertI2)
-  with "2.prems"(3) have "fresh us x \<notin> us" "\<forall>x \<in> us. (v'(fresh us x := nat.pred (v' x))) x = v x"
-    using fresh_notIn by (metis fun_upd_apply insertCI)+
+  define v'' where "v'' \<equiv> v'(fresh us x := nat.pred (v' x))"
+
+  from v' "2.prems"(3) have "fresh us x \<notin> us" "\<forall>x \<in> us. v'' x = v x"
+    unfolding v''_def using fresh_notIn by (metis fun_upd_apply insertCI)+
   moreover from "2.prems"(2) have "x \<in> us"
     by auto
   moreover from "2.prems"(4) have "v x \<noteq> 0"
     by simp
   with v' \<open>x \<in> us\<close> have "v' x \<noteq> 0"
     by simp
-  ultimately show ?case apply(intro "2"(2)[where ?v'="v'(fresh us x := nat.pred (v' x))"])
-     apply(auto simp: Let_def) apply(metis)
-next
-  case ("3_1" us s t es)
-  then obtain v'
-    where v': "\<forall>a \<in> set (elim_NEq_Zero_aux us es). I_atom v' a"
-              "\<forall>x \<in> us. v' x = v x"
-    by auto
-  with "3_1" have "\<forall>x \<in> set_suc_atom (Eq s t). v x = v' x"
-    by auto
-  from I_atom_if_eq_on_set_suc_atom[OF this] have "I_atom v' (Eq s t) = I_atom v (Eq s t)"
-    by blast
-  with "3_1" v' show ?case
+  with \<open>x \<in> us\<close> have "v x = Suc (v'' (fresh us x))"
+    unfolding v''_def by (auto simp: v'(2))
+  moreover have "I_atom v'' a = I_atom v' a"
+    if "a \<in> set (elim_NEq_Zero_aux (insert (fresh us x) us) es)" for a
+  proof -
+    have "fresh us x \<in> insert (fresh us x) us - \<Union>(set_suc_atom ` set es)"
+      using "2.prems"(2) \<open>fresh us x \<notin> us\<close> by auto
+    note not_mem_set_suc_atom_elim_NEq_zero_aux[OF _ _ _ this]
+    with that have "fresh us x \<notin> set_suc_atom a"
+      using "2.prems"(2,3) by auto
+    then show ?thesis
+      unfolding v''_def by (simp add: I_atom_fun_upd)
+  qed
+  ultimately show ?case
+    by (intro "2"(2)[where ?v'=v'']) (auto simp: v'(1) Let_def)
+qed (simp; metis I_term_if_eq_on_set_suc_term in_mono)+
+
+lemma I_atom_elim_NEq_Zero_if_I_atom:
+  assumes "\<forall>a \<in> set es. I_atom v a"
+  obtains v' where "\<forall>a \<in> set (elim_NEq_Zero es). I_atom v' a"
+                   "\<forall>x \<in> \<Union>(set_suc_atom ` set es). v' x = v x"
+proof -
+  have "finite (\<Union>(set_suc_atom ` set es))"
     by simp
-next
-  case ("3_2" us va es)
-  then show ?case sorry
-next
-  case ("3_3" us vb vc va es)
-  then show ?case sorry
-next
-  case ("3_4" us v vb es)
-  then show ?case sorry
-next
-  case ("3_5" us v vb vc es)
-  then show ?case sorry
+  note I_atom_elim_NEq_Zero_aux_if_I_atom[OF _ this assms]
+  with that show ?thesis
+    unfolding elim_NEq_Zero_def by blast
 qed
 
-hide_const (open) Var subst_term subst_atom is_normal I_term I_atom is_Eq is_NEq
+lemma not_I_atom_if_solve_elim_NEq_Zero_None:
+  assumes "\<forall>a \<in> set es. is_Eq a \<longrightarrow> is_normal a"
+  assumes "\<forall>a \<in> set es. is_NEq a \<longrightarrow> (\<exists>x. a = NEq (Var x) Zero)"
+  assumes "solve (elim_NEq_Zero es) = None"
+  shows "\<exists>a \<in> set es. \<not> I_atom v a"
+proof -
+  from is_normal_elim_NEq_Zero assms have "\<forall>a \<in> set (elim_NEq_Zero es). is_normal a"
+    by blast
+  note I_atom_solve_None[OF assms(3) this]
+  then have "\<exists>a \<in> set (elim_NEq_Zero es). \<not> I_atom v a" for v
+    by blast
+  with I_atom_elim_NEq_Zero_if_I_atom show ?thesis
+    by metis
+qed
+
+lemma
+  assumes "\<forall>a \<in> set es. is_Eq a \<longrightarrow> is_normal a"
+  assumes "\<forall>a \<in> set es. is_NEq a \<longrightarrow> (\<exists>x. a = NEq (Var x) Zero)"
+  assumes "solve (elim_NEq_Zero es) = Some ss"
+  shows I_atom_assign_if_solve_elim_NEq_Zero_Some:
+      "\<forall>a \<in> set es. I_atom (assign ss) a"
+    and I_atom_assign_minimal_if_solve_elim_NEq_Zero_Some:
+      "\<lbrakk> \<forall>a \<in> set es. I_atom v a; z \<in> \<Union>(set_suc_atom ` set es) \<rbrakk>
+       \<Longrightarrow> assign ss z \<le> v z"
+proof -
+  from is_normal_elim_NEq_Zero assms have normal: "\<forall>a \<in> set (elim_NEq_Zero es). is_normal a"
+    by blast  
+  note I_atom_assign_if_solve_Some[OF assms(3) normal]
+  note this[unfolded I_atom_iff_if_I_atom_solve_Some[OF assms(3) normal]]
+  from I_atom_if_I_atom_elim_NEq_Zero[OF this] show "\<forall>a \<in> set es. I_atom (assign ss) a" .
+
+  note assign_minimal_if_solve_Some[OF assms(3) normal]
+  then have "assign ss z \<le> v z" if "\<forall>a \<in> set (elim_NEq_Zero es). I_atom v a" for v
+    using that I_atom_iff_if_I_atom_solve_Some[OF assms(3) normal] by blast
+  then show "assign ss z \<le> v z"
+    if "\<forall>a \<in> set es. I_atom v a" "z \<in> \<Union>(set_suc_atom ` set es)" for v
+    using that I_atom_elim_NEq_Zero_if_I_atom by metis
+qed
+
+hide_const (open) Var Eq NEq subst_term subst_atom is_normal I_term I_atom is_Eq is_NEq assign solve
 
 end

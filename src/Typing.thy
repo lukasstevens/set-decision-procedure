@@ -2,6 +2,21 @@ theory Typing
   imports Set_Calculus
 begin
 
+lemma type_term_eq_SomeD:
+  "type_term v (Var x) = Some l \<Longrightarrow> v x = l"
+  "type_term v (t1 \<squnion>\<^sub>s t2) = Some l \<Longrightarrow> type_term v t1 = Some l \<and> type_term v t2 = Some l"
+  "type_term v (t1 \<sqinter>\<^sub>s t2) = Some l \<Longrightarrow> type_term v t1 = Some l \<and> type_term v t2 = Some l"
+  "type_term v (t1 -\<^sub>s t2) = Some l \<Longrightarrow> type_term v t1 = Some l \<and> type_term v t2 = Some l"
+  "type_term v (Single t) = Some l \<Longrightarrow> l \<noteq> 0 \<and> type_term v t = Some (nat.pred l)"
+  by (auto simp: type_term.simps split: if_splits Option.bind_splits)
+
+lemma type_term_if_mem_subterms_term:
+  assumes "s \<in> subterms t"
+  assumes "type_term v t = Some lt"
+  shows "\<exists>ls. type_term v s = Some ls"
+  using assms
+  by (induction t arbitrary: s lt) (auto dest: type_term_eq_SomeD)
+
 lemma is_Var_if_type_term_0: "type_term v t = Some 0 \<Longrightarrow> is_Var t"
   by (induction t) (auto simp: type_term.simps split: if_splits Option.bind_splits)
 

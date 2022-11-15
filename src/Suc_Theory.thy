@@ -17,31 +17,27 @@ fun succ :: "nat \<Rightarrow> 'a suc_term \<Rightarrow> 'a suc_term" where
 | "succ 0 t = t"
 | "succ n t = Succ n t"
 
-fun is_suc_normal_term :: "'a suc_term \<Rightarrow> bool" where
-  "is_suc_normal_term (Var _) \<longleftrightarrow> True"
-| "is_suc_normal_term Zero \<longleftrightarrow> True"
-| "is_suc_normal_term (Succ n Zero) \<longleftrightarrow> n \<noteq> 0"
-| "is_suc_normal_term (Succ n (Var _)) \<longleftrightarrow> n \<noteq> 0"
-| "is_suc_normal_term (Succ _ (Succ _ _)) \<longleftrightarrow> False"
+fun is_Succ_normal_term :: "'a suc_term \<Rightarrow> bool" where
+  "is_Succ_normal_term (Var _) \<longleftrightarrow> True"
+| "is_Succ_normal_term Zero \<longleftrightarrow> True"
+| "is_Succ_normal_term (Succ n Zero) \<longleftrightarrow> n \<noteq> 0"
+| "is_Succ_normal_term (Succ n (Var _)) \<longleftrightarrow> n \<noteq> 0"
+| "is_Succ_normal_term (Succ _ (Succ _ _)) \<longleftrightarrow> False"
 
-fun is_suc_normal_atom :: "'a suc_atom \<Rightarrow> bool" where
-  "is_suc_normal_atom (Eq t1 t2) \<longleftrightarrow> is_suc_normal_term t1 \<and> is_suc_normal_term t2"
-| "is_suc_normal_atom (NEq t1 t2) \<longleftrightarrow> is_suc_normal_term t1 \<and> is_suc_normal_term t2"
+lemma not_is_Succ_normal_Succ_0[simp]: "\<not> is_Succ_normal_term (Succ 0 t)"
+  apply(cases t)
+    apply(auto)
+  done
 
-consts is_suc_normal :: "'a \<Rightarrow> bool"
-adhoc_overloading is_suc_normal is_suc_normal_term is_suc_normal_atom
+lemma is_Succ_normal_term_SuccD[simp]: "is_Succ_normal_term (Succ n t) \<Longrightarrow> is_Succ_normal_term t"
+  by (cases t) auto
 
-fun is_Zero_free_term :: "'a suc_term \<Rightarrow> bool" where
-  "is_Zero_free_term (Var _) \<longleftrightarrow> True"
-| "is_Zero_free_term Zero \<longleftrightarrow> False"
-| "is_Zero_free_term (Succ _ t) \<longleftrightarrow> is_Zero_free_term t"
+fun is_Succ_normal_atom :: "'a suc_atom \<Rightarrow> bool" where
+  "is_Succ_normal_atom (Eq t1 t2) \<longleftrightarrow> is_Succ_normal_term t1 \<and> is_Succ_normal_term t2"
+| "is_Succ_normal_atom (NEq t1 t2) \<longleftrightarrow> is_Succ_normal_term t1 \<and> is_Succ_normal_term t2"
 
-fun is_Zero_free_atom :: "'a suc_atom \<Rightarrow> bool" where
-  "is_Zero_free_atom (Eq t1 t2) \<longleftrightarrow> is_Zero_free_term t1 \<and> is_Zero_free_term t2"
-| "is_Zero_free_atom (NEq t1 t2) \<longleftrightarrow> is_Zero_free_term t1 \<and> is_Zero_free_term t2"
-
-consts is_Zero_free :: "'a \<Rightarrow> bool"
-adhoc_overloading is_Zero_free is_Zero_free_term is_Zero_free_atom
+consts is_Succ_normal :: "'a \<Rightarrow> bool"
+adhoc_overloading is_Succ_normal is_Succ_normal_term is_Succ_normal_atom
 
 fun I_term :: "('a \<Rightarrow> nat) \<Rightarrow> 'a suc_term \<Rightarrow> nat" where
   "I_term v (Var x) = v x"
@@ -66,67 +62,63 @@ lemma I_term_succ: "I_term v (succ n t) = I_term v (Succ n t)"
     apply(auto)
   done
 
-lemma is_suc_normal_succ[simp]: "is_suc_normal (succ n t)"
+lemma is_Succ_normal_succ[simp]: "is_Succ_normal (succ n t)"
   apply(induction n t rule: succ.induct)
     apply(auto)
   done
 
-lemma is_suc_normal_subst_term[simp]: "is_suc_normal (subst_term \<sigma> t)"
+lemma is_Succ_normal_subst_term[simp]: "is_Succ_normal (subst_term \<sigma> t)"
   apply(induction t)
    apply(auto)
   done
 
-lemma is_suc_normal_subst_atom[simp]: "is_suc_normal (subst_atom \<sigma> a)"
+lemma is_Succ_normal_subst_atom[simp]: "is_Succ_normal (subst_atom \<sigma> a)"
   by (cases a) simp_all
-
-lemma is_Zero_free_succ[simp]: "is_Zero_free (succ n t) = is_Zero_free t"
-  apply(induction n t rule: succ.induct)
-      apply(auto)
-  done
-
-lemma is_Zero_free_subst_term[simp]:
-  "is_Zero_free t \<Longrightarrow> is_Zero_free (subst_term (Var(x := t)) s) \<longleftrightarrow> is_Zero_free s"
-  apply(induction s)
-    apply(auto)
-  done
-
-lemma is_Zero_free_subst_atom[simp]:
-  "is_Zero_free t \<Longrightarrow> is_Zero_free (subst_atom (Var(x := t)) a) \<longleftrightarrow> is_Zero_free a"
-  by (cases a) auto
 
 lemma is_NEq_subst_atom[simp]:
   "is_NEq (subst_atom v a) \<longleftrightarrow> is_NEq a"
   by (cases a) auto
 
 abbreviation solve_Var_Eq_Succ where
-"solve_Var_Eq_Succ solve x n y es \<equiv>
-    (if x = y
+"solve_Var_Eq_Succ solve x n t es \<equiv>
+    (if (Var x) = t
       then (if n = 0 then solve es else None)
-      else map_option ((#) (Eq (Var x) (succ n (Var y))))
-            (solve (map (subst_atom (Var(x := succ n (Var y)))) es))
+      else map_option ((#) (Eq (Var x) (succ n t)))
+            (solve (map (subst_atom (Var(x := succ n t))) es))
     )"
 
-fun solve :: "'a suc_atom list \<Rightarrow> 'a suc_atom list option" where
+lemma size_succ_leq[termination_simp]: "size (succ n t) \<le> Suc (size t)"
+  apply(induction n t rule: succ.induct)
+      apply(auto)
+  done
+
+function (sequential) solve :: "'a suc_atom list \<Rightarrow> 'a suc_atom list option" where
   "solve [] = Some []"
-| "solve (Eq (Var x) (Var y) # es) =
-    (if x = y
-      then solve es
-      else map_option ((#) (Eq (Var x) (Var y))) (solve (map (subst_atom (Var(x := Var y))) es))
-    )"
-| "solve (Eq (Var x) (Succ n (Var y)) # es) = solve_Var_Eq_Succ solve x n y es"
-| "solve (Eq (Succ n (Var y)) (Var x) # es) = solve_Var_Eq_Succ solve x n y es"
-| "solve (Eq (Succ n (Var x)) (Succ k (Var y)) # es) =
+| "solve (Eq (Var x) (Var y) # es) = solve_Var_Eq_Succ solve x 0 (Var y) es"
+| "solve (Eq (Var x) (Succ n t) # es) = solve_Var_Eq_Succ solve x n t es"
+| "solve (Eq (Succ n t) (Var x) # es) = solve_Var_Eq_Succ solve x n t es"
+| "solve (Eq (Succ n s) (Succ k t) # es) =
     (if n \<ge> k
-      then solve_Var_Eq_Succ solve y (n - k) x es
-      else solve_Var_Eq_Succ solve x (k - n) y es
+      then solve (Eq t (succ (n - k) s) # es)
+      else solve (Eq s (succ (k - n) t) # es)
     )"
+| "solve (Eq Zero Zero # es) = solve es"
+| "solve (Eq Zero (Var x) # es) = solve_Var_Eq_Succ solve x 0 Zero es"
+| "solve (Eq (Var x) Zero # es) = solve_Var_Eq_Succ solve x 0 Zero es"
+| "solve (Eq Zero (Succ 0 t) # es) = solve (Eq t Zero # es)"
+| "solve (Eq Zero (Succ n t) # es) = None"
+| "solve (Eq (Succ 0 t) Zero # es) = solve (Eq t Zero # es)"
+| "solve (Eq (Succ n t) Zero # es) = None"
+  by pat_completeness auto
+termination by (size_change)
 
-abbreviation "is_normal a \<equiv> \<not> is_NEq a \<and> is_Zero_free a \<and> is_suc_normal a"
 
-lemma is_suc_normal_solve:
+abbreviation "is_normal a \<equiv> \<not> is_NEq a \<and> is_Succ_normal a"
+
+lemma is_Succ_normal_solve:
   assumes "solve es = Some ss" "\<forall>a \<in> set es. is_normal a"
   assumes "a \<in> set ss"
-  shows "is_suc_normal a"
+  shows "is_Succ_normal a"
   using assms
   apply(induction es arbitrary: ss rule: solve.induct)
             apply(auto split: if_splits)
@@ -153,7 +145,7 @@ proof -
   have "False" if "\<forall>a \<in> set es. I_atom v a"
     using assms that
     apply(induction es rule: solve.induct)
-              apply(auto simp: I_atom_subst_atom I_term_succ split: if_splits)
+                apply(force simp: I_atom_subst_atom I_term_succ split: if_splits)+
     done
   then show ?thesis
     by blast
@@ -194,7 +186,7 @@ lemma not_mem_suc_atom_solve:
   shows "\<forall>a \<in> set ss. z \<notin> set_suc_atom a"
   using assms
   apply(induction es arbitrary: ss rule: solve.induct)
-            apply(auto simp: not_mem_subst_atom split: if_splits)
+              apply(force simp: not_mem_subst_atom split: if_splits)+
   done
 
 lemma not_mem_suc_atom_if_solve:
@@ -202,41 +194,50 @@ lemma not_mem_suc_atom_if_solve:
   shows "\<forall>a \<in> set ss. x \<notin> set_suc_atom a"
   using assms
 proof(induction es arbitrary: ss rule: solve.induct)
-  case (2 x y es)
-  note not_mem_suc_atom_solve[where ?es="map (subst_atom (Var(x := Var y))) es" and ?z=x]
+  case (2 y z es)
+  note not_mem_suc_atom_solve[where ?es="map (subst_atom (Var(y := Var z))) es" and ?z=y]
   with 2 show ?case
     by (auto simp: not_mem_subst_atom_self split: if_splits)
 next
-  case (3 x n y es)
+  case (3 y n t es)
   note not_mem_suc_atom_solve[
-      where ?es="map (subst_atom (Var(x := succ n (Var y)))) es" and ?z=x]
+      where ?es="map (subst_atom (Var(y := succ n t))) es" and ?z=y]
   with 3 show ?case
-    by (auto simp: not_mem_subst_atom_self split: if_splits)
+    apply (auto simp: not_mem_subst_atom_self split: if_splits)
+    by (metis is_Succ_normal_term.simps(5) not_mem_subst_atom_self set_suc_term_succ suc_term.set_cases)
 next                                          
-  case (4 n y x es)
+  case (4 n t y es)
   note not_mem_suc_atom_solve[
-      where ?es="map (subst_atom (Var(x := succ n (Var y)))) es" and ?z=x]
+      where ?es="map (subst_atom (Var(y := succ n t))) es" and ?z=y]
   with 4 show ?case
+    apply (auto simp: not_mem_subst_atom_self split: if_splits)
+    by (metis is_Succ_normal_term.simps(5) not_mem_subst_atom_self set_suc_term_succ suc_term.set_cases)
+next
+  case (7 y es)
+  note not_mem_suc_atom_solve[
+      where ?es="map (subst_atom (Var(y := Zero))) es" and ?z=y]
+  with 7 show ?case
     by (auto simp: not_mem_subst_atom_self split: if_splits)
 next
-  case (5 n x k y es)
+  case (8 y es)
   note not_mem_suc_atom_solve[
-      where ?es="map (subst_atom (Var(y := succ (n - k) (Var x)))) es" and ?z=y]
-   and not_mem_suc_atom_solve[
-      where ?es="map (subst_atom (Var(x := succ (k - n) (Var y)))) es" and ?z=x]
-  with 5 show ?case
+      where ?es="map (subst_atom (Var(y := Zero))) es" and ?z=y]
+  with 8 show ?case
     by (auto simp: not_mem_subst_atom_self split: if_splits)
-qed auto
+qed (auto split: if_splits)
 
 fun assign :: "'a suc_atom list \<Rightarrow> ('a \<Rightarrow> nat)" where
   "assign [] = (\<lambda>x. 0)"
 | "assign (Eq (Var x) (Var y) # ss) = (let ass = assign ss in ass(x := ass y))"
 | "assign (Eq (Var x) (Succ n (Var y)) # ss) = (let ass = assign ss in ass(x := (Suc^^n) (ass y)))"
+| "assign (Eq (Var x) Zero # ss) = (let ass = assign ss in ass(x := 0))"
+| "assign (Eq (Var x) (Succ n Zero) # ss) = (let ass = assign ss in ass (x := (Suc^^n) 0))"
+| "assign (Eq (Var x) (Succ n (Succ k t)) # ss) = assign (Eq (Var x) (Succ (n + k) t) # ss)"
 
 lemma assign_succ:
-  "assign (Eq (Var x) (succ n (Var y)) # ss) = assign (Eq (Var x) (Succ n (Var y)) # ss)"
-  apply(cases "(n, Var y)" rule: succ.cases)
-    apply(auto)
+  "assign (Eq (Var x) (succ n t) # ss) = assign (Eq (Var x) (Succ n t) # ss)"
+  apply(induction n t rule: succ.induct)
+      apply(auto)
   done
 
 lemma I_term_fun_upd:
@@ -264,45 +265,40 @@ proof(induction es arbitrary: ss rule: solve.induct)
   with 2 show ?case
     by (auto simp: Let_def I_atom_fun_upd split: if_splits)
 next
-  case (3 x n y es)
-  note not_mem_suc_atom_if_solve[where ?es="Eq (Var x) (Succ n (Var y)) # es" and ?x=x]
+  case (3 x n t es)
+  note not_mem_suc_atom_if_solve[where ?es="Eq (Var x) (Succ n t) # es" and ?x=x]
   with 3 show ?case
-    by (auto simp: Let_def I_term_succ I_atom_fun_upd assign_succ split: if_splits)
+    apply(cases t)
+      apply(auto simp: Let_def I_term_succ I_atom_fun_upd assign_succ split: if_splits)
+    done
 next
-  case (4 n y x es)
-  note not_mem_suc_atom_if_solve[where ?es="Eq (Var x) (Succ n (Var y)) # es" and ?x=x]
+  case (4 n t x es)
+  note not_mem_suc_atom_if_solve[where ?es="Eq (Var x) (Succ n t) # es" and ?x=x]
   with 4 show ?case
-    by (auto simp: Let_def I_term_succ I_atom_fun_upd assign_succ split: if_splits)
+    apply(cases t)
+      apply(auto simp: Let_def I_term_succ I_atom_fun_upd assign_succ split: if_splits)
+    done
 next
-  case (5 n x k y es)
-  note not_mem_suc_atom_if_solve[where ?es="Eq (Succ n (Var x)) (Succ k (Var y)) # es" and ?x=x]
-   and not_mem_suc_atom_if_solve[where ?es="Eq (Succ n (Var x)) (Succ k (Var y)) # es" and ?x=y]
-  with 5 show ?case
-    by (auto simp: Let_def I_term_succ I_atom_fun_upd assign_succ split: if_splits)
-qed auto
+  case (7 x es)
+  note not_mem_suc_atom_if_solve[where ?es="Eq (Var x) Zero # es" and ?x=x]
+  with 7 show ?case
+    apply(auto simp: Let_def I_atom_fun_upd split: if_splits)
+    done
+next
+  case (8 x es)
+  note not_mem_suc_atom_if_solve[where ?es="Eq (Var x) Zero # es" and ?x=x]
+  with 8 show ?case
+    apply(auto simp: Let_def I_atom_fun_upd split: if_splits)
+    done
+qed (auto split: if_splits)
 
 lemma I_atom_iff_if_I_atom_solve_Some:
   assumes "solve es = Some ss" "\<forall>a \<in> set es. is_normal a"
   shows "(\<forall>a \<in> set ss. I_atom v a) \<longleftrightarrow> (\<forall>a \<in> set es. I_atom v a)"
   using assms
-proof(induction es arbitrary: ss rule: solve.induct)
-  case (2 x y es)
-  then show ?case
-    by (auto simp: I_atom_subst_atom split: if_splits)
-next
-  case (3 x n y es)
-  then show ?case
-    by (auto simp: I_term_succ I_atom_subst_atom split: if_splits)
-next
-  case (4 n y x es)
-  then show ?case
-    by (auto simp: I_term_succ I_atom_subst_atom split: if_splits)
-next
-  case (5 n x k y es)
-  from "5"(1,2,4-) show ?case
-    by (auto simp: I_term_succ I_atom_subst_atom split: if_splits)
-qed auto
-
+  apply(induction es arbitrary: ss rule: solve.induct)
+              apply (auto simp: I_term_succ I_atom_subst_atom split: if_splits)
+  done
 
 lemma assign_minimal_if_solve_Some:
   assumes "solve es = Some ss" "\<forall>a \<in> set es. is_normal a"
@@ -315,22 +311,16 @@ proof(induction es arbitrary: ss z rule: solve.induct)
   with 2 show ?case
     by (auto simp: Let_def split: if_splits)
 next
-  case (3 x n y es)
-  note not_mem_suc_atom_if_solve[where ?es="Eq (Var x) (Succ n (Var y)) # es" and ?x=x]
+  case (3 x n t es)
+  note not_mem_suc_atom_if_solve[where ?es="Eq (Var x) (Succ n t) # es" and ?x=x]
   with 3 show ?case
-    by (auto simp: Let_def I_term_succ assign_succ split: if_splits)
+    by (cases t) (auto simp: Let_def I_term_succ assign_succ split: if_splits)
 next
-  case (4 n y x es)
-  note not_mem_suc_atom_if_solve[where ?es="Eq (Var x) (Succ n (Var y)) # es" and ?x=x]
+  case (4 n t x es)
+  note not_mem_suc_atom_if_solve[where ?es="Eq (Var x) (Succ n t) # es" and ?x=x]
   with 4 show ?case
-    by (auto simp: Let_def I_term_succ assign_succ split: if_splits)
-next
-  case (5 n x k y es)
-  note not_mem_suc_atom_if_solve[where ?es="Eq (Succ n (Var x)) (Succ k (Var y)) # es" and ?x=x]
-   and not_mem_suc_atom_if_solve[where ?es="Eq (Succ n (Var x)) (Succ k (Var y)) # es" and ?x=y]
-  with 5 show ?case
-    by (auto simp: Let_def I_term_succ assign_succ diff_le_mono split: if_splits)
-qed auto
+    by (cases t) (auto simp: Let_def I_term_succ assign_succ split: if_splits)
+qed (auto split: if_splits)
 
 fun elim_NEq_Zero_aux :: "('a::fresh) set \<Rightarrow> 'a suc_atom list \<Rightarrow> 'a suc_atom list" where
   "elim_NEq_Zero_aux _ [] = []"

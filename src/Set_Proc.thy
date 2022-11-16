@@ -160,14 +160,14 @@ lemma bexpands_param_vars_branch_eq:
   assumes "bexpands_param t1 t2 x bs' b" "b' \<in> bs'" "b \<noteq> []"
   shows "vars (b' @ b) = insert x (vars b)"
   using assms bexpands_paramD[OF assms(1)]
-  by (auto simp: mem_vars_fm_if_mem_subterm_fm vars_branch_simps vars_fm_vars_branchI)
+  by (auto simp: mem_vars_fm_if_mem_subterms_fm vars_branch_simps vars_fm_vars_branchI)
 
 lemma bexpands_param_wits_eq:
   assumes "bexpands_param t1 t2 x bs' b" "b' \<in> bs'" "b \<noteq> []"
   shows "wits (b' @ b) = insert x (wits b)"
   using assms bexpands_paramD[OF assms(1)]
   unfolding wits_def
-  by (auto simp: mem_vars_fm_if_mem_subterm_fm vars_branch_simps vars_branch_def)
+  by (auto simp: mem_vars_fm_if_mem_subterms_fm vars_branch_simps vars_branch_def)
 
 lemma lexpands_wits'_subs:
   assumes "lexpands b' b" "b \<noteq> []"
@@ -304,7 +304,7 @@ proof -
 qed
 
 lemma wits_subterms_last_disjnt: "Var ` wits b \<inter> subterms (last b) = {}"
-  by (auto simp: wits_def intro!: mem_vars_fm_if_mem_subterm_fm)
+  by (auto simp: wits_def intro!: mem_vars_fm_if_mem_subterms_fm)
 
 section \<open>Completeness of the Calculus\<close>
 
@@ -1782,7 +1782,7 @@ proof -
   moreover note subterms_fmD(1,2)[OF mem_subterms_last]
   then have "t1 \<notin> Var ` wits' b" "t2 \<notin> Var ` wits' b"
     unfolding wits'_def wits_def 
-    using pset_term.set_intros(1) mem_vars_fm_if_mem_subterm_fm by fastforce+
+    using pset_term.set_intros(1) mem_vars_fm_if_mem_subterms_fm by fastforce+
   ultimately have "t1 \<in> subterms' b" "t2 \<in> subterms' b"
     unfolding subterms'_def base_vars_def
     using assms(2) by (auto dest: subterms_branchD)
@@ -1857,7 +1857,7 @@ proof -
   moreover note subterms_fmD(3,4)[OF mem_subterms_last]
   then have "t1 \<notin> Var ` wits' b" "t2 \<notin> Var ` wits' b"
     unfolding wits'_def wits_def 
-    using pset_term.set_intros(1) mem_vars_fm_if_mem_subterm_fm by fastforce+
+    using pset_term.set_intros(1) mem_vars_fm_if_mem_subterms_fm by fastforce+
   ultimately have t1_t2_subterms': "t1 \<in> subterms' b" "t2 \<in> subterms' b"
     unfolding subterms'_def base_vars_def
     using assms(2) by (auto dest: subterms_branchD)
@@ -1926,7 +1926,7 @@ proof -
   moreover note subterms_fmD(5,6)[OF mem_subterms_last]
   then have "s \<notin> Var ` wits' b" "t \<notin> Var ` wits' b"
     unfolding wits'_def wits_def 
-    using pset_term.set_intros(1) mem_vars_fm_if_mem_subterm_fm by fastforce+
+    using pset_term.set_intros(1) mem_vars_fm_if_mem_subterms_fm by fastforce+
   ultimately have "s \<in> subterms' b" "t \<in> subterms' b"
     unfolding subterms'_def base_vars_def
     using assms(2) by (auto dest: subterms_branchD)

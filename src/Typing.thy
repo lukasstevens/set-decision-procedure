@@ -449,7 +449,7 @@ proof -
     by (metis list.set_intros(1) vars_fm_vars_branchI)
   ultimately show ?thesis
     unfolding urelem_def using assms
-    by (metis mem_vars_fm_if_mem_subterm_fm type_term_if_on_vars_eq)
+    by (metis mem_vars_fm_if_mem_subterms_fm type_term_if_on_vars_eq)
 qed
 
 lemma type_term_neq_Some_0:

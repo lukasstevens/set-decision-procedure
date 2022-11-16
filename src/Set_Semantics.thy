@@ -261,7 +261,7 @@ lemma mem_vars_term_if_mem_subterms_term:
        apply(auto intro: pset_term.set_intros)
   done
 
-lemma mem_vars_fm_if_mem_subterm_fm:
+lemma mem_vars_fm_if_mem_subterms_fm:
   "x \<in> vars_term s \<Longrightarrow> s \<in> subterms_fm \<phi> \<Longrightarrow> x \<in> vars_fm \<phi>"
 proof(induction \<phi>)
   case (Atom a)

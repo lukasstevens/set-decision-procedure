@@ -2,7 +2,7 @@
 This directory contains the formalisation of a tableau calculus for MLSS.
 
 ## Running the Formalisation
-The formalisation uses Isabelle2021-1 which is available on [isabelle.in.tum.de](https://isabelle.in.tum.de)].
+The formalisation uses Isabelle2022 which is available on [isabelle.in.tum.de](https://isabelle.in.tum.de).
 It builds on some entries of the Archive of Formal Proofs (see [www.isa-afp.org/download](https://www.isa-afp.org/download) for installation instructions).
 You can build the session with
 ```
@@ -22,6 +22,8 @@ The formalisation is split into several files:
 - `Set_Calculus.thy` introduces the tableau calculus for MLSS.
 - `Realisation.thy` contains the definition of the realization function and additional proofs that were not discussed in the paper.
 - `Set_Proc.thy` proves soundness and completeness of the calculus. It also gives a bound on the number of formulae in a branch. Finally, it defines the decision procedure and proves its soundness, completeness, and termination.
+- The files `Typing_Defs.thy`, `Typing.thy`, and `Typing_Urelems.thy` introduce a light-weight type system for MLSS where the type of a term is a natural number.
+  Assuming that the urelements are of type `'a`, we have that type `0` corresponds to `'a`, type `1` to `'a set`, type `2` to `'a set set`, etc. 
 
 ## Difference in Notation
 The presentation in the paper takes some shortcuts to streamline the presentation.

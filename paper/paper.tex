@@ -146,10 +146,11 @@
 
 \maketitle
 
-%%%%%%%%%\listoftodos{}
+\listoftodos{}
 
 \section{Introduction}
 In contrast to pen-and-paper proofs where we expect the reader to fill in trivial details, interactive theorem provers (ITPs) require us to justify each proof step rigorously.
+\todo[inline]{Reviewer: Reformulate below because we can use cuts}
 Manually reducing each proof step down to the axioms would be impractical, though;
 hence, ITPs usually offer a wide array of automated methods to deal with the proof goals that arise during interactive use.
 
@@ -317,7 +318,7 @@ where $\mathcal{P}(S)$ is the powerset of $S$.
 The sets in $\mathcal{V}$ are well-founded, i.e.\ there can be no membership cycle in $\mathcal{V}$.
 
 In Isabelle/HOL, which is simply typed, this definition is not accepted, though.
-A way to work around this limitation is provided by Lawrence in an entry~\cite{zfc_in_hol_afp} of the \textit{Archive of Formal Proofs}, which adds $\mathcal{V}$ to Isabelle/HOL by way of axiomatisation.
+A way to work around this limitation is provided by \citeauthor{zfc_in_hol_afp} in an entry~\cite{zfc_in_hol_afp} of the \textit{Archive of Formal Proofs}, which adds $\mathcal{V}$ to Isabelle/HOL by way of axiomatisation.
 Two articles~\cite{zfc_in_hol1,zfc_in_hol2} have been written that provide further context to this entry.
 The entry declares a type \lstinline!V! that comes with the following functionality:
 \begin{itemize}
@@ -411,10 +412,10 @@ A tableau is called \textit{closed} if all of its branches are closed.
     \lstinline!@\fmOr{p}{q}, \fmNeg{q}@! & $\Longrightarrow$ & \lstinline!p! &&
     \lstinline!s $\inS$ $\ton$ $\unionS$ $\ttw$, s $\notinS$ $\ton$! & $\Longrightarrow$ & \lstinline!s $\inS$ $\ttw$! \\
 
-    \lstinline!@\fmNeg{(\fmOr{p}{q})}@, p! & $\Longrightarrow$ & \lstinline!@\fmNeg{q}@! &&
+    \lstinline!@\fmNeg{(\fmAnd{p}{q})}@, p! & $\Longrightarrow$ & \lstinline!@\fmNeg{q}@! &&
     \lstinline!s $\inS$ $\ton$ $\unionS$ $\ttw$, s $\notinS$ $\ttw$! & $\Longrightarrow$ & \lstinline!s $\inS$ $\ton$! \\
 
-    \lstinline!@\fmNeg{(\fmOr{p}{q})}@, q! & $\Longrightarrow$ & \lstinline!@\fmNeg{p}@! &&
+    \lstinline!@\fmNeg{(\fmAnd{p}{q})}@, q! & $\Longrightarrow$ & \lstinline!@\fmNeg{p}@! &&
     \lstinline!s $\notinS$ $\ton$, s $\notinS$ $\ttw$! & $\Longrightarrow$ & \lstinline!s $\notinS$ $\ton$ $\unionS$ $\ttw$! \\
     \lstinline!@\fmNeg{(\fmNeg{p})}@! & $\Longrightarrow$ & \lstinline!p! &&&& \\[3ex]
 
@@ -642,7 +643,7 @@ it decides the satisfiability of a given formula \lstinline!$\phi$! by determini
 More specifically, it initialises the tableau with the singleton branch \lstinline![$\phi$]! and checks whether this branch can be expanded to a closed tableau.
 
 We abstractly specify the behaviour of the decision procedure, leaving an executable specification from which code can be generated to future work.
-The implementation as displayed in \autoref{fig:alg} uses a couple features of Isabelle/HOL's function package:
+The implementation as displayed in \autoref{fig:alg} uses a couple of features of Isabelle/HOL's function package:
 instead of defining the function via pattern matching, we specify the equations of the function as conditional rewrite rules.
 This requires us to prove that the assumptions of the equations are non-overlapping, which is done by automation.
 The other concern is that Isabelle/HOL requires functions to be total, so a recursive function needs to terminate in order for it to be well-defined;
@@ -680,10 +681,10 @@ For completeness of the calculus, we need to show that every unsatisfiable formu
 To facilitate inductive reasoning, we show a stronger statement by constructing a model \lstinline!M! such that \lstinline!M $\models$ $\phi$! for all \lstinline!$\phi$ $\in$ set b!.
 At the core of the model, there is a \textit{realisation} function that maps set terms to sets of type \lstinline!V!.
 A subset of the witnesses, which we call \textit{pure} witnesses, receives special treatment from the realisation function for reasons that will become apparent in \autoref{sec:pwits}.
-The set terms of a branch can thus be partitioned into two collections as defined below.
+The collection of set terms of a branch can thus be partitioned into two collections as defined below.
 \begin{lstlisting}
-definition wits' :: 'a branch $\Rightarrow$ 'a set where
-  wits' b $\equiv$
+definition pwits :: 'a branch $\Rightarrow$ 'a set where
+  pwits b $\equiv$
     {c $\in$ wits b. $\forall$t $\in$ subterms (last b).
       AT (Var c $\eqS$ t) $\notin$ set b $\land$
       AT (t $\eqS$ Var c) $\notin$ set b} 
@@ -692,24 +693,24 @@ definition subterms' ::
     'a branch $\Rightarrow$ 'a pset_term set where
   subterms' b $\equiv$
     subterms (last b) $\cup$ 
-    Var ` (wits b - wits' b)
+    Var ` (wits b - pwits b)
 \end{lstlisting}
 
 We aim to construct a syntactic model that is derived from the membership literals \lstinline!s $\inS$ t! in the branch.
 To this end, we construct a graph whose vertices are the disjoint union of the sets above and there is an edge from \lstinline!s! to \lstinline!t! in the graph if, and only if, \lstinline!s $\inS$ t! is in \lstinline!b!.
-Note that we use \citeauthor{graph_theory_afp}'s graph library~\cite{graph_theory_afp} that represents a graph as a record of vertices, arcs (directed edges), and two functions \lstinline!tail! and \lstinline!head! that map an arc to its source respectively target vertex.
+Note that we use \citeauthor{graph_theory_afp}'s graph library~\cite{graph_theory_afp} that represents a graph as a record of vertices, arcs (directed edges), and two functions \lstinline!tail! and \lstinline!head! that map an arc to its source, respectively target, vertex.
 \begin{lstlisting}
 definition bgraph b $\equiv$
-  let vs = Var ` wits' b $\cup$ subterms' b
+  let vs = Var ` pwits b $\cup$ subterms' b
   in $\llparenthesis$ verts = vs,
      &$\phantom{\llparenthesis}$& arcs = {(s, t). (s $\inS$ t) $\in$ set b},
      &$\phantom{\llparenthesis}$& tail = fst, head = snd $\rrparenthesis$
 \end{lstlisting}
 
 The realisation function is defined relative to this graph.
-As mentioned before, the pure witnesses \lstinline!Var ` wits' b! and the rest of the set terms \lstinline!subterms' b! are treated differently by the realisation function.
+As mentioned before, the pure witnesses \lstinline!Var ` pwits b! and the rest of the set terms \lstinline!subterms' b! are treated differently by the realisation function.
 Terms in the latter set are evaluated in accordance to the structure of the graph, i.e.\ the realisation of a vertex is defined as the union of the realisations of the parent vertices. 
-For the former set, we choose a function \lstinline!I! that assigns the witnesses in \lstinline!Var ` wits' b! pairwise distinct sets with cardinality greater than that of the vertices.
+For the former set, we choose a function \lstinline!I! that assigns the witnesses in \lstinline!Var ` pwits b! pairwise distinct sets with cardinality greater than that of the vertices.
 We can always choose such a function since we assume an infinite universe of variables.
 Then, we return the singleton set \lstinline!vset {I x}!, which, together with the cardinality constraint, guarantees that realisations are distinct between pure witnesses themselves as well as between pure witnesses and set terms.  
 The notation \lstinline!u $\rightarrow_\text{G}$ s! in the definition below indicates that there is an edge from \lstinline!u! to \lstinline!s! in the graph \lstinline!G!.
@@ -717,7 +718,7 @@ The notation \lstinline!u $\rightarrow_\text{G}$ s! in the definition below indi
 abbreviation parents G s $\equiv$ {u. u $\rightarrow_\text{G}$ s}
 
 function realise :: 'a pset_term $\Rightarrow$ V where
-  x $\in$ Var ` wits' b $\Longrightarrow$ realise x = vset {I x}
+  x $\in$ Var ` pwits b $\Longrightarrow$ realise x = vset {I x}
 | x $\in$ subterms' b
   $\Longrightarrow$ realise t =
   &\phantom{$\Longrightarrow$ }&  vset {realise ` parents (bgraph b) s}
@@ -741,7 +742,7 @@ Intuitively speaking, the realisation of a pure witness does not depend on the r
 \begin{lstlisting}[label={lst:lemma_2}]
 lemma lemma_2:
   assumes wf_branch b
-  assumes c $\in$ wits' b
+  assumes c $\in$ pwits b
   shows (Var c $\eqS$ t) $\notin$ set b
     and (t $\eqS$ Var c) $\notin$ set b
     and (t $\inS$ Var c) $\notin$ set b
@@ -777,8 +778,8 @@ To illustrate the usefulness of \hyperref[lst:lemma_2]{\lstinline!lemma_2!}, we 
 The proofs of all propositions translate well into Isabelle, so we refer to the original paper~\cite{new_fast_tableau} for the remaining proofs. 
 \begin{proof}[Proof of Proposition~\ref{it:at_eq}]
   Assume that \lstinline!s $\eqS$ t! is in \lstinline!b!.
-  If there exists a \lstinline!c $\in$ wits' b! where \lstinline!s = Var c! or \lstinline!t = Var c!, we arrive at a contradiction due to \hyperref[lst:lemma_2]{\lstinline!lemma_2!}.
-  Therefore, both \lstinline!s $\in$ subterms' b! and \lstinline!t $\inS$ subterms' b! must hold.
+  If there exists a \lstinline!c $\in$ pwits b! where \lstinline!s = Var c! or \lstinline!t = Var c!, we arrive at a contradiction due to \hyperref[lst:lemma_2]{\lstinline!lemma_2!}.
+  Therefore, both \lstinline!s $\in$ subterms' b! and \lstinline!t $\in$ subterms' b! must hold.
   Now, assume for contradiction that
 \begin{lstlisting}
   realise s $\neq$ realise t
@@ -1104,7 +1105,7 @@ lemma mlss_proc_branch_sound:
   This proposition, however, is a contradiction to the statement of Lemma~\hyperref[lst:bclosed_sound]{\lstinline!bclosed_sound!}: no closed branch can have a model. 
 \end{proof}
 
-\noindent To finish of the proof of total correctness, note that every singleton branch is trivially well-formed; thus, termination, completeness, and soundness easily transfer to \lstinline!mlss_proc!.
+\noindent To finish off the proof of total correctness, note that every singleton branch is trivially well-formed; thus, termination, completeness, and soundness easily transfer to \lstinline!mlss_proc!.
 \begin{lstlisting}
 theorem mlss_proc_complete:
   fixes $\phi$ :: 'a pset_fm

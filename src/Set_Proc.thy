@@ -26,37 +26,37 @@ lemma satD:
 definition wits :: "'a branch \<Rightarrow> 'a set" where
   "wits b \<equiv> vars b - vars (last b)"
 
-definition wits' :: "'a branch \<Rightarrow> 'a set" where
-  "wits' b \<equiv> {c \<in> wits b. \<forall>t \<in> subterms (last b).
+definition pwits :: "'a branch \<Rightarrow> 'a set" where
+  "pwits b \<equiv> {c \<in> wits b. \<forall>t \<in> subterms (last b).
                   AT (Var c =\<^sub>s t) \<notin> set b \<and> AT (t =\<^sub>s Var c) \<notin> set b}"
 
 lemma wits_singleton[simp]: "wits [\<phi>] = {}"
   unfolding wits_def vars_branch_simps by simp
 
-lemma wits'_singleton[simp]: "wits' [\<phi>] = {}"
-  unfolding wits'_def by auto
+lemma pwits_singleton[simp]: "pwits [\<phi>] = {}"
+  unfolding pwits_def by auto
 
-lemma wits'D:
-  assumes "c \<in> wits' b"
+lemma pwitsD:
+  assumes "c \<in> pwits b"
   shows "c \<in> wits b"
         "t \<in> subterms (last b) \<Longrightarrow> AT (Var c =\<^sub>s t) \<notin> set b"
         "t \<in> subterms (last b) \<Longrightarrow> AT (t =\<^sub>s Var c) \<notin> set b"
-  using assms unfolding wits'_def by auto
+  using assms unfolding pwits_def by auto
 
-lemma wits'I:
+lemma pwitsI:
   assumes "c \<in> wits b"
   assumes "\<And>t. t \<in> subterms (last b) \<Longrightarrow> AT (Var c =\<^sub>s t) \<notin> set b"
   assumes "\<And>t. t \<in> subterms (last b) \<Longrightarrow> AT (t =\<^sub>s Var c) \<notin> set b"
-  shows "c \<in> wits' b"
-  using assms unfolding wits'_def by blast
+  shows "c \<in> pwits b"
+  using assms unfolding pwits_def by blast
 
 lemma finite_wits: "finite (wits b)"
   unfolding wits_def using finite_vars_branch by auto
 
-lemma finite_wits': "finite (wits' b)"
+lemma finite_pwits: "finite (pwits b)"
 proof -
-  have "wits' b \<subseteq> wits b"
-    unfolding wits'_def by simp
+  have "pwits b \<subseteq> wits b"
+    unfolding pwits_def by simp
   then show ?thesis using finite_wits finite_subset by blast
 qed
 
@@ -169,11 +169,11 @@ lemma bexpands_param_wits_eq:
   unfolding wits_def
   by (auto simp: mem_vars_fm_if_mem_subterms_fm vars_branch_simps vars_branch_def)
 
-lemma lexpands_wits'_subs:
+lemma lexpands_pwits_subs:
   assumes "lexpands b' b" "b \<noteq> []"
-  shows "wits' (b' @ b) \<subseteq> wits' b"
+  shows "pwits (b' @ b) \<subseteq> pwits b"
   using assms lexpands_wits_eq[OF assms]
-  by (induction rule: lexpands_induct) (auto simp: wits'_def)
+  by (induction rule: lexpands_induct) (auto simp: pwits_def)
 
 subsection \<open>\<open>no_new_subterms\<close>\<close>
 
@@ -362,84 +362,84 @@ lemma expandss_no_wits_if_not_literal:
      apply (metis P_def expandss_suffix suffix_bot.extremum_uniqueI)+
   done
 
-lemma lexpands_fm_wits'_eq:
+lemma lexpands_fm_pwits_eq:
   assumes "lexpands_fm b' b" "b \<noteq> []"
   assumes "\<forall>\<phi> \<in> set b. \<not> is_literal \<phi> \<longrightarrow> vars \<phi> \<inter> wits b = {}"
-  shows "wits' (b' @ b) = wits' b"
+  shows "pwits (b' @ b) = pwits b"
   using assms
   apply(induction rule: lexpands_fm.induct)
-       apply(fastforce simp: wits'_def wits_def vars_branch_def)+
+       apply(fastforce simp: pwits_def wits_def vars_branch_def)+
   done
 
-lemma lexpands_un_wits'_eq:
+lemma lexpands_un_pwits_eq:
   assumes "lexpands_un b' b" "b \<noteq> []"
-  assumes "\<forall>c \<in> wits' b. \<forall>t \<in> wits_subterms b.
+  assumes "\<forall>c \<in> pwits b. \<forall>t \<in> wits_subterms b.
     AT (Var c =\<^sub>s t) \<notin> set b \<and> AT (t =\<^sub>s Var c) \<notin> set b \<and> AT (t \<in>\<^sub>s Var c) \<notin> set b"
-  shows "wits' (b' @ b) = wits' b"
+  shows "pwits (b' @ b) = pwits b"
 proof -
   note lexpands.intros(2)[OF assms(1)]
   note lexpands_wits_eq[OF this \<open>b \<noteq> []\<close>] 
-  from assms this have "x \<in> wits' (b' @ b)" if "x \<in> wits' b" for x
+  from assms this have "x \<in> pwits (b' @ b)" if "x \<in> pwits b" for x
     using that
     by (induction rule: lexpands_un.induct)
-       (auto simp: wits_subterms_def wits'D intro!: wits'I)
-  with lexpands_wits'_subs[OF \<open>lexpands b' b\<close> \<open>b \<noteq> []\<close>] show ?thesis
+       (auto simp: wits_subterms_def pwitsD intro!: pwitsI)
+  with lexpands_pwits_subs[OF \<open>lexpands b' b\<close> \<open>b \<noteq> []\<close>] show ?thesis
     by auto
 qed
 
-lemma lexpands_int_wits'_eq:
+lemma lexpands_int_pwits_eq:
   assumes "lexpands_int b' b" "b \<noteq> []"
-  assumes "\<forall>c \<in> wits' b. \<forall>t \<in> wits_subterms b.
+  assumes "\<forall>c \<in> pwits b. \<forall>t \<in> wits_subterms b.
     AT (Var c =\<^sub>s t) \<notin> set b \<and> AT (t =\<^sub>s Var c) \<notin> set b \<and> AT (t \<in>\<^sub>s Var c) \<notin> set b"
-  shows "wits' (b' @ b) = wits' b"
+  shows "pwits (b' @ b) = pwits b"
 proof -
   note lexpands.intros(3)[OF assms(1)]
   note lexpands_wits_eq[OF this \<open>b \<noteq> []\<close>] 
-  from assms this have "x \<in> wits' (b' @ b)" if "x \<in> wits' b" for x
+  from assms this have "x \<in> pwits (b' @ b)" if "x \<in> pwits b" for x
     using that
     by (induction rule: lexpands_int.induct)
-       (auto simp: wits_subterms_def wits'D intro!: wits'I)
-  with lexpands_wits'_subs[OF \<open>lexpands b' b\<close> \<open>b \<noteq> []\<close>] show ?thesis
+       (auto simp: wits_subterms_def pwitsD intro!: pwitsI)
+  with lexpands_pwits_subs[OF \<open>lexpands b' b\<close> \<open>b \<noteq> []\<close>] show ?thesis
     by auto
 qed
 
-lemma lexpands_diff_wits'_eq:
+lemma lexpands_diff_pwits_eq:
   assumes "lexpands_diff b' b" "b \<noteq> []"
-  assumes "\<forall>c \<in> wits' b. \<forall>t \<in> wits_subterms b.
+  assumes "\<forall>c \<in> pwits b. \<forall>t \<in> wits_subterms b.
     AT (Var c =\<^sub>s t) \<notin> set b \<and> AT (t =\<^sub>s Var c) \<notin> set b \<and> AT (t \<in>\<^sub>s Var c) \<notin> set b"
-  shows "wits' (b' @ b) = wits' b"
+  shows "pwits (b' @ b) = pwits b"
 proof -
   note lexpands.intros(4)[OF assms(1)]
   note lexpands_wits_eq[OF this \<open>b \<noteq> []\<close>] 
-  from assms this have "x \<in> wits' (b' @ b)" if "x \<in> wits' b" for x
+  from assms this have "x \<in> pwits (b' @ b)" if "x \<in> pwits b" for x
     using that
     by (induction rule: lexpands_diff.induct)
-       (auto simp: wits_subterms_def wits'D intro!: wits'I)
-  with lexpands_wits'_subs[OF \<open>lexpands b' b\<close> \<open>b \<noteq> []\<close>] show ?thesis
+       (auto simp: wits_subterms_def pwitsD intro!: pwitsI)
+  with lexpands_pwits_subs[OF \<open>lexpands b' b\<close> \<open>b \<noteq> []\<close>] show ?thesis
     by auto
 qed
 
-lemma bexpands_noparam_wits'_eq:
+lemma bexpands_noparam_pwits_eq:
   assumes "bexpands_noparam bs' b" "b' \<in> bs'" "b \<noteq> []"
   assumes "\<forall>\<phi> \<in> set b. \<not> is_literal \<phi> \<longrightarrow> vars \<phi> \<inter> wits b = {}"
-  shows "wits' (b' @ b) = wits' b"
+  shows "pwits (b' @ b) = pwits b"
   using assms
 proof -
-  from assms have "x \<in> wits' (b' @ b)" if "x \<in> wits' b" for x
+  from assms have "x \<in> pwits (b' @ b)" if "x \<in> pwits b" for x
     using that bexpands_noparam_wits_eq[OF assms(1-3)]
     by (induction rule: bexpands_noparam.induct)
-       (intro wits'I; fastforce simp: wits'D)+
-  moreover from assms have "wits' (b' @ b) \<subseteq> wits' b"
-    unfolding wits'_def
+       (intro pwitsI; fastforce simp: pwitsD)+
+  moreover from assms have "pwits (b' @ b) \<subseteq> pwits b"
+    unfolding pwits_def
     using bexpands_noparam_wits_eq by fastforce
   ultimately show ?thesis by blast
 qed
 
-lemma bexpands_param_wits'_eq:
+lemma bexpands_param_pwits_eq:
   assumes "bexpands_param t1 t2 x bs' b" "b' \<in> bs'" "b \<noteq> []"
-  shows "wits' (b' @ b) = insert x (wits' b)"
+  shows "pwits (b' @ b) = insert x (pwits b)"
   using assms(2,3) bexpands_paramD[OF assms(1)]
-  unfolding wits'_def bexpands_param_wits_eq[OF assms] 
+  unfolding pwits_def bexpands_param_wits_eq[OF assms] 
   by (auto simp: vars_fm_vars_branchI)
 
 lemma lemma_2_lexpands:
@@ -447,21 +447,21 @@ lemma lemma_2_lexpands:
   assumes "lexpands b' b" "b \<noteq> []"
   assumes "no_new_subterms b"
   assumes "\<forall>\<phi> \<in> set b. \<not> is_literal \<phi> \<longrightarrow> vars \<phi> \<inter> wits b = {}"
-  assumes "\<forall>c \<in> wits' b. \<forall>t \<in> wits_subterms b. P b c t"
-  shows "\<forall>c \<in> wits' (b' @ b). \<forall>t \<in> wits_subterms (b' @ b). P (b' @ b) c t"
+  assumes "\<forall>c \<in> pwits b. \<forall>t \<in> wits_subterms b. P b c t"
+  shows "\<forall>c \<in> pwits (b' @ b). \<forall>t \<in> wits_subterms (b' @ b). P (b' @ b) c t"
   using assms(2-6)
   using lexpands_wits_eq[OF assms(2,3)]
-        lexpands_wits'_subs[OF assms(2,3)]
+        lexpands_pwits_subs[OF assms(2,3)]
 proof(induction rule: lexpands.induct)
   case (1 b' b)
 
   have "P (b' @ b) c t"
     if "\<forall>\<phi> \<in> set b'. vars \<phi> \<inter> wits (b' @ b) = {}"
-    and "c \<in> wits' b" "t \<in> wits_subterms (b' @ b)" for c t
+    and "c \<in> pwits b" "t \<in> wits_subterms (b' @ b)" for c t
   proof -
     from that "1.prems"(5)
     have "\<forall>\<phi> \<in> set b'. \<phi> \<noteq> AT (Var c =\<^sub>s t) \<and> \<phi> \<noteq> AT (t =\<^sub>s Var c) \<and> \<phi> \<noteq> AT (t \<in>\<^sub>s Var c)"
-      by (auto simp: wits'_def disjoint_iff)
+      by (auto simp: pwits_def disjoint_iff)
     with 1 that show ?thesis
       unfolding P_def wits_subterms_def
       by (metis Un_iff last_appendR set_append)
@@ -469,11 +469,11 @@ proof(induction rule: lexpands.induct)
   moreover from "1"(1,4,6) have "\<forall>\<phi> \<in> set b'. vars \<phi> \<inter> wits (b' @ b) = {}"
     by (induction rule: lexpands_fm.induct) (auto simp: disjoint_iff)
   ultimately show ?case
-    using 1 lexpands_fm_wits'_eq by blast
+    using 1 lexpands_fm_pwits_eq by blast
 next
   case (2 b' b)
   then show ?case
-    using lexpands_un_wits'_eq[OF "2"(1,2,5)[unfolded P_def]]
+    using lexpands_un_pwits_eq[OF "2"(1,2,5)[unfolded P_def]]
   proof(induction rule: lexpands_un.induct)
     case (4 s t1 t2 b)
     then have "t1 \<squnion>\<^sub>s t2 \<in> subterms b"
@@ -484,7 +484,7 @@ next
     then have "t1 \<notin> Var ` wits b" "t2 \<notin> Var ` wits b"
       by (meson disjoint_iff wits_subterms_last_disjnt subterms_fmD)+
     with 4 show ?case
-      by (auto simp: wits_subterms_def P_def subterms_branch_simps wits'D(1))
+      by (auto simp: wits_subterms_def P_def subterms_branch_simps pwitsD(1))
   next
     case (5 s t1 t2 b)
     then have "t1 \<squnion>\<^sub>s t2 \<in> subterms b"
@@ -495,12 +495,12 @@ next
     then have "t1 \<notin> Var ` wits b" "t2 \<notin> Var ` wits b"
       by (meson disjoint_iff wits_subterms_last_disjnt subterms_fmD)+
     with 5 show ?case
-      by (auto simp: wits_subterms_def P_def subterms_branch_simps wits'D(1))
+      by (auto simp: wits_subterms_def P_def subterms_branch_simps pwitsD(1))
   qed (auto simp: wits_subterms_def P_def)
 next
   case (3 b' b)
   then show ?case
-    using lexpands_int_wits'_eq[OF "3"(1,2,5)[unfolded P_def]]
+    using lexpands_int_pwits_eq[OF "3"(1,2,5)[unfolded P_def]]
   proof(induction rule: lexpands_int.induct)
     case (1 s t1 t2 b)
     then have "t1 \<sqinter>\<^sub>s t2 \<in> subterms b"
@@ -511,18 +511,18 @@ next
     then have "t1 \<notin> Var ` wits b" "t2 \<notin> Var ` wits b"
       by (meson disjoint_iff wits_subterms_last_disjnt subterms_fmD)+
     with 1 show ?case
-      by (auto simp: wits_subterms_def P_def subterms_branch_simps wits'D(1))
+      by (auto simp: wits_subterms_def P_def subterms_branch_simps pwitsD(1))
   next
     case (6 s t1 b t2)
     then have "t1 \<notin> Var ` wits b" "t2 \<notin> Var ` wits b"
       by (meson disjoint_iff wits_subterms_last_disjnt subterms_fmD)+
     with 6 show ?case
-      by (auto simp: wits_subterms_def P_def subterms_branch_simps wits'D(1))
+      by (auto simp: wits_subterms_def P_def subterms_branch_simps pwitsD(1))
   qed (auto simp: wits_subterms_def P_def)
 next
   case (4 b' b)
   then show ?case
-    using lexpands_diff_wits'_eq[OF "4"(1,2,5)[unfolded P_def]]
+    using lexpands_diff_pwits_eq[OF "4"(1,2,5)[unfolded P_def]]
   proof(induction rule: lexpands_diff.induct)
     case (1 s t1 t2 b)
     then have "t1 -\<^sub>s t2 \<in> subterms b"
@@ -533,7 +533,7 @@ next
     then have "t1 \<notin> Var ` wits b" "t2 \<notin> Var ` wits b"
       by (meson disjoint_iff wits_subterms_last_disjnt subterms_fmD)+
     with 1 show ?case
-      by (auto simp: wits_subterms_def P_def subterms_branch_simps dest: wits'D(1))
+      by (auto simp: wits_subterms_def P_def subterms_branch_simps dest: pwitsD(1))
   next
     case (4 s t1 t2 b)
     then have "t1 -\<^sub>s t2 \<in> subterms b"
@@ -544,7 +544,7 @@ next
     then have "t1 \<notin> Var ` wits b" "t2 \<notin> Var ` wits b"
       by (meson disjoint_iff wits_subterms_last_disjnt subterms_fmD)+
     with 4 show ?case
-      by (auto simp: wits_subterms_def P_def subterms_branch_simps dest: wits'D(1))
+      by (auto simp: wits_subterms_def P_def subterms_branch_simps dest: pwitsD(1))
   qed (auto simp: wits_subterms_def P_def)
 next
   case (5 b' b)
@@ -555,14 +555,14 @@ next
       by (auto intro: subterms_branch_subterms_atomI)
     with 2 have "t \<in> subterms (last b)"
       by (metis subterms_fmD(7) no_new_subtermsD(5))
-    then have "\<forall>c \<in> wits' b. Var c \<noteq> t"
-      unfolding wits'_def wits_def
+    then have "\<forall>c \<in> pwits b. Var c \<noteq> t"
+      unfolding pwits_def wits_def
       using wits_def wits_subterms_last_disjnt by fastforce
     with \<open>t \<in> subterms (last b)\<close> show ?case
       using 2
       unfolding P_def
       by (auto simp: wits_subterms_last_disjnt[unfolded disjoint_iff] wits_subterms_def subsetD
-               dest: wits'D(2))
+               dest: pwitsD(2))
   qed (auto simp: wits_subterms_def P_def)
 next
   case (6 b' b)
@@ -634,54 +634,54 @@ lemma lemma_2_bexpands:
   assumes "bexpands bs' b" "b' \<in> bs'" "b \<noteq> []"
   assumes "no_new_subterms b"
   assumes "\<forall>\<phi> \<in> set b. \<not> is_literal \<phi> \<longrightarrow> vars \<phi> \<inter> wits b = {}"
-  assumes "\<forall>c \<in> wits' b. \<forall>t \<in> wits_subterms b. P b c t"
-  shows "\<forall>c \<in> wits' (b' @ b). \<forall>t \<in> wits_subterms (b' @ b). P (b' @ b) c t"
+  assumes "\<forall>c \<in> pwits b. \<forall>t \<in> wits_subterms b. P b c t"
+  shows "\<forall>c \<in> pwits (b' @ b). \<forall>t \<in> wits_subterms (b' @ b). P (b' @ b) c t"
   using assms(2-) bexpands_no_new_subterms[OF assms(2,4,3,5)]
 proof(induction rule: bexpands.induct)
   case (1 bs' b)
   then show ?case
-    using bexpands_noparam_wits_eq[OF "1"(1-3)] bexpands_noparam_wits'_eq[OF "1"(1-3,5)]
+    using bexpands_noparam_wits_eq[OF "1"(1-3)] bexpands_noparam_pwits_eq[OF "1"(1-3,5)]
   proof(induction rule: bexpands_noparam.induct)
     case (1 p q b)
     then show ?case
       unfolding P_def wits_subterms_def
-      by (fastforce dest: wits'D)
+      by (fastforce dest: pwitsD)
   next
     case (2 p q b)
     then show ?case
       unfolding P_def wits_subterms_def
-      by (fastforce dest: wits'D)
+      by (fastforce dest: pwitsD)
   next
     case (3 s t1 t2 b)
     then have "t1 \<notin> Var ` wits b"
       by (meson disjoint_iff wits_subterms_last_disjnt subterms_fmD)+
     with 3 show ?case
       unfolding P_def wits_subterms_def
-      by (fastforce simp: vars_branch_simps dest: wits'D)
+      by (fastforce simp: vars_branch_simps dest: pwitsD)
   next
     case (4 s t1 b t2)
     then have "t2 \<notin> Var ` wits b"
       by (meson disjoint_iff wits_subterms_last_disjnt subterms_fmD)+
     with 4 show ?case
       unfolding P_def wits_subterms_def
-      by (fastforce simp: vars_branch_simps dest: wits'D)
+      by (fastforce simp: vars_branch_simps dest: pwitsD)
   next
     case (5 s t1 b t2)
     then have "t2 \<notin> Var ` wits b"
       by (meson disjoint_iff wits_subterms_last_disjnt subterms_fmD)+
     with 5 show ?case
       unfolding P_def wits_subterms_def
-      by (fastforce simp: vars_branch_simps dest: wits'D)
+      by (fastforce simp: vars_branch_simps dest: pwitsD)
   qed
 next
   case (2 t1 t2 x bs b)
   from bexpands_paramD[OF "2"(1)] have "t1 \<notin> Var ` wits b" "t2 \<notin> Var ` wits b"
     by (meson disjoint_iff_not_equal wits_subterms_last_disjnt)+
-  then have not_in_wits': "t1 \<notin> Var ` wits' b" "t2 \<notin> Var ` wits' b"
-    unfolding wits'_def by auto
+  then have not_in_pwits: "t1 \<notin> Var ` pwits b" "t2 \<notin> Var ` pwits b"
+    unfolding pwits_def by auto
   with bexpands_paramD[OF "2"(1)] "2"(2-) show ?case
     unfolding P_def wits_subterms_def
-    unfolding bexpands_param_wits'_eq[OF "2"(1-3)] bexpands_param_wits_eq[OF "2"(1-3)]
+    unfolding bexpands_param_pwits_eq[OF "2"(1-3)] bexpands_param_wits_eq[OF "2"(1-3)]
     by safe (auto simp: vars_fm_vars_branchI[where ?x=x and ?b=b])
 qed
 
@@ -719,7 +719,7 @@ qed
 
 lemma lemma_2:
   assumes "wf_branch b"
-  assumes "c \<in> wits' b"
+  assumes "c \<in> pwits b"
   shows "AT (Var c =\<^sub>s t) \<notin> set b" "AT (t =\<^sub>s Var c) \<notin> set b" "AT (t \<in>\<^sub>s Var c) \<notin> set b"
 proof -
   from \<open>wf_branch b\<close> obtain \<phi> where "expandss b [\<phi>]"
@@ -924,19 +924,19 @@ qed
 
 subsection \<open>Realization of an Open Branch\<close>
 
-definition "base_vars b \<equiv> Var ` wits' b \<union> urelems b"
+definition "base_vars b \<equiv> Var ` pwits b \<union> urelems b"
 
 lemma finite_base_vars: "finite (base_vars b)"
   unfolding base_vars_def finite_Un
-  using finite_wits'[THEN finite_imageI] finite_urelems by blast
+  using finite_pwits[THEN finite_imageI] finite_urelems by blast
 
-lemma wits'_subs_base_vars:
-  shows "Var ` wits' b \<subseteq> base_vars b"
+lemma pwits_subs_base_vars:
+  shows "Var ` pwits b \<subseteq> base_vars b"
   unfolding base_vars_def
   by blast
 
 lemma base_vars_subs_vars: "base_vars b \<subseteq> Var ` vars b"
-  unfolding base_vars_def wits'_def wits_def
+  unfolding base_vars_def pwits_def wits_def
   using urelems_subs_vars by blast
 
 definition subterms' :: "'a branch \<Rightarrow> 'a pset_term set" where
@@ -1178,18 +1178,18 @@ lemma sym_eq: "sym eq"
 lemma equiv_eq: "lin_sat b \<Longrightarrow> equiv UNIV eq"
   by (rule equivI) (use refl_eq trans_eq sym_eq in safe)
 
-lemma not_dominated_if_wits':
-  assumes "x \<in> Var ` wits' b" shows "\<not> s \<rightarrow>\<^bsub>bgraph b\<^esub> x"
+lemma not_dominated_if_pwits:
+  assumes "x \<in> Var ` pwits b" shows "\<not> s \<rightarrow>\<^bsub>bgraph b\<^esub> x"
 proof -
-  from assms obtain x' where "x = Var x'" "x' \<in> wits' b"
+  from assms obtain x' where "x = Var x'" "x' \<in> pwits b"
     by blast
   from lemma_2(3)[OF wf_branch this(2)] this(1) show "\<not> s \<rightarrow>\<^bsub>bgraph b\<^esub> x"
     unfolding arcs_ends_def arc_to_ends_def by (auto simp: bgraph_def)
 qed
 
-lemma parents_empty_if_wits':
-  assumes "x \<in> Var ` wits' b" shows "parents (bgraph b) x = {}"
-  using not_dominated_if_wits'[OF assms] unfolding bgraph_def by simp
+lemma parents_empty_if_pwits:
+  assumes "x \<in> Var ` pwits b" shows "parents (bgraph b) x = {}"
+  using not_dominated_if_pwits[OF assms] unfolding bgraph_def by simp
 
 lemma not_AT_mem_if_urelem:
   assumes "t \<in> urelems b"
@@ -1215,7 +1215,7 @@ lemma parents_empty_if_urelems:
 lemma not_dominated_if_base_vars:
   assumes "x \<in> base_vars b"
   shows "\<not> s \<rightarrow>\<^bsub>bgraph b\<^esub> x"
-  using assms not_dominated_if_urelems not_dominated_if_wits'
+  using assms not_dominated_if_urelems not_dominated_if_pwits
   unfolding base_vars_def by blast
 
 lemma parents_empty_if_base_vars:
@@ -1320,10 +1320,10 @@ sublocale realisation "bgraph b" "base_vars b" "subterms' b" I eq
        and "\<And>P Q. (True \<Longrightarrow> PROP P \<Longrightarrow> PROP Q) \<equiv> (PROP P \<Longrightarrow> True \<Longrightarrow> PROP Q)"
   using realisation I_neq_realise by simp_all
 
-lemma eq_class_singleton_if_wits':
-  assumes "x \<in> Var ` wits' b" shows "eq_class x = {x}"
+lemma eq_class_singleton_if_pwits:
+  assumes "x \<in> Var ` pwits b" shows "eq_class x = {x}"
 proof -
-  from assms obtain x' where "x = Var x'" "x' \<in> wits' b"
+  from assms obtain x' where "x = Var x'" "x' \<in> pwits b"
     by blast
   have False if "eq_class x \<noteq> {x}"
   proof -
@@ -1333,16 +1333,16 @@ proof -
       by auto
     then have "AT (y =\<^sub>s x) \<in> set b \<or> AT (x =\<^sub>s y) \<in> set b"
       unfolding eq_def symcl_def by auto
-    with lemma_2(1,2)[OF wf_branch \<open>x' \<in> wits' b\<close>] \<open>x = Var x'\<close> show False
+    with lemma_2(1,2)[OF wf_branch \<open>x' \<in> pwits b\<close>] \<open>x = Var x'\<close> show False
       by blast
   qed
   with assms show ?thesis by blast
 qed
 
-lemma realise_wits':
-  "x \<in> Var ` wits' b \<Longrightarrow> realise x = vset {I x}"
-  unfolding realise.simps(1)[OF wits'_subs_base_vars[THEN subsetD]]
-  by (auto simp: eq_class_singleton_if_wits' parents_empty_if_wits')
+lemma realise_pwits:
+  "x \<in> Var ` pwits b \<Longrightarrow> realise x = vset {I x}"
+  unfolding realise.simps(1)[OF pwits_subs_base_vars[THEN subsetD]]
+  by (auto simp: eq_class_singleton_if_pwits parents_empty_if_pwits)
 
 lemma I_in_realise_if_base_vars[simp]:
   "s \<in> base_vars b \<Longrightarrow> I s \<in> elts (realise s)"
@@ -1407,7 +1407,7 @@ proof -
   note mem_subterms = AT_eq_subterms_branchD[OF assms]
   with v' have "t \<in> urelems b" if "s \<in> urelems b"
     using that type_term_eq by (auto simp: urelems_def)
-  moreover from assms have "s \<notin> Var ` wits' b" "t \<notin> Var ` wits' b"
+  moreover from assms have "s \<notin> Var ` pwits b" "t \<notin> Var ` pwits b"
     using lemma_2(1,2)[OF wf_branch] by blast+
   moreover have "t \<in> subterms' b" if "s \<in> subterms' b"
   proof -
@@ -1415,7 +1415,7 @@ proof -
       using that P_T_partition_verts(1) unfolding base_vars_def by blast
     with \<open>s \<in> subterms b\<close> v' have "t \<notin> urelems b"
       using type_term_eq urelems_def by fastforce
-    with \<open>t \<notin> Var ` wits' b\<close> \<open>t \<in> subterms b\<close> show "t \<in> subterms' b"
+    with \<open>t \<notin> Var ` pwits b\<close> \<open>t \<in> subterms b\<close> show "t \<in> subterms' b"
       by (simp add: base_vars_def subterms'_def)
   qed
   ultimately show ?thesis
@@ -1527,11 +1527,11 @@ proof(cases "t \<in> subterms (last b) - base_vars b")
   then show ?thesis
   proof cases
     case t_wits
-    with \<open>t \<in> subterms' b\<close> have "t \<notin> Var ` wits' b"
+    with \<open>t \<in> subterms' b\<close> have "t \<notin> Var ` pwits b"
       unfolding subterms'_def base_vars_def by blast
     with t_wits obtain t' where t': "t' \<in> subterms (last b)"
       "AT (t =\<^sub>s t') \<in> set b \<or> AT (t' =\<^sub>s t) \<in> set b"
-      unfolding wits'_def by blast
+      unfolding pwits_def by blast
     with \<open>t \<in> subterms' b\<close> have "t' \<notin> base_vars b"
       using AT_eq_urelems_subterms'_cases P_T_partition_verts(1)
       by (metis Un_iff base_vars_def disjoint_iff)
@@ -1756,8 +1756,8 @@ proof -
   moreover
   have "(\<emptyset> n) \<notin> base_vars b"
   proof -
-    have "(\<emptyset> n) \<notin> Var ` wits' b"
-      using wits'_def wits_def by blast
+    have "(\<emptyset> n) \<notin> Var ` pwits b"
+      using pwits_def wits_def by blast
     moreover have "(\<emptyset> n) \<notin> urelems b"
       unfolding urelems_def using wf_branch by (simp add: type_term.simps(1))
     ultimately show ?thesis
@@ -1780,8 +1780,8 @@ proof -
     by simp
   note not_urelem_comps_if_compound[where ?f="(\<squnion>\<^sub>s)", OF assms(2), simplified]
   moreover note subterms_fmD(1,2)[OF mem_subterms_last]
-  then have "t1 \<notin> Var ` wits' b" "t2 \<notin> Var ` wits' b"
-    unfolding wits'_def wits_def 
+  then have "t1 \<notin> Var ` pwits b" "t2 \<notin> Var ` pwits b"
+    unfolding pwits_def wits_def 
     using pset_term.set_intros(1) mem_vars_fm_if_mem_subterms_fm by fastforce+
   ultimately have "t1 \<in> subterms' b" "t2 \<in> subterms' b"
     unfolding subterms'_def base_vars_def
@@ -1855,8 +1855,8 @@ proof -
     by simp
   note not_urelem_comps_if_compound[where ?f="(\<sqinter>\<^sub>s)", OF assms(2), simplified]
   moreover note subterms_fmD(3,4)[OF mem_subterms_last]
-  then have "t1 \<notin> Var ` wits' b" "t2 \<notin> Var ` wits' b"
-    unfolding wits'_def wits_def 
+  then have "t1 \<notin> Var ` pwits b" "t2 \<notin> Var ` pwits b"
+    unfolding pwits_def wits_def 
     using pset_term.set_intros(1) mem_vars_fm_if_mem_subterms_fm by fastforce+
   ultimately have t1_t2_subterms': "t1 \<in> subterms' b" "t2 \<in> subterms' b"
     unfolding subterms'_def base_vars_def
@@ -1924,8 +1924,8 @@ proof -
     by simp
   note not_urelem_comps_if_compound[where ?f="(-\<^sub>s)", OF assms(2), simplified]
   moreover note subterms_fmD(5,6)[OF mem_subterms_last]
-  then have "s \<notin> Var ` wits' b" "t \<notin> Var ` wits' b"
-    unfolding wits'_def wits_def 
+  then have "s \<notin> Var ` pwits b" "t \<notin> Var ` pwits b"
+    unfolding pwits_def wits_def 
     using pset_term.set_intros(1) mem_vars_fm_if_mem_subterms_fm by fastforce+
   ultimately have "s \<in> subterms' b" "t \<in> subterms' b"
     unfolding subterms'_def base_vars_def

@@ -1,11 +1,11 @@
 theory Set_Semantics
-  imports Logic ZFC_Extras "HOL-Library.Adhoc_Overloading"
+  imports Logic ZFC_Extras "HOL-Library.Adhoc_Overloading" "HOL-Library.Monad_Syntax"
 begin
 
 section \<open>Syntax and Semantics\<close>
 
 datatype (vars_term: 'a) pset_term = 
-  Empty (\<open>\<emptyset>\<close>)| is_Var: Var 'a |
+  Empty nat (\<open>\<emptyset> _\<close>) | is_Var: Var 'a |
   Union "'a pset_term" "'a pset_term" (infixr \<open>\<squnion>\<^sub>s\<close> 60) |
   Inter "'a pset_term" "'a pset_term" (infixr \<open>\<sqinter>\<^sub>s\<close> 70) |
   Diff "'a pset_term" "'a pset_term"  (infixl \<open>-\<^sub>s\<close> 80) |
@@ -22,7 +22,7 @@ type_synonym 'a pset_fm = "'a pset_atom fm"
 type_synonym 'a branch = "'a pset_fm list"
 
 fun I\<^sub>s\<^sub>t :: "('a \<Rightarrow> V) \<Rightarrow> 'a pset_term \<Rightarrow> V" where
-  "I\<^sub>s\<^sub>t v \<emptyset> = 0"
+  "I\<^sub>s\<^sub>t v (\<emptyset> n) = 0"
 | "I\<^sub>s\<^sub>t v (Var x) = v x"
 | "I\<^sub>s\<^sub>t v (s1 \<squnion>\<^sub>s s2) = I\<^sub>s\<^sub>t v s1 \<squnion> I\<^sub>s\<^sub>t v s2"
 | "I\<^sub>s\<^sub>t v (s1 \<sqinter>\<^sub>s s2) = I\<^sub>s\<^sub>t v s1 \<sqinter> I\<^sub>s\<^sub>t v s2"
@@ -124,7 +124,7 @@ lemma subfmsD:
 subsection \<open>Subterms\<close>
 
 fun subterms_term :: "'a pset_term \<Rightarrow> 'a pset_term set"  where
-  "subterms_term \<emptyset> = {\<emptyset>}"
+  "subterms_term (\<emptyset> n) = {\<emptyset> n}"
 | "subterms_term (Var i) = {Var i}"
 | "subterms_term (t1 \<squnion>\<^sub>s t2) = {t1 \<squnion>\<^sub>s t2} \<union> subterms_term t1 \<union> subterms_term t2"
 | "subterms_term (t1 \<sqinter>\<^sub>s t2) = {t1 \<sqinter>\<^sub>s t2} \<union> subterms_term t1 \<union> subterms_term t2"
@@ -261,7 +261,7 @@ lemma mem_vars_term_if_mem_subterms_term:
        apply(auto intro: pset_term.set_intros)
   done
 
-lemma mem_vars_fm_if_mem_subterm_fm:
+lemma mem_vars_fm_if_mem_subterms_fm:
   "x \<in> vars_term s \<Longrightarrow> s \<in> subterms_fm \<phi> \<Longrightarrow> x \<in> vars_fm \<phi>"
 proof(induction \<phi>)
   case (Atom a)

@@ -1,5 +1,5 @@
 theory Set_Calculus
-  imports Set_Semantics "HOL-Library.Sublist"
+  imports Set_Semantics Typing_Defs "HOL-Library.Sublist"
 begin
 
 section \<open>Closedness\<close>
@@ -15,7 +15,7 @@ fun member_cycle :: "'a pset_atom list \<Rightarrow> bool" where
 
 inductive bclosed :: "'a branch \<Rightarrow> bool" where
   contr: "\<lbrakk> \<phi> \<in> set b; Neg \<phi> \<in> set b \<rbrakk> \<Longrightarrow> bclosed b"
-| memEmpty: "AT (t \<in>\<^sub>s \<emptyset>) \<in> set b \<Longrightarrow> bclosed b"
+| memEmpty: "AT (t \<in>\<^sub>s (\<emptyset> n)) \<in> set b \<Longrightarrow> bclosed b"
 | neqSelf: "AF (t =\<^sub>s t) \<in> set b \<Longrightarrow> bclosed b"
 | memberCycle: "\<lbrakk> member_cycle cs; set cs \<subseteq> Atoms (set b) \<rbrakk> \<Longrightarrow> bclosed b"
 
@@ -27,6 +27,13 @@ fun tlvl_terms :: "'a pset_atom \<Rightarrow> 'a pset_term set" where
   "tlvl_terms (t1 \<in>\<^sub>s t2) = {t1, t2}"
 | "tlvl_terms (t1 =\<^sub>s t2) = {t1, t2}"
 
+lemma tlvl_intros[intro, simp]:
+  "t1 \<in> tlvl_terms (t1 \<in>\<^sub>s t2)"
+  "t2 \<in> tlvl_terms (t2 \<in>\<^sub>s t1)"
+  "t1 \<in> tlvl_terms (t1 =\<^sub>s t2)"
+  "t2 \<in> tlvl_terms (t2 =\<^sub>s t1)"
+  by auto
+  
 fun subst_tlvl :: "'a pset_term \<Rightarrow> 'a pset_term \<Rightarrow> 'a pset_atom \<Rightarrow> 'a pset_atom" where
   "subst_tlvl t1 t2 (s1 \<in>\<^sub>s s2) =
     (if s1 = t1 then t2 else s1) \<in>\<^sub>s (if s2 = t1 then t2 else s2)"
@@ -131,7 +138,7 @@ lemma lexpands_induct[consumes 1]:
     (\<And>p q b. Or p q \<in> set b \<Longrightarrow> Neg q \<in> set b \<Longrightarrow> P [p] b) \<Longrightarrow>
     (\<And>p q b. Neg (And p q) \<in> set b \<Longrightarrow> p \<in> set b \<Longrightarrow> P [Neg q] b) \<Longrightarrow>
     (\<And>p q b. Neg (And p q) \<in> set b \<Longrightarrow> q \<in> set b \<Longrightarrow> P [Neg p] b) \<Longrightarrow>
-    (\<And>p q b. Neg (Neg p) \<in> set b \<Longrightarrow> P [p] b) \<Longrightarrow>
+    (\<And>p b. Neg (Neg p) \<in> set b \<Longrightarrow> P [p] b) \<Longrightarrow>
     (\<And>s t1 t2 b. AF (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set b \<Longrightarrow> P [AF (s \<in>\<^sub>s t1), AF (s \<in>\<^sub>s t2)] b) \<Longrightarrow>
     (\<And>s t1 b t2. AT (s \<in>\<^sub>s t1) \<in> set b \<Longrightarrow> t1 \<squnion>\<^sub>s t2 \<in> subterms (last b) \<Longrightarrow> P [AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2)] b) \<Longrightarrow>
     (\<And>s t2 b t1. AT (s \<in>\<^sub>s t2) \<in> set b \<Longrightarrow> t1 \<squnion>\<^sub>s t2 \<in> subterms (last b) \<Longrightarrow> P [AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2)] b) \<Longrightarrow>
@@ -194,7 +201,7 @@ inductive bexpands_param ::
   "\<lbrakk> AF (t1 =\<^sub>s t2) \<in> set b; t1 \<in> subterms (last b); t2 \<in> subterms (last b);
      \<nexists>x. AT (x \<in>\<^sub>s t1) \<in> set b \<and> AF (x \<in>\<^sub>s t2) \<in> set b;
      \<nexists>x. AT (x \<in>\<^sub>s t2) \<in> set b \<and> AF (x \<in>\<^sub>s t1) \<in> set b;
-     x \<notin> vars b \<rbrakk>
+     x \<notin> vars b; \<not> urelem (last b) t1; \<not> urelem (last b) t2 \<rbrakk>
     \<Longrightarrow> bexpands_param t1 t2 x {[AT (Var x \<in>\<^sub>s t1), AF (Var x \<in>\<^sub>s t2)],
                                [AT (Var x \<in>\<^sub>s t2), AF (Var x \<in>\<^sub>s t1)]} b"
 
@@ -288,5 +295,28 @@ lemmas expandss_mono = set_mono_suffix[OF expandss_suffix]
 lemma expandss_last_eq[simp]:
   "expandss b' b \<Longrightarrow> b \<noteq> [] \<Longrightarrow> last b' = last b"
   by (metis expandss_suffix last_appendR suffix_def)
+
+lemma expandss_not_Nil:
+  "expandss b' b \<Longrightarrow> b \<noteq> [] \<Longrightarrow> b' \<noteq> []"
+  using expandss_suffix suffix_bot.extremum_uniqueI by blast
+
+
+section \<open>Well-Formed Branch\<close>
+
+definition "wf_branch b \<equiv> \<exists>\<phi>. expandss b [\<phi>]"
+
+lemma wf_branch_singleton[simp]: "wf_branch [\<phi>]"
+  unfolding wf_branch_def using expandss.intros(1) by blast
+
+lemma wf_branch_not_Nil[simp, intro?]: "wf_branch b \<Longrightarrow> b \<noteq> []"
+  unfolding wf_branch_def
+  using expandss_suffix suffix_bot.extremum_uniqueI by blast
+
+lemma wf_branch_expandss: "wf_branch b \<Longrightarrow> expandss b' b \<Longrightarrow> wf_branch b'"
+  using expandss_trans wf_branch_def by blast
+
+lemma wf_branch_lexpands:
+  "wf_branch b \<Longrightarrow> lexpands b' b \<Longrightarrow> set b \<subset> set (b' @ b) \<Longrightarrow> wf_branch (b' @ b)"
+  by (metis expandss.simps wf_branch_expandss)
 
 end

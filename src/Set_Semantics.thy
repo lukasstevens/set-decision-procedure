@@ -1,5 +1,5 @@
 theory Set_Semantics
-  imports Logic ZFC_Extras "HOL-Library.Adhoc_Overloading" "HOL-Library.Monad_Syntax"
+  imports Logic HereditarilyFinite.Finitary "HOL-Library.Adhoc_Overloading" "HOL-Library.Monad_Syntax"
 begin
 
 section \<open>Syntax and Semantics\<close>
@@ -21,16 +21,16 @@ abbreviation "AF a \<equiv> Neg (Atom a)"
 type_synonym 'a pset_fm = "'a pset_atom fm"
 type_synonym 'a branch = "'a pset_fm list"
 
-fun I\<^sub>s\<^sub>t :: "('a \<Rightarrow> V) \<Rightarrow> 'a pset_term \<Rightarrow> V" where
+fun I\<^sub>s\<^sub>t :: "('a \<Rightarrow> hf) \<Rightarrow> 'a pset_term \<Rightarrow> hf" where
   "I\<^sub>s\<^sub>t v (\<emptyset> n) = 0"
 | "I\<^sub>s\<^sub>t v (Var x) = v x"
 | "I\<^sub>s\<^sub>t v (s1 \<squnion>\<^sub>s s2) = I\<^sub>s\<^sub>t v s1 \<squnion> I\<^sub>s\<^sub>t v s2"
 | "I\<^sub>s\<^sub>t v (s1 \<sqinter>\<^sub>s s2) = I\<^sub>s\<^sub>t v s1 \<sqinter> I\<^sub>s\<^sub>t v s2"
 | "I\<^sub>s\<^sub>t v (s1 -\<^sub>s s2) = I\<^sub>s\<^sub>t v s1 - I\<^sub>s\<^sub>t v s2"
-| "I\<^sub>s\<^sub>t v (Single s) = vset {I\<^sub>s\<^sub>t v s}"
+| "I\<^sub>s\<^sub>t v (Single s) = HF {I\<^sub>s\<^sub>t v s}"
 
-fun I\<^sub>s\<^sub>a :: "('a \<Rightarrow> V) \<Rightarrow> 'a pset_atom \<Rightarrow> bool" where
-  "I\<^sub>s\<^sub>a v (t1 \<in>\<^sub>s t2) \<longleftrightarrow> I\<^sub>s\<^sub>t v t1 \<in> elts (I\<^sub>s\<^sub>t v t2)"
+fun I\<^sub>s\<^sub>a :: "('a \<Rightarrow> hf) \<Rightarrow> 'a pset_atom \<Rightarrow> bool" where
+  "I\<^sub>s\<^sub>a v (t1 \<in>\<^sub>s t2) \<longleftrightarrow> I\<^sub>s\<^sub>t v t1 \<^bold>\<in> I\<^sub>s\<^sub>t v t2"
 | "I\<^sub>s\<^sub>a v (t1 =\<^sub>s t2) \<longleftrightarrow> I\<^sub>s\<^sub>t v t1 = I\<^sub>s\<^sub>t v t2"
 
 

@@ -17,7 +17,7 @@ isabelle jedit -d $AFP -d . -R Set_Proc
 ## Structure
 The formalisation is split into several files:
 - `Logic.thy` contains the datatype of propositional formulae.
-- `ZFC_Extras.thy` contains auxiliary material for ZFC in HOL.
+- `HF_Extras.thy` contains auxiliary material for Hereditarily Finite Sets.
 - `Set_Semantics.thy` defines the syntax and semantics of MLSS.
 - `Set_Calculus.thy` introduces the tableau calculus for MLSS.
 - `Realisation.thy` contains the definition of the realization function and additional proofs that were not discussed in the paper.

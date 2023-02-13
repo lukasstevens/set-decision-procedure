@@ -1,5 +1,5 @@
 theory Realisation
-  imports ZFC_Extras Graph_Theory.Graph_Theory
+  imports HereditarilyFinite.Finitary Graph_Theory.Graph_Theory
 begin
 
 abbreviation parents :: "('a,'b) pre_digraph \<Rightarrow> 'a \<Rightarrow> 'a set"
@@ -14,15 +14,9 @@ lemma (in fin_digraph) parents_subs_verts: "parents G s \<subseteq> verts G"
 lemma (in fin_digraph) finite_parents[intro]: "finite (parents G s)"
   using finite_subset[OF parents_subs_verts finite_verts] .
 
-lemma (in fin_digraph) small_parents[intro]: "small (parents G s)"
-  using finite_imp_small finite_parents by blast
-
 lemma (in fin_digraph) finite_ancestors[intro]: "finite (ancestors G s)"
   using reachable_in_verts
   by (auto intro: rev_finite_subset[where ?A="ancestors G s", OF finite_verts])
-
-lemma (in fin_digraph) small_ancestors[intro]: "small (ancestors G s)"
-  using finite_imp_small finite_ancestors by blast
 
 lemma (in wf_digraph) in_ancestors_if_dominates[simp, intro]:
   assumes "s \<rightarrow>\<^bsub>G\<^esub> t"
@@ -66,11 +60,11 @@ end
 
 locale realisation = dag G for G +
   fixes P T :: "'a set"
-  fixes I :: "'a \<Rightarrow> V"
+  fixes I :: "'a \<Rightarrow> hf"
   fixes eq :: "'a rel"
   assumes P_T_partition_verts: "P \<inter> T = {}" "verts G = P \<union> T"
   assumes P_urelems: "\<And>p t. p \<in> P \<Longrightarrow> \<not> t \<rightarrow>\<^bsub>G\<^esub> p"
-  assumes small_eq_class[simp, intro]: "\<And>x. small (eq `` {x})"
+  assumes finite_eq_class[simp, intro]: "\<And>x. finite (eq `` {x})"
 begin
 
 lemma
@@ -81,16 +75,16 @@ lemma
 
 abbreviation "eq_class x \<equiv> eq `` {x}"
 
-function realise :: "'a \<Rightarrow> V" where
-  "x \<in> P \<Longrightarrow> realise x = vset (realise ` parents G x) \<squnion> vset (I ` eq_class x)"
-| "t \<in> T \<Longrightarrow> realise t = vset (realise ` parents G t)"
+function realise :: "'a \<Rightarrow> hf" where
+  "x \<in> P \<Longrightarrow> realise x = HF (realise ` parents G x) \<squnion> HF (I ` eq_class x)"
+| "t \<in> T \<Longrightarrow> realise t = HF (realise ` parents G t)"
 | "x \<notin> P \<union> T \<Longrightarrow> realise x = 0"
   using P_T_partition_verts by auto
 termination
   by (relation "measure (\<lambda>t. card (ancestors G t))") (simp_all add: card_ancestors_strict_mono)
 
-lemma small_realisation_parents[simp, intro!]: "small (realise ` parents G t)"
-  using small_parents by auto
+lemma finite_realisation_parents[simp, intro!]: "finite (realise ` parents G t)"
+  by auto
  
 function height :: "'a \<Rightarrow> nat" where
   "\<forall>s. \<not> s \<rightarrow>\<^bsub>G\<^esub> t \<Longrightarrow> height t = 0"
@@ -123,7 +117,7 @@ qed
 
 lemma dominates_if_mem_realisation:
   assumes "\<And>x y. I x \<noteq> realise y"
-  assumes "realise s \<in> elts (realise t)"
+  assumes "realise s \<^bold>\<in> realise t"
   obtains s' where "s' \<rightarrow>\<^bsub>G\<^esub> t" "realise s = realise s'"
   using assms(2-)
 proof(induction t rule: realise.induct)
@@ -160,9 +154,9 @@ proof(induction "height t1" arbitrary: t1 t2 rule: less_induct)
       by (cases t1 rule: height.cases) auto
     have Ex_approx: "\<exists>v. v \<rightarrow>\<^bsub>G\<^esub> t2 \<and> realise w = realise v" if "w \<rightarrow>\<^bsub>G\<^esub> t1" for w
     proof -
-      from that less(2) have "realise w \<in> elts (realise t1)"
+      from that less(2) have "realise w \<^bold>\<in> realise t1"
         by (induction t1 rule: realise.induct) auto
-      with "less.prems" have "realise w \<in> elts (realise t2)"
+      with "less.prems" have "realise w \<^bold>\<in> realise t2"
         by metis
       with dominates_if_mem_realisation assms(1) obtain v
         where "v \<rightarrow>\<^bsub>G\<^esub> t2" "realise w = realise v"
@@ -207,7 +201,7 @@ lemma lemma1_2:
 
 lemma lemma1_3:
   assumes "\<And>x y. I x \<noteq> realise y"
-  assumes "s \<in> P \<union> T" "t \<in> P \<union> T" "realise s \<in> elts (realise t)"
+  assumes "s \<in> P \<union> T" "t \<in> P \<union> T" "realise s \<^bold>\<in> realise t"
   shows "height s < height t"
 proof -
   from dominates_if_mem_realisation[OF assms(1,4)] obtain s'

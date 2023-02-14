@@ -10,6 +10,8 @@
 \usepackage[numbers]{natbib}
 \bibliographystyle{splncs04nat}
 
+\usepackage{appendix}
+
 \usepackage{amsmath}
 \usepackage{amssymb}
 
@@ -121,6 +123,9 @@
 \newcommand{\Ist}{I$_\text{st}$}
 \newcommand{\Isa}{I$_\text{sa}$}
 
+\newcommand{\hfmem}{\boldsymbol{\in}}
+\newcommand{\hfnotmem}{\boldsymbol{\notin}}
+
 \newcommand{\fmAnd}[2]{#1 $\boldsymbol{\land}$ #2}
 \newcommand{\fmOr}[2]{#1 $\boldsymbol{\lor}$ #2}
 \newcommand{\fmNegSymbol}{\boldsymbol{\neg}}
@@ -145,7 +150,7 @@
   Using Isabelle/HOL, we verify the state-of-the-art decision procedure for multi-level syllogistic with singleton (\MLSS{} for short), which is a ground fragment of set theory.
   We formalise the syntax and semantics of \MLSS{} as well as a sound and complete tableau calculus for it.
   We also provide an abstract specification of a decision procedure that applies the rules of the calculus exhaustively and prove its termination.
-  \keywords{First keyword \and Second keyword}
+  \keywords{First TODO \and Second TODO}
 \end{abstract}
 
 \listoftodos{}
@@ -177,6 +182,7 @@ The formalisation follows the paper closely but gives a more thorough account of
   \item We deliver the omitted proof of Lemma~2 in the paper~\cite{new_fast_tableau}, which is a key building block for the completeness proof of the calculus.
   \item The formal proof of completeness lead to the discovery that the calculus was missing a rule for eliminating double negation. 
   \item We derive an explicit upper bound for the number of formulae in a branch of the tableau.
+  \item We restrict one branching rule TODO.
 \end{itemize}
 
 \subsection{Related Work}
@@ -196,6 +202,7 @@ In Lean, there is a verified tableau calculus for basic modal logic~\cite{modal_
 In Coq, there is a formalisation of a tableau calculus for ecumenical logic~\cite{ecumenical_logic}; it is, however, missing a completeness proof.
 Concerning Isabelle/HOL, there is formalisation of a sound and complete tableau calculus for hybrid logic~\cite{hybrid_logic} available in the \textit{Archive of Formal Proofs}~\cite{hybrid_logic_afp}.
 The termination proof is part of ongoing work~\cite{hybrid_logic_workshop}.
+TODO: Mention SteP, Check reviewer comment.
 % TODO: Formalisation de la logique temporelle dans le coq.
 
 \subsection{Notation}
@@ -205,7 +212,7 @@ We establish notation and in particular some essential data types together with 
 We write \lstinline!t :: 'a! to specify that the term \lstinline!t! has the type \lstinline!'a! and \lstinline!'a $\Rightarrow$ 'b! for the space of total functions from type \lstinline!'a! to type \lstinline!'b!.
 
 Sets with elements of type \lstinline!'a! have the type \lstinline!'a set!.
-The cardinality of a set \lstinline!A! is denoted by \lstinline!card A! and the image of \lstinline!A! under \lstinline!f! by \lstinline!f ` A!.
+The cardinality of a set \lstinline!A! is denoted by \lstinline!|A|! and the image of \lstinline!A! under \lstinline!f! by \lstinline!f ` A!.
 
 We use \lstinline!'a list! to describe the type of lists, which are constructed using the empty list \lstinline![]! constructor or the infix cons constructor \lstinline!#!, and are appended with the infix operator \lstinline!@!.
 The function \lstinline!set! converts a list into a set.
@@ -257,85 +264,36 @@ definition vars :: 'a pset_fm $\Rightarrow$ 'a set where
   vars $\phi$ $\equiv$ $\bigcup$(vars ` atoms $\phi$)
 \end{lstlisting}
 
-Similarly to \lstinline!vars!, we introduce the overloaded constant \lstinline!subterms!.
-\begin{lstlisting}
-fun subterms :: 'a pset_term $\Rightarrow$ 'a pset_term set where
-  subterms $\emptyset$ = {$\emptyset$}
-| subterms (Var x) = {Var x}
-| subterms (s $\unionS$ t) = {s $\unionS$ t} $\cup$ subterms s $\cup$ subterms t
-| subterms (s $\interS$ t) = {s $\interS$ t} $\cup$ subterms s $\cup$ subterms t
-| subterms (s $\diffS$ t) = {s $\diffS$ t} $\cup$ subterms s $\cup$ subterms t
-| subterms (Single t) = {Single t} $\cup$ subterms t
-\end{lstlisting}
-The subterms of an atom are then the subterms of its arguments.
-\begin{lstlisting}
-fun subterms :: 'a pset_atom $\Rightarrow$ 'a pset_term set where
-  subterms (s $\inS$ t) = subterms s $\cup$ subterms t
-| subterms (s $\eqS$ t) = subterms s $\cup$ subterms t
-\end{lstlisting}
-Finally, we lift this to formulae by using \lstinline!atoms! again.
-\begin{lstlisting}
-definition subterms :: 'a pset_fm $\Rightarrow$ 'a pset_term set where
-  subterms $\phi$ $\equiv$ $\bigcup$(subterms ` atoms $\phi$)
-\end{lstlisting}
+Similarly to \lstinline!vars!, we introduce the overloaded constant \lstinline!subterms :: 'b $\Rightarrow$ 'a pset_term set!, which returns all the set terms that are subterms of a set term, set atom, or formula, respectively. Lastly, we consider the subformulae of a formula and define a function \lstinline!subfms :: 'a fm $\Rightarrow$ 'a fm set! that computes them.
+The definition of \lstinline!subterms! and \lstinline!subfms! is standard so we omit them here and refer to the appendix.
 
-Lastly, we consider the subformulae of a formula and define a function that computes them.
-\begin{lstlisting}
-fun subfms :: 'a fm $\Rightarrow$ 'a fm set where
-  subfms (&\fmAtom& a) = {&\fmAtom& a}
-| subfms (&\fmAnd{p}{q}&) = {&\fmAnd{p}{q}&} $\cup$ subfms p $\cup$ subfms q
-| subfms (&\fmOr{p}{q}&) = {&\fmOr{p}{q}&} $\cup$ subfms p $\cup$ subfms q
-| subfms (&\fmNeg{q}&) = {&\fmNeg{q}&} $\cup$ subfms q
-\end{lstlisting}
 \textit{Literals} are a type of subformulae of particular importance, so we define a predicate for them.
 \begin{lstlisting}
 fun is_literal :: 'a fm $\Rightarrow$ bool where
   is_literal (&\fmAtom& _) = True | is_literal (&\fmNeg{(\fmAtom{} \_)}&) = True
 | is_literal _ = False
 \end{lstlisting}
-\subsection{Semantics}
-We base the semantics of \MLSS{} on the von Neumann hierarchy $\mathcal{V}$ of sets that is defined inductively as
-  \[
-    \begin{array}{rclr}
-      \mathcal{V}_0 & = & \emptyset, \\
-      \mathcal{V}_{\alpha + 1} & = & \mathcal{P}(\mathcal{V}_\alpha) & \text{for each ordinal $\alpha$}, \\
-      \mathcal{V}_{\lambda} & = & \bigcup_{\mu < \lambda} \mathcal{V}_\mu & \text{for each limit ordinal $\lambda$}, \\
-      \mathcal{V} & = & \bigcup_\alpha \mathcal{V}_\alpha, \\
-    \end{array}
-  \]
-where $\mathcal{P}(S)$ is the powerset of $S$.
-The sets in $\mathcal{V}$ are well-founded, i.e.\ there can be no membership cycle in $\mathcal{V}$.
 
-In Isabelle/HOL, which is simply typed, this definition is not accepted, though.
-A way to work around this limitation is provided by \citeauthor{zfc_in_hol_afp} in an entry~\cite{zfc_in_hol_afp} of the \textit{Archive of Formal Proofs}, which adds $\mathcal{V}$ to Isabelle/HOL by way of axiomatisation.
-Two articles~\cite{zfc_in_hol1,zfc_in_hol2} have been written that provide further context to this entry.
-The entry declares a type \lstinline!V! that comes with the following functionality:
+\subsection{Semantics}
+The original paper~\cite{new_fast_tableau} bases the semantics of \MLSS{} on the von Neumann hierarchy of sets $\mathcal{V}$. 
+While there is an entry~\cite{zfc_in_hol_afp} in the \textit{Archive of Formal Proofs} (AFP) that axiomatises this hierarchy,
+we instead use the hierarchy of \textit{hereditarily finite sets} (HF sets) which fulfil all the same axioms as $\mathcal{V}$ except for the axiom of infinity.
+The HF sets are sufficient for our purposes as \MLSS{} is not powerful enough to force infinite models~\cite[Chapter~14.2]{set_theory}.
+In contrast to $\mathcal{V}$, the HF sets are directly representable in Isabelle/HOL, and indeed, there is an AFP entry~\cite{hf_AFP} that formalises them.
+The entry defines a type \lstinline!hf! that comes with the following functionality:
 \begin{itemize}
-  \item The function \lstinline!elts :: V $\Rightarrow$ V set! maps a set to its elements.
-      Note that even though we use the typed sets provided by Isabelle/HOL here, \lstinline!elts! actually returns a class (relative to \lstinline!V!).
-      This class only constitutes a set (relative to \lstinline!V!) if the class is small.
-  \item The predicate \lstinline!small :: 'a set $\Rightarrow$ bool!, which is polymorphic in \lstinline!'a!, indicates whether a class is small.
-  \item The function \lstinline!vset :: 'a set $\Rightarrow$ V! turns a class into a set of type \lstinline!V! if it is small. 
-\item The usual set operations such as equality ($=$), union ($\sqcup$), intersection ($\sqcap$), and difference ($-$) are defined.
-\item Finally, the empty set coincides with the ordinal $0$, so it is denoted by \lstinline!0 :: V!.
+  \item The function \lstinline!HF :: hf set $\Rightarrow$ set! that converts a finite set of HF sets into an HF set.
+\item The usual set operations such as equality ($=$), membership ($\hfmem$), union ($\sqcup$), intersection ($\sqcap$), and difference ($-$) are defined.
+\item Finally, the empty set coincides with the ordinal $0$, so it is denoted by \lstinline!0 :: hf!.
 \end{itemize}
 
-Equipped with the above, we define the interpretation function \lstinline!&\Ist&! for set terms that interprets a set term with respect to a valuation function \lstinline!M :: 'a $\Rightarrow$ V! for variables.
+Equipped with the above, we define the interpretation functions
 \begin{lstlisting}
-fun &\Ist& :: ('a $\Rightarrow$ V) $\Rightarrow$ 'a pset_term $\Rightarrow$ V where
-  &\Ist& M $\emptyset$ = 0
-| &\Ist& M (Var x) = M x
-| &\Ist& M (Single s) = vset {&\Ist& M s}
-| &\Ist& M (s $\unionS$ t) = &\Ist& M s $\sqcup$ &\Ist& M t 
-| &\Ist& M (s $\interS$ t) = &\Ist& M s $\sqcap$ &\Ist& M t 
-| &\Ist& M (s $\diffS$ t) = &\Ist& M s $-$ &\Ist& M t 
+  &\Ist& :: ('a $\Rightarrow$ hf) $\Rightarrow$ 'a pset_term $\Rightarrow$ hf &\textnormal{and}&
+  &\Isa& :: ('a $\Rightarrow$ hf) $\Rightarrow$ 'a pset_atom $\Rightarrow$ hf
 \end{lstlisting}
-The interpretation function \lstinline!I$_\text{sa}$! for set atoms is straightforward as well.
-\begin{lstlisting}
-fun &\Isa& :: ('a $\Rightarrow$ V) $\Rightarrow$ 'a pset_atom $\Rightarrow$ bool where
-  &\Isa& M (s $\inS$ t) $\longleftrightarrow$ &\Ist& M s $\in$ elts (&\Ist& M t)
-| &\Isa& M (s $\eqS$ t) $\longleftrightarrow$ &\Ist& M s = &\Ist& M t
-\end{lstlisting}
+in the standard way, i.e.\ by mapping each syntactic construct to the corresponding operation on HF sets and interpreting variables with respect to a given valuation function \lstinline!M :: 'a $\Rightarrow$ hf!.
+For the concrete definition we refer to the appendix.
 
 We write \lstinline!M $\models$ $\phi$! for the judgement that the formula $\phi$ holds under the valuation function \lstinline!M!.
 The implementation of $\models$ coincides with the interpretation function of \citeauthor{lqe}~\cite{lqe}.
@@ -677,7 +635,7 @@ In \autoref{sec:correct}, we also show that both properties easily transfer to \
 \section{Completeness of the Calculus\label{sec:complete}}
 For completeness of the calculus, we need to show that every unsatisfiable formula has a closed tableau or, conversely, that the formula is satisfiable if there is a saturated and open branch in the tableau.
 To facilitate inductive reasoning, we show a stronger statement by constructing a model \lstinline!M! such that \lstinline!M $\models$ $\phi$! for all \lstinline!$\phi$ $\in$ set b!.
-At the core of the model, there is a \textit{realisation} function that maps set terms to sets of type \lstinline!V!.
+At the core of the model, there is a \textit{realisation} function that maps set terms to sets of type \lstinline!hf!.
 A subset of the witnesses, which we call \textit{pure} witnesses, receives special treatment from the realisation function for reasons that will become apparent in \autoref{sec:pwits}.
 The collection of set terms of a branch can thus be partitioned into two collections as defined below.
 \begin{lstlisting}
@@ -692,7 +650,7 @@ definition subterms' :: 'a branch $\Rightarrow$ 'a pset_term set where
 
 We aim to construct a syntactic model that is derived from the membership literals \lstinline!s $\inS$ t! in the branch.
 To this end, we construct a graph whose vertices are the disjoint union of the sets above and there is an edge from \lstinline!s! to \lstinline!t! in the graph if, and only if, \lstinline!s $\inS$ t! is in \lstinline!b!.
-Note that we use \citeauthor{graph_theory_afp}'s graph library~\cite{graph_theory_afp} that represents a graph as a record of vertices, arcs (directed edges), and two functions \lstinline!tail! and \lstinline!head! that map an arc to its source, respectively target, vertex.
+Note that we use \citeauthor{graph_theory_afp}'s graph library~\cite{graph_theory_afp} that represents a graph as a record of vertices, arcs (directed edges), and two functions \lstinline!tail! and \lstinline!head! that map an arc to its source and target vertex, respectively.
 \begin{lstlisting}
 definition bgraph b $\equiv$
   let vs = Var ` pwits b $\cup$ subterms' b
@@ -705,21 +663,22 @@ As mentioned before, the pure witnesses \lstinline!Var ` pwits b! and the rest o
 Terms in the latter set are evaluated in accordance to the structure of the graph, i.e.\ the realisation of a vertex is defined as the union of the realisations of the parent vertices. 
 For the former set, we choose a function \lstinline!I! that assigns the witnesses in \lstinline!Var ` pwits b! pairwise distinct sets with cardinality greater than that of the vertices.
 We can always choose such a function since we assume an infinite universe of variables.
-Then, we return the singleton set \lstinline!vset {I x}!, which, together with the cardinality constraint, guarantees that realisations are distinct between pure witnesses themselves as well as between pure witnesses and set terms.  
+Then, we return the singleton set \lstinline!HF {I x}!, which, together with the cardinality constraint, guarantees that realisations are distinct between pure witnesses themselves as well as between pure witnesses and set terms.  
 The notation \lstinline!u $\rightarrow_\text{G}$ s! in the definition below indicates that there is an edge from \lstinline!u! to \lstinline!s! in the graph \lstinline!G!.
 \begin{lstlisting}
 abbreviation parents G s $\equiv$ {u. u $\rightarrow_\text{G}$ s}
 
 function realise :: 'a pset_term $\Rightarrow$ V where
-  x $\in$ Var ` pwits b $\Longrightarrow$ realise x = vset {I x}
+  x $\in$ Var ` pwits b $\Longrightarrow$ realise x = HF {I x}
 | x $\in$ subterms' b
-  $\Longrightarrow$ realise t = vset {realise ` parents (bgraph b) s}
+  $\Longrightarrow$ realise t = HF {realise ` parents (bgraph b) s}
 | x $\notin$ verts G $\Longrightarrow$ realise x = 0
 \end{lstlisting}
 
 Again, we need to ensure that the assumptions of the equations are non-overlapping and that the function terminates.
 The former is taken care of by automation, leaving us to prove termination.
 The assumption that \lstinline!b! is open implies that there are no membership cycles and thus \lstinline!bgraph b! is acyclic.
+TODO: Shorten this proof.
 Now, consider the ancestors \lstinline!av! of a vertex \lstinline!v!, which are those vertices from which we can reach \lstinline!v!.
 Due to acyclicity, it holds that the ancestors \lstinline!ap! of a parent \lstinline!p! of \lstinline!v! are a subset of \lstinline!av!.
 They are also a proper subset of \lstinline!av! since \lstinline!p! is an ancestor of \lstinline!v! but not of \lstinline!p! itself.
@@ -738,7 +697,7 @@ lemma lemma_2:
     and (t $\inS$ Var c) $\notin$ set b
 \end{lstlisting}
 So why are pure witnesses treated differently?
-According to the definition of \lstinline!realise!, the pure witnesses would be evaluated to the empty set \lstinline!0 :: V!, were they not treated separately. 
+According to the definition of \lstinline!realise!, the pure witnesses would be evaluated to the empty set \lstinline!0 :: hf!, were they not treated separately. 
 To see that this is a problem, consider the branch
 \begin{lstlisting}
   b = [Var s $\neqS$ Var t, Var t $\neqS$ Var u]
@@ -753,16 +712,16 @@ for some fresh \lstinline!x! and \lstinline!y!.
 Assigning both \lstinline!Var x! and \lstinline!Var y! a value of \lstinline!0! would contradict the literal \lstinline!Var x $\neqS$ Var y!.
 To prevent this, we assign the pure witnesses pairwise different values.
 
-The proof of \hyperref[lst:lemma_2]{\lstinline!lemma_2!} is more technical than interesting so we refer the reader to the formalisation.
+The proof of \hyperref[lst:lemma_2]{\lstinline!lemma_2!} is more technical than interesting so we refer the reader to the formalisation or paper TODO.
 
 \subsection{Realisation of an Open Branch\label{sec:real}}
 Remember that for completeness, we need to show that the realisation function for an open and saturated branch \lstinline!b! actually constitutes a model for all formulae in the branch.
 We start by verifying that the realisation function models all literals in the branch; more formally, the following propositions hold:
 \begin{enumerate}[label={(\roman*)}]
-  \item\label{it:at_mem} We have \lstinline!realise s $\in$ elts (realise t)! if it holds that \lstinline!s $\inS$ t! is in \lstinline!b!. 
+  \item\label{it:at_mem} We have \lstinline!realise s $\hfmem$ realise t! if it holds that \lstinline!s $\inS$ t! is in \lstinline!b!. 
   \item\label{it:at_eq} We have \lstinline!realise s $=$ realise t! if \lstinline!s $\eqS$ t! is in \lstinline!b!.
   \item\label{it:af_eq} We have \lstinline!realise s $\neq$ realise t! if \lstinline!s $\neqS$ t! is in \lstinline!b!.
-  \item\label{it:af_mem} We have \lstinline!realise s $\notin$ elts (realise t)! if it holds that \lstinline!s $\notinS$ t! is in \lstinline!b!. 
+  \item\label{it:af_mem} We have \lstinline!realise s $\hfnotmem$ realise t! if it holds that \lstinline!s $\notinS$ t! is in \lstinline!b!. 
 \end{enumerate}
 To illustrate the usefulness of \hyperref[lst:lemma_2]{\lstinline!lemma_2!}, we prove Proposition~\ref{it:at_eq}.
 The proofs of all propositions translate well into Isabelle, so we refer to the original paper~\cite{new_fast_tableau} for the remaining proofs. 
@@ -772,27 +731,24 @@ The proofs of all propositions translate well into Isabelle, so we refer to the 
   Therefore, both \lstinline!s $\in$ subterms' b! and \lstinline!t $\in$ subterms' b! must hold.
   Now, assume for contradiction that
 \begin{lstlisting}
-  realise s $\neq$ realise t
-\end{lstlisting}
-  which implies that
-\begin{lstlisting}
-  elts (realise s) $\neq$ elts (realise t).
+  realise s $\neq$ realise t.
 \end{lstlisting}
   Without loss of generality --- the other case is symmetric --- we obtain an \lstinline!e! such that
 \begin{lstlisting}
-  e $\in$ elts (realise s) $\land$ e $\notin$ elts (realise t). 
+  e $\hfmem$ realise s $\land$ e $\hfnotmem$ realise t. 
 \end{lstlisting}
   Considering the fact that \lstinline!s $\in$ subterms' b! and the definition of \lstinline!realise!, we obtain an \lstinline!u! where \lstinline!e = realise u! and \lstinline!u $\rightarrow_\text{bgraph b}$ s!.
   This, in turn, yields that \lstinline!u $\inS$ s! must be in \lstinline!b!.
   Together with the assumption \lstinline!(s $\eqS$ t) $\in$ set b! and the saturation of \lstinline!b!, it follows that \lstinline!u $\inS$ t! must also be in \lstinline!b!.
   But then we have
 \begin{lstlisting}[columns=fixed]
-  realise u $\in$ elts (realise t) = e $\in$ elts (realise t)
+  realise u $\hfmem$ realise t = e $\hfmem$ realise t
 \end{lstlisting}
-  using Proposition~\ref{it:at_mem}, which stands in contradiction to the assumption \lstinline!e $\notin$ elts (realise t)!.
+  using Proposition~\ref{it:at_mem}, which stands in contradiction to the assumption \lstinline!e $\hfnotmem$ realise t!.
 \end{proof}
 
 \noindent The results on literals can now be lowered to set terms.
+All of the proofs are straightforward so we refer the reader to the formalisation.
 \begin{enumerate}[label=(\alph*)]
   \item\label{it:empty} It holds that \lstinline!realise $\emptyset$ = 0!.
   \item\label{it:op} Let \lstinline!$\star_\text{s}$ $\in$ {$\unionS$, $\diffS$, $\interS$}!. If the term \lstinline!s $\star_\text{s}$ t! occurs in \lstinline!subterms b!, then
@@ -801,54 +757,11 @@ The proofs of all propositions translate well into Isabelle, so we refer to the 
     \end{center}
   \item\label{it:single} If \lstinline!Single t $\in$ subterms b!, then
     \begin{center}
-    \lstinline!realise (Single t) = vset {realise t}!.
+    \lstinline!realise (Single t) = HF {realise t}!.
     \end{center}
 \end{enumerate}
-\begin{proof}[Proof of Proposition~\ref{it:empty}]
-  By definition, \lstinline!realise $\emptyset$! is equal to \lstinline!0! if \lstinline!$\emptyset$! is not a vertex of \lstinline!bgraph b!.
-  Otherwise, \lstinline!$\emptyset$! must be in \lstinline!subterms' b! as it is not a witness.
-  Moreover, since \lstinline!b! is open, we know \lstinline!s $\inS$ $\emptyset$! is not in \lstinline!b! for any \lstinline!s!, implying that the term \lstinline!$\emptyset$! has no parents in \lstinline!bgraph b!.
-  Ultimately, we obtain \lstinline!realise $\emptyset$ = 0!.
-\end{proof}
-\begin{proof}[Proof of Proposition~\ref{it:op} for $\star_\texttt{s} = -_\texttt{s}$]
-  For equality, it suffices to prove subset inclusion in both directions.
 
-  \textbf{Direction $\subseteq$. } Fix some \lstinline!e! in \lstinline!elts (realise (s $\diffS$ t))!.
-  Again, we obtain an \lstinline!u! with 
-\begin{lstlisting}
-  e = realise u $\land$ u $\rightarrow_\text{bgraph b}$ (s $\diffS$ t).
-\end{lstlisting}
-  We therefore have \lstinline!(u $\inS$ s $\diffS$ t) $\in$ set b! which, due to \lstinline!b! being saturated, implies that \lstinline!u $\inS$ s! is in \lstinline!b!.
-  Furthermore, the fifth branching rule (see \autoref{tab:bexpands}) must have its subsumption condition met due to saturation of \lstinline!b!, meaning that either one of \lstinline!u $\inS$ t! or \lstinline!u $\notinS$ t! must be in the branch.
-  Only the latter, however, can be the case since the branch is open.
-  By applying Proposition~\ref{it:at_mem} and~\ref{it:af_mem} we obtain
-\begin{lstlisting}
-  realise u $\in$ realise s $\land$ realise u $\notin$ realise t
-\end{lstlisting}
-  and together with \lstinline!e = realise u! we arrive at the goal 
-\begin{lstlisting}
-  e $\in$ elts (realise s - realise t).
-\end{lstlisting}
-
-\textbf{Direction $\supseteq$. } Let \lstinline[columns=fullflexible]!e $\in$ elts (realise s - realise t)! for some fixed \lstinline!e!.
-  As before, we obtain an \lstinline!u! such that \lstinline!e! is the realisation of \lstinline!u!, i.e.\ \lstinline!e = realisation u!, and
-\begin{lstlisting}
-  u $\rightarrow_\text{bgraph b}$ s $\land$ u $\nrightarrow_\text{bgraph b}$ t.
-\end{lstlisting}
-  An immediate consequence is that \lstinline!u $\inS$ s! is in \lstinline!b!.
-  Moreover, we claim that \lstinline!u $\notinS$ t! is also in \lstinline!b!.
-  To see that this is true, recall that \lstinline!b! is saturated and thus the subsumption condition of the fifth branching rule must hold.
-  This implies that either \lstinline!u $\inS$ t! or \lstinline!u $\notinS$ t! is in \lstinline!b!.
-  But the latter being in \lstinline!b! would be a contradiction to \lstinline!u $\nrightarrow_\text{bgraph b}$ t! meaning that the former must hold.
-  Ultimately, we infer that \lstinline!u $\in$ s $\diffS$ t! is in \lstinline!b! by invoking saturation again.
-  The last step is to apply Proposition~\ref{it:at_mem} in order to obtain the goal
-  \begin{lstlisting}
-    realise u $\in$ elts (realise (s $\diffS$ t))
-          = e $\in$ elts (realise (s $\diffS$ t)).
-  \end{lstlisting}
-\end{proof}
-
-\noindent The final step to obtain a proper model is to connect the realisation function to the semantics as defined in \autoref{sec:semantics}.
+The final step to obtain a proper model is to connect the realisation function to the semantics as defined in \autoref{sec:semantics}.
 For set terms, we can use the Propositions~\ref{it:empty}--\ref{it:single} to prove the lemma below by induction on \lstinline!t!.
 \begin{lstlisting}
 lemma
@@ -887,15 +800,15 @@ lemma bclosed_sound:
 \end{lstlisting}
   By assumption, each atom of the membership cycle holds under the model \lstinline!M!; in other words, we have
 \begin{lstlisting}
-  &\Ist& M t$_\text{i}$ $\in$ elts (&\Ist& M t$_\text{i + 1 mod k + 1}$)
+  &\Ist& M t$_\text{i}$ $\hfmem$ &\Ist& M t$_\text{i + 1 mod k + 1}$
 \end{lstlisting}
   for each \lstinline!i $\in$ {0,$\,\ldots\,$,k}!.
   Therefore, the transitive closure of the membership relation
 \begin{lstlisting}
-  {(x, y). x $\in$ elts y}$^\text{+}$ 
+  {(x, y). x $\hfmem$ y}$^\text{+}$ 
 \end{lstlisting}
   contains a cycle.
-  This, however, is a contradiction because the membership relation of \lstinline!V! is well-founded (see \autoref{sec:semantics}) and well-foundedness is closed under transitive closure.
+  This, however, is a contradiction because the membership relation of \lstinline!hf! is well-founded (see \autoref{sec:semantics} TODO) and well-foundedness is closed under transitive closure.
 \end{proof}
 
 \noindent We are left with showing that both linear and branching expansion rules preserve satisfiability.
@@ -923,8 +836,8 @@ lemma bexpands_sound:
   Another consequence of the last rule being applied is that \lstinline!s $\neqS$ t! is in \lstinline!b!, which implies that \lstinline!&\Ist& M s $\neq$ &\Ist& M t! because \lstinline!M! is a model.
   This inequality manifests itself through some \lstinline!y! with
 \begin{lstlisting}
-  &\phantom{$\lor$}& y $\in$ elts (&\Ist& M s) $\land$ y $\notin$ elts (&\Ist& M t)
-  $\lor$ y $\in$ elts (&\Ist& M t) $\land$ y $\notin$ elts (&\Ist& M s).
+  &\phantom{$\lor$}& y $\hfmem$ &\Ist& M s $\land$ y $\hfnotmem$ &\Ist& M t
+  $\lor$ y $\hfmem$ &\Ist& M t $\land$ y $\hfnotmem$ &\Ist& M s.
 \end{lstlisting}
   We now update the assignment \lstinline!M! such that it maps \lstinline!x! to \lstinline!y! to obtain the assignment \lstinline!M'!.
   Note that values of both \lstinline!s! and \lstinline!t! are unchanged under this update as \lstinline!x $\notin$ vars s! and \lstinline!x $\notin$ vars t!.
@@ -938,56 +851,12 @@ lemma bexpands_sound:
 \end{proof}
 
 \section{Bounding the Cardinality of a Branch\label{sec:bound}}
-We still need to give a termination proof to ascertain total correctness.
-The core of our argument is that the number of distinct formulae that can be derived with the expansion rules is finite.
-In particular, we claim that the following upper bound holds.
-\begin{lstlisting}
-  &\phantom{$\leq$}& card (set b)
-  &\textover{$=$}{$\leq$}& card {$\psi$ $\in$ set b. $\neg$ is_literal $\psi$} +
-  &\phantom{$\leq$}& card {$\psi$ $\in$ set b. is_literal $\psi$}
-  $\leq$ 2 * card (subfms (last b)) + card {$\psi$ $\in$ set b. is_literal $\psi$}
-  $\leq$ 2 * card (subfms (last b)) + 16 * (card (subterms (last b)))$^4$
-\end{lstlisting}
-We treat both inequalities separately, starting with the first one whose justification hinges on an invariant: 
-every new composite subformula that is introduced by an expansion rule is the negation of a subformula that already occurs in \lstinline!last b!.
-Written as a formula, we have
-\begin{lstlisting}
-  &\phantom{$\subseteq$}& {$\psi$ $\in$ set b. $\neg$ is_literal $\psi$}
-  $\subseteq$ subfms (last b) $\cup$ $\fmNegSymbol$ ` subfms (last b).
-\end{lstlisting}
-Confirming that this is an invariant is an easy exercise of going through each of the propositional rules in \autoref{tab:lexpands} and the first two branching rules in \autoref{tab:bexpands}.
-Thus, we have
-\begin{lstlisting}
-  &\phantom{$\leq$}& card {$\psi$ $\in$ set b. $\neg$ is_literal $\psi$}
-  $\leq$ card (subfms (last b)) + card ($\fmNegSymbol$ ` subfms (last b))
-  $\leq$ 2 * card (subfms (last b))
-\end{lstlisting}
-which is the first inequality we asserted. 
-
-Concerning the second inequality, first observe that each literal contains an atom, implying that the set of literals is at most twice as large as the set of atoms in a branch. 
-In addition, an atom is formed by combining two subterms occurring in the branch with either \lstinline!$\inS$! or \lstinline!$\eqS$!;
-hence, we have
-\begin{lstlisting}
-  &\phantom{$\leq$}& card {$\psi$ $\in$ set b. is_literal $\psi$}
-  $\leq$ 2 * card ($\bigcup$(atoms ` set b)) $\leq$ 2 * 2 * (card (subterms b))$^\text{2}$.
-\end{lstlisting}
-Since no expansion rule introduces new subterms, we know the cardinality of the subterms in a branch \lstinline!b! is limited by the subterms of \lstinline!last b! plus the number of witnesses added to the branch.
-Note that the last branching rule requires \lstinline!s $\neqS$ t! to be in \lstinline!b! for some \lstinline!s,t $\in$ subterms (last b)!.
-The subsumption condition then prohibits that the rule can be applied again for the combination of \lstinline!s! and \lstinline!t!, thus yielding an upper bound of \lstinline!(card (subterms (last b)))$^\text{2}$! for the witnesses.
-This allows us to finish the calculation that justifies the second inequality:
-\begin{lstlisting}
-  &\phantom{$\leq$}& 4 * (card (subterms b))$^\text{2}$
-  $\leq$ 4 * (card (subterms (last b)) + card (wits b))$^\text{2}$
-  $\leq$ 4 * (card (subterms (last b)) + (card (subterms (last b))$^\text{2}$)$^\text{2}$
-  $\leq$ 4 * 4 * (card (subterms (last b)))$^\text{4}$.
-\end{lstlisting}
 All in all, we get the following lemma.
 \begin{lstlisting}[label={lst:card_branch}]
 lemma card_wf_branch_ub:
   assumes wf_branch b
-  shows card (set b)
-        $\leq$ 2 * card (subfms (last b)) +
-        &\phantom{$\leq$}& 16 * (card (subterms (last b)))$^\text{4}$
+  shows |set b|
+      $\leq$ 2 * |subfms (last b)| + 16 * |subterms (last b)|$^\text{4}$
 \end{lstlisting}
 
 \section{Total Correctness of the Decision Procedure\label{sec:correct}}
@@ -997,7 +866,7 @@ lemma mlss_proc_branch_dom_if_wf_branch:
   assumes wf_branch b shows mlss_proc_branch_dom b
 \end{lstlisting}
 \begin{proof}
-  We proceed by strong induction on the difference between the upper bound due to \hyperref[lst:card_branch]{\lstinline!card_wf_branch_ub!} and \lstinline!card b!.
+  We proceed by strong induction on the difference between the upper bound due to \hyperref[lst:card_branch]{\lstinline!card_wf_branch_ub!} and \lstinline!|b|!.
 
   We only have one inductive case where the induction hypothesis holds for all well-formed branches \lstinline!b'! where the difference between the upper bound and the cardinality is smaller than that of \lstinline!b!.
   We strengthen the assumptions of the induction hypothesis to obtain
@@ -1104,5 +973,113 @@ This executable specification should generate certificates that can be replayed 
 The author thanks Kevin Kappelmann for his comments on a draft version of the paper.
 
 \bibliography{sources}
+
+\appendix
+\clearpage\chapter*{Appendix}
+
+\section{Subterms and Subformulas}
+
+Similarly to \lstinline!vars!, we introduce the overloaded constant \lstinline!subterms!.
+\begin{lstlisting}
+fun subterms :: 'a pset_term $\Rightarrow$ 'a pset_term set where
+  subterms $\emptyset$ = {$\emptyset$}
+| subterms (Var x) = {Var x}
+| subterms (s $\unionS$ t) = {s $\unionS$ t} $\cup$ subterms s $\cup$ subterms t
+| subterms (s $\interS$ t) = {s $\interS$ t} $\cup$ subterms s $\cup$ subterms t
+| subterms (s $\diffS$ t) = {s $\diffS$ t} $\cup$ subterms s $\cup$ subterms t
+| subterms (Single t) = {Single t} $\cup$ subterms t
+\end{lstlisting}
+The subterms of an atom are then the subterms of its arguments.
+\begin{lstlisting}
+fun subterms :: 'a pset_atom $\Rightarrow$ 'a pset_term set where
+  subterms (s $\inS$ t) = subterms s $\cup$ subterms t
+| subterms (s $\eqS$ t) = subterms s $\cup$ subterms t
+\end{lstlisting}
+Finally, we lift this to formulae by using \lstinline!atoms! again.
+\begin{lstlisting}
+definition subterms :: 'a pset_fm $\Rightarrow$ 'a pset_term set where
+  subterms $\phi$ $\equiv$ $\bigcup$(subterms ` atoms $\phi$)
+\end{lstlisting}
+
+Lastly, we consider the subformulae of a formula and define a function that computes them.
+\begin{lstlisting}
+fun subfms :: 'a fm $\Rightarrow$ 'a fm set where
+  subfms (&\fmAtom& a) = {&\fmAtom& a}
+| subfms (&\fmAnd{p}{q}&) = {&\fmAnd{p}{q}&} $\cup$ subfms p $\cup$ subfms q
+| subfms (&\fmOr{p}{q}&) = {&\fmOr{p}{q}&} $\cup$ subfms p $\cup$ subfms q
+| subfms (&\fmNeg{q}&) = {&\fmNeg{q}&} $\cup$ subfms q
+\end{lstlisting}
+
+\section{Definition of the Interpretation Functions}
+
+\begin{lstlisting}
+fun &\Ist& :: ('a $\Rightarrow$ hf) $\Rightarrow$ 'a pset_term $\Rightarrow$ hf where
+  &\Ist& M $\emptyset$ = 0
+| &\Ist& M (Var x) = M x
+| &\Ist& M (Single s) = HF {&\Ist& M s}
+| &\Ist& M (s $\unionS$ t) = &\Ist& M s $\sqcup$ &\Ist& M t 
+| &\Ist& M (s $\interS$ t) = &\Ist& M s $\sqcap$ &\Ist& M t 
+| &\Ist& M (s $\diffS$ t) = &\Ist& M s $-$ &\Ist& M t 
+\end{lstlisting}
+The interpretation function \lstinline!I$_\text{sa}$! for set atoms is straightforward as well.
+\begin{lstlisting}
+fun &\Isa& :: ('a $\Rightarrow$ hf) $\Rightarrow$ 'a pset_atom $\Rightarrow$ bool where
+  &\Isa& M (s $\inS$ t) $\longleftrightarrow$ &\Ist& M s $\hfmem$ &\Ist& M t
+| &\Isa& M (s $\eqS$ t) $\longleftrightarrow$ &\Ist& M s = &\Ist& M t
+\end{lstlisting}
+
+
+\section{Upper-Bounding the Cardinality of a Branch}
+
+We still need to give a termination proof to ascertain total correctness.
+The core of our argument is that the number of distinct formulae that can be derived with the expansion rules is finite.
+In particular, we claim that the following upper bound holds.
+\begin{lstlisting}
+  &\phantom{$\leq$}& |set b|
+  &\textover{$=$}{$\leq$}& |{$\psi$ $\in$ set b. $\neg$ is_literal $\psi$}| +
+  &\phantom{$\leq$}& |{$\psi$ $\in$ set b. is_literal $\psi$}|
+  $\leq$ 2 * |subfms (last b)| + |{$\psi$ $\in$ set b. is_literal $\psi$}|
+  $\leq$ 2 * |subfms (last b)| + 16 * |subterms (last b)|$^4$
+\end{lstlisting}
+We treat both inequalities separately, starting with the first one whose justification hinges on an invariant: 
+every new composite subformula that is introduced by an expansion rule is the negation of a subformula that already occurs in \lstinline!last b!.
+Written as a formula, we have
+\begin{lstlisting}
+  &\phantom{$\subseteq$}& {$\psi$ $\in$ set b. $\neg$ is_literal $\psi$}
+  $\subseteq$ subfms (last b) $\cup$ $\fmNegSymbol$ ` subfms (last b).
+\end{lstlisting}
+Confirming that this is an invariant is an easy exercise of going through each of the propositional rules in \autoref{tab:lexpands} and the first two branching rules in \autoref{tab:bexpands}.
+Thus, we have
+\begin{lstlisting}
+  &\phantom{$\leq$}& |{$\psi$ $\in$ set b. $\neg$ is_literal $\psi$}|
+  $\leq$ |subfms (last b)| + |$\fmNegSymbol$ ` subfms (last b)|
+  $\leq$ 2 * |subfms (last b)|
+\end{lstlisting}
+which is the first inequality we asserted. 
+
+Concerning the second inequality, first observe that each literal contains an atom, implying that the set of literals is at most twice as large as the set of atoms in a branch. 
+In addition, an atom is formed by combining two subterms occurring in the branch with either \lstinline!$\inS$! or \lstinline!$\eqS$!;
+hence, we have
+\begin{lstlisting}
+  &\phantom{$\leq$}& |{$\psi$ $\in$ set b. is_literal $\psi$}|
+  $\leq$ 2 * |$\bigcup$(atoms ` set b)| $\leq$ 2 * 2 * |subterms b|$^\text{2}$.
+\end{lstlisting}
+Since no expansion rule introduces new subterms, we know the cardinality of the subterms in a branch \lstinline!b! is limited by the subterms of \lstinline!last b! plus the number of witnesses added to the branch.
+Note that the last branching rule requires \lstinline!s $\neqS$ t! to be in \lstinline!b! for some \lstinline!s,t $\in$ subterms (last b)!.
+The subsumption condition then prohibits that the rule can be applied again for the combination of \lstinline!s! and \lstinline!t!, thus yielding an upper bound of \lstinline!|subterms (last b)|$^\text{2}$! for the witnesses.
+This allows us to finish the calculation that justifies the second inequality:
+\begin{lstlisting}
+  &\phantom{$\leq$}& 4 * |subterms b|$^\text{2}$
+  $\leq$ 4 * |subterms (last b)| + |wits b|$^\text{2}$
+  $\leq$ 4 * |subterms (last b)| + (|subterms (last b)|$^\text{2}$)$^\text{2}$
+  $\leq$ 4 * 4 * |subterms (last b)|$^\text{4}$.
+\end{lstlisting}
+All in all, we get the following lemma.
+\begin{lstlisting}[label={lst:card_branch}]
+lemma card_wf_branch_ub:
+  assumes wf_branch b
+  shows |set b|
+      $\leq$ 2 * |subfms (last b)| + 16 * |subterms (last b)|$^\text{4}$
+\end{lstlisting}
 
 \end{document}

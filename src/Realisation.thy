@@ -64,7 +64,6 @@ locale realisation = dag G for G +
   fixes eq :: "'a rel"
   assumes P_T_partition_verts: "P \<inter> T = {}" "verts G = P \<union> T"
   assumes P_urelems: "\<And>p t. p \<in> P \<Longrightarrow> \<not> t \<rightarrow>\<^bsub>G\<^esub> p"
-  assumes finite_eq_class[simp, intro]: "\<And>x. finite (eq `` {x})"
 begin
 
 lemma

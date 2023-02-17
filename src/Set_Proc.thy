@@ -787,12 +787,13 @@ proof
     by blast
 qed
 
-lemma type_term_inf:
-  assumes "type_term v1 t = Some l1" "type_term v2 t = Some l2"
-  shows "type_term (inf v1 v2) t = Some (inf l1 l2)"
+lemma types_term_inf:
+  assumes "v1 \<turnstile> t : l1" "v2 \<turnstile> t : l2"
+  shows "inf v1 v2 \<turnstile> t : inf l1 l2"
   using assms
   apply(induction t arbitrary: l1 l2)
-       apply(auto simp: type_term.simps inf_min split: if_splits Option.bind_splits)
+       apply(auto simp: inf_min elim!: types_pset_term_cases
+                  intro: types_pset_term_intros' types_pset_term.intros(4-))
   done
 
 lemma types_pset_atom_inf:
@@ -800,7 +801,7 @@ lemma types_pset_atom_inf:
   assumes "v1 \<turnstile> a" "v2 \<turnstile> a"
   shows "inf v1 v2 \<turnstile> a"
   using assms
-  by (auto simp: type_term_inf types_pset_atom.simps inf_nat_def)
+  by (auto simp: types_pset_atom.simps) (metis inf_min min_Suc_Suc types_term_inf)+
 
 lemma types_pset_fm_inf:
   fixes \<phi> :: "'a pset_fm"
@@ -809,9 +810,10 @@ lemma types_pset_fm_inf:
   using assms types_pset_atom_inf
   unfolding types_pset_fm_def by blast
 
-lemma types_urelems:          
+lemma types_urelems:
+  fixes b :: "'a branch"
   assumes "wf_branch b" "v \<turnstile> last b"
-  obtains v' where "\<forall>\<phi> \<in> set b. v' \<turnstile> \<phi>" "\<forall>u \<in> urelems b. type_term v' u = Some 0"
+  obtains v' where "\<forall>\<phi> \<in> set b. v' \<turnstile> \<phi>" "\<forall>u \<in> urelems b. v' \<turnstile> u : 0"
 proof -
   from assms have "expandss b [last b]"
     unfolding wf_branch_def by force
@@ -823,7 +825,7 @@ proof -
     obtain v where v: "\<forall>\<phi> \<in> set b. v \<turnstile> \<phi>"
       unfolding vars_branch_simps by metis
     define v' where "v' \<equiv> \<lambda>x. if x \<in> vars b then v x else 0"
-    have "v' \<turnstile> \<phi> \<longleftrightarrow> v \<turnstile> \<phi>" if "\<phi> \<in> set b" for \<phi>
+    have "v' \<turnstile> \<phi> \<longleftrightarrow> v \<turnstile> \<phi>" if "\<phi> \<in> set b" for \<phi> :: "'a pset_fm"
       apply(intro types_pset_fm_if_on_vars_eq)
       using that vars_fm_vars_branchI unfolding v'_def by metis
     with v have "\<forall>\<phi> \<in> set b. v' \<turnstile> \<phi>"
@@ -873,12 +875,12 @@ proof -
     with M'_eq show ?case
       by metis
   qed
-  moreover have "type_term M u = Some 0" if "u \<in> urelems b" for u
+  moreover have "M \<turnstile> u : 0" if "u \<in> urelems b" for u
   proof -
     from that obtain v where v: "\<forall>\<phi> \<in> set b. urelem' v \<phi> u"
       unfolding urelems_def by blast
     define v' where "v' \<equiv> \<lambda>x. if x \<in> vars b then v x else 0"
-    have "v' \<turnstile> \<phi> \<longleftrightarrow> v \<turnstile> \<phi>" if "\<phi> \<in> set b" for \<phi>
+    have "v' \<turnstile> \<phi> \<longleftrightarrow> v \<turnstile> \<phi>" if "\<phi> \<in> set b" for \<phi> :: "'a pset_fm"
       apply(intro types_pset_fm_if_on_vars_eq)
       using that vars_fm_vars_branchI unfolding v'_def by metis
     with v have "\<forall>\<phi> \<in> set b. v' \<turnstile> \<phi>"
@@ -888,12 +890,13 @@ proof -
     moreover obtain uv where uv: "u = Var uv"
       using v is_Var_if_urelem' wf_branch_not_Nil[OF \<open>wf_branch b\<close>]
       by (metis is_Var_def last_in_set)
-    then have "type_term v' u = Some 0"
+    then have "v' \<turnstile> u : 0"
       using v  wf_branch_not_Nil[OF \<open>wf_branch b\<close>, THEN last_in_set]
-      unfolding v'_def by (auto simp: type_term.simps)
-    ultimately show "type_term M u = Some 0"
+      unfolding v'_def
+      by (auto elim!: types_pset_term_cases(2) intro!: types_pset_term_intros'(2))
+    ultimately show "M \<turnstile> u : 0"
       using M_leq[where ?v=v'] \<open>M \<in> V\<close>[unfolded V_def] unfolding uv
-      by (fastforce simp: type_term.simps)
+      by (fastforce elim!: types_pset_term_cases(2) intro!: types_pset_term_intros'(2))
   qed
   ultimately show ?thesis
     using that unfolding V_def by auto
@@ -1192,7 +1195,8 @@ proof
   with assms urelem_invar_if_wf_branch[OF wf_branch] have "urelem (AT (s \<in>\<^sub>s t)) t"
     by (meson types types_urelems urelem_def wf_branch)
   then show False
-    unfolding urelem_def by (auto dest!: types_fmD simp: types_pset_atom.simps)
+    unfolding urelem_def
+    by (auto dest!: types_fmD simp: types_pset_atom.simps dest: types_term_unique)
 qed
 
 lemma not_dominated_if_urelems:
@@ -1242,8 +1246,6 @@ proof(unfold_locales)
     unfolding bgraph_def by simp
 
   from not_dominated_if_base_vars show "\<And>p t. p \<in> base_vars b \<Longrightarrow> \<not> t \<rightarrow>\<^bsub>bgraph b\<^esub> p" .
-
-  from finite_eq_class show "\<And>x. finite (eq `` {x})" .
 qed
 
 lemmas realisation = realisation_axioms
@@ -1253,7 +1255,8 @@ lemma card_realisation:
 proof(induction t rule: realise.induct)
   case (1 x)
   then have "hcard (realise x) = card (realise ` parents (bgraph b) x \<union> I ` eq_class x)"
-    using hcard_HF Zero_hf_def parents_empty_if_base_vars by force
+    using hcard_HF Zero_hf_def parents_empty_if_base_vars
+    using finite_I_image_eq_class by force
   also have "\<dots> \<le> card (realise ` parents (bgraph b) x) + card (I ` eq_class x)"
     using card_Un_le by blast
   also have "\<dots> \<le> card (parents (bgraph b) x) + card (eq_class x)"
@@ -1337,7 +1340,7 @@ lemma realise_pwits:
 
 lemma I_in_realise_if_base_vars[simp]:
   "s \<in> base_vars b \<Longrightarrow> I s \<^bold>\<in> realise s"
-  using refl_eq by (simp add: refl_on_def)
+  using refl_eq by (simp add: finite_I_image_eq_class refl_on_def)
 
 lemma realise_neq_if_base_vars_and_subterms':
   assumes "s \<in> base_vars b" "t \<in> subterms' b"
@@ -1389,23 +1392,25 @@ proof -
   from types obtain v where "v \<turnstile> last b"
     by blast
   with types_urelems wf_branch obtain v'
-    where v': "\<forall>\<phi> \<in> set b. v' \<turnstile> \<phi>" "\<forall>u \<in> urelems b. type_term v' u = Some 0"
+    where v': "\<forall>\<phi> \<in> set b. v' \<turnstile> \<phi>" "\<forall>u \<in> urelems b. v' \<turnstile> u : 0"
     by blast
   with assms have "v' \<turnstile> AT (s =\<^sub>s t)"
     by blast
-  then have type_term_eq: "type_term v' s = type_term v' t"
+  then obtain lst where lst: "v' \<turnstile> s : lst" "v' \<turnstile> t : lst"
     by (auto dest!: types_fmD(6) simp: types_pset_atom.simps)
   note mem_subterms = AT_eq_subterms_branchD[OF assms]
   with v' have "t \<in> urelems b" if "s \<in> urelems b"
-    using that type_term_eq by (auto simp: urelems_def)
+    using that lst types_term_unique urelems_def by fastforce
   moreover from assms have "s \<notin> Var ` pwits b" "t \<notin> Var ` pwits b"
     using lemma_2(1,2)[OF wf_branch] by blast+
   moreover have "t \<in> subterms' b" if "s \<in> subterms' b"
   proof -
     have "s \<notin> urelems b"
       using that P_T_partition_verts(1) unfolding base_vars_def by blast
-    with \<open>s \<in> subterms b\<close> v' have "t \<notin> urelems b"
-      using type_term_eq urelems_def by fastforce
+    with v'(1) mem_subterms(1) have "\<not> v' \<turnstile> s : 0"
+      using urelems_def by blast
+    with lst v'(2) have "t \<notin> urelems b"
+      using types_term_unique by metis
     with \<open>t \<notin> Var ` pwits b\<close> \<open>t \<in> subterms b\<close> show "t \<in> subterms' b"
       by (simp add: base_vars_def subterms'_def)
   qed
@@ -1751,7 +1756,8 @@ proof -
     have "(\<emptyset> n) \<notin> Var ` pwits b"
       using pwits_def wits_def by blast
     moreover have "(\<emptyset> n) \<notin> urelems b"
-      unfolding urelems_def using wf_branch by (simp add: type_term.simps(1))
+      unfolding urelems_def using wf_branch[THEN wf_branch_not_Nil] last_in_set
+      using is_Var_if_urelem' by fastforce
     ultimately show ?thesis
       unfolding base_vars_def by blast
   qed
@@ -2164,26 +2170,28 @@ proof -
     by blast
 qed
 
-lemma type_term_lt_if_member_seq:
+lemma types_term_lt_if_member_seq:
+  fixes cs :: "'a pset_atom list"
   assumes "\<forall>a \<in> set cs. v \<turnstile> a"
   assumes "member_seq s cs t" "cs \<noteq> []"
-  shows "\<exists>ls lt. type_term v s = Some ls \<and> type_term v t = Some lt \<and> ls < lt"
+  shows "\<exists>ls lt. v \<turnstile> s : ls \<and> v \<turnstile> t : lt \<and> ls < lt"
   using assms
 proof(induction s cs t rule: member_seq.induct)
   case (2 s s' u cs t)
   then show ?case
   proof(cases cs)
     case (Cons c cs')
-    with 2 obtain lu lt where "type_term v u = Some lu" "type_term v t = Some lt" "lu < lt"
+    with 2 obtain lu lt where "v \<turnstile> u : lu" "v \<turnstile> t : lt" "lu < lt"
       by auto
-    moreover from 2 obtain ls where "type_term v s = Some ls" "ls < lu"
-      using \<open>type_term v u = Some lu\<close> types_pset_atom.simps by force
+    moreover from 2 obtain ls where "v \<turnstile> s : ls" "ls < lu"
+      using \<open>v \<turnstile> u : lu\<close> by (auto simp: types_pset_atom.simps dest: types_term_unique)
     ultimately show ?thesis
-      by simp
+      by fastforce
   qed (fastforce simp: types_pset_atom.simps)
 qed auto
 
 lemma no_member_cycle_if_types_last:
+  fixes b :: "'a branch"
   assumes "wf_branch b"
   assumes "\<exists>v. v \<turnstile> last b"
   shows "\<not> (member_cycle cs \<and> set cs \<subseteq> Atoms (set b))"
@@ -2196,7 +2204,7 @@ proof
   with \<open>set cs \<subseteq> Atoms (set b)\<close> have "\<forall>a \<in> set cs. v \<turnstile> a"
     unfolding Atoms_def by (auto dest!: types_fmD(6))
   ultimately show False
-    using type_term_lt_if_member_seq by force
+    using types_term_lt_if_member_seq types_term_unique by blast
 qed simp_all
 
 subsection \<open>Soundness of the Expansion Rules\<close>

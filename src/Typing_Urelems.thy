@@ -72,51 +72,58 @@ lemma is_Var_Eq_Zero_if_is_NEq_constrs_fm:
        using is_Var_Eq_Zero_if_is_NEq_constrs_atom apply(auto)
   done
 
-lemma type_term_eq_Some_if_I_atom_constrs_term:
+lemma types_term_if_I_atom_constrs_term:
   assumes "(\<forall>e \<in> set (constrs_term n t). Suc_Theory.I_atom v e)"
-  shows "type_term (\<lambda>x. v (n (Var x))) t = Some (v (n t))"
+  shows "(\<lambda>x. v (n (Var x))) \<turnstile> t : v (n t)"
   using assms
   apply(induction t)
-       apply(auto simp: type_term.simps)
+       apply(auto intro: types_pset_term.intros)
   done
 
 lemma types_pset_atom_if_I_atom_constrs_atom:
+  fixes a :: "'a pset_atom"
   assumes "(\<forall>e \<in> set (constrs_atom n a). Suc_Theory.I_atom v e)"
   shows "(\<lambda>x. v (n (Var x))) \<turnstile> a"
   using assms
-  by (cases a) (auto simp: types_pset_atom.simps type_term_eq_Some_if_I_atom_constrs_term)
+  by (cases a)
+     (auto simp: types_pset_atom.simps ball_Un dest!: types_term_if_I_atom_constrs_term)
 
 lemma types_pset_fm_if_I_atom_constrs_fm:
+  fixes \<phi> :: "'a pset_fm"
   assumes "(\<forall>e \<in> set (constrs_fm n \<phi>). Suc_Theory.I_atom v e)"
   shows "(\<lambda>x. v (n (Var x))) \<turnstile> \<phi>"
   using assms
   by (induction \<phi>)
      (auto intro: types_fmI types_pset_atom_if_I_atom_constrs_atom)
 
-lemma I_atom_constrs_term_if_type_term_eq_Some:
+lemma I_atom_constrs_term_if_types_term:
   assumes "inj_on n T" "subterms t \<subseteq> T"
-  assumes "type_term v t = Some k"
+  assumes "v \<turnstile> t : k"
   shows "(\<forall>e \<in> set (constrs_term n t).
-    Suc_Theory.I_atom (\<lambda>x. the (type_term v (inv_into T n x))) e)"
+    Suc_Theory.I_atom (\<lambda>x. type_of_term v (inv_into T n x)) e)"
   using assms
   apply(induction t arbitrary: T k)
-       apply(auto simp: type_term.simps split: Option.bind_splits if_splits)
-  apply (metis inv_into_f_eq option.sel subset_iff subterms_refl)+
+       apply(auto elim!: types_pset_term_cases intro!: type_of_term_if_types_term
+                  simp: type_of_term_if_types_term)
+  apply (metis inv_into_f_f subsetD subterms_refl type_of_term_if_types_term)+
   done
 
 lemma I_atom_constrs_atom_if_types_pset_atom:
+  fixes a :: "'a pset_atom"
   assumes "inj_on n T" "subterms a \<subseteq> T"
   assumes "v \<turnstile> a"
   shows "(\<forall>e \<in> set (constrs_atom n a).
-    Suc_Theory.I_atom (\<lambda>x. the (type_term v (inv_into T n x))) e)"
-  using assms I_atom_constrs_term_if_type_term_eq_Some
-  by (cases a) (force simp: types_pset_atom.simps subsetD)+
+    Suc_Theory.I_atom (\<lambda>x. type_of_term v (inv_into T n x)) e)"
+  using assms I_atom_constrs_term_if_types_term
+  by (cases a)
+     (force simp: types_pset_atom.simps type_of_term_if_types_term subsetD)+
 
 lemma I_atom_constrs_fm_if_types_pset_fm:
+  fixes \<phi> :: "'a pset_fm"
   assumes "inj_on n T" "subterms \<phi> \<subseteq> T"
   assumes "v \<turnstile> \<phi>"
   shows "(\<forall>e \<in> set (constrs_fm n \<phi>).
-    Suc_Theory.I_atom (\<lambda>x. the (type_term v (inv_into T n x))) e)"
+    Suc_Theory.I_atom (\<lambda>x. type_of_term v (inv_into T n x)) e)"
   using assms
   by (induction \<phi>)
      (auto dest: types_fmD simp: I_atom_constrs_atom_if_types_pset_atom)
@@ -146,6 +153,7 @@ lemma UN_set_suc_atom_constrs_fm_eq_image_subterms:
   done
 
 lemma
+  fixes \<phi> :: "'a pset_fm"
   assumes "inj_on n (subterms \<phi>)"
   assumes "Suc_Theory.solve (Suc_Theory.elim_NEq_Zero (constrs_fm n \<phi>)) = Some ss"
   shows types_pset_fm_assign_solve: "(\<lambda>x. Suc_Theory.assign ss (n (Var x))) \<turnstile> \<phi>"
@@ -157,7 +165,7 @@ proof -
   note types_pset_fm_if_I_atom_constrs_fm[OF this]
   then show "(\<lambda>x. Suc_Theory.assign ss (n (Var x))) \<turnstile> \<phi>" .
 
-  let ?v' = "\<lambda>x. the (type_term v (inv_into (subterms \<phi>) n x))"
+  let ?v' = "\<lambda>x. type_of_term v (inv_into (subterms \<phi>) n x)"
   note I_atom_assign_minimal_if_solve_elim_NEq_Zero_Some[OF _ _ assms(2)]
   then have assign_leq: "Suc_Theory.assign ss z \<le> v z"
     if "\<forall>a \<in> set (constrs_fm n \<phi>). Suc_Theory.I_atom v a"
@@ -172,18 +180,19 @@ proof -
     from \<open>z \<in> vars \<phi>\<close> have "n (Var z) \<in> n ` subterms \<phi>"
       by (simp add: vars_fm_subs_subterms_fm)
     from assign_leq'[OF this] \<open>inj_on n (subterms \<phi>)\<close> \<open>z \<in> vars \<phi>\<close> show ?thesis
-      by (simp add: type_term.simps(2) vars_fm_subs_subterms_fm)
+      using vars_fm_subs_subterms_fm
+      by (metis inv_into_f_f type_of_term_if_types_term types_pset_term.intros(2))
   qed
 qed
 
   
-lemma type_term_minimal:
+lemma types_term_minimal:
   assumes "\<And>z. z \<in> vars t \<Longrightarrow> v_min z \<le> v z"
-  assumes "type_term v_min t = Some k'" "type_term v t = Some k"
+  assumes "v_min \<turnstile> t : k'" "v \<turnstile> t : k"
   shows "k' \<le> k"
   using assms
   apply(induction t arbitrary: k' k)
-       apply(auto simp: type_term.simps split: if_splits Option.bind_splits)
+       apply(auto elim!: types_pset_term_cases)
   done
 
 lemma constrs_term_subs_constrs_term:
@@ -218,25 +227,27 @@ proof -
     using is_Succ_normal_constrs_fm is_Var_Eq_Zero_if_is_NEq_constrs_fm by blast
   then have "\<forall>e \<in> set (constrs_term n t). Suc_Theory.I_atom (Suc_Theory.assign ss) e"
     using constrs_term_subs_constrs_fm[OF \<open>t \<in> subterms \<phi>\<close>] by blast
-  note type_term_t = type_term_eq_Some_if_I_atom_constrs_term[OF this]
+  note type_term_t = types_term_if_I_atom_constrs_term[OF this]
 
   note minimal = minimal_assign_solve[OF assms(1,3)]
-  have "\<exists>lt'. type_term v t = Some lt' \<and> Suc_Theory.assign ss (n t) \<le> lt'"
+  have "\<exists>lt'. v \<turnstile> t : lt' \<and> Suc_Theory.assign ss (n t) \<le> lt'"
     if "v \<turnstile> \<phi>" for v
   proof -
-    from that obtain lt' where "type_term v t = Some lt'"
+    from that obtain lt' where "v \<turnstile> t : lt'"
       using \<open>t \<in> subterms \<phi>\<close>
       by (meson not_Some_eq subterms_type_pset_fm_not_None)
-    moreover note minimal[OF that] type_term_minimal[OF _ type_term_t]
+    moreover note minimal[OF that] types_term_minimal[OF _ type_term_t]
     ultimately show ?thesis
       by (metis assms(2) mem_vars_fm_if_mem_subterms_fm)
   qed
   
   then show "urelem \<phi> t \<longleftrightarrow> Suc_Theory.assign ss (n t) = 0"
-    using types type_term_t unfolding urelem_def by force
+    using types type_term_t types_term_unique unfolding urelem_def
+    by (metis le_zero_eq)
 qed
 
-lemma note_types_if_solve_eq_None:
+lemma not_types_fm_if_solve_eq_None:
+  fixes \<phi> :: "'a pset_fm"
   assumes "inj_on n (subterms \<phi>)"
   assumes "Suc_Theory.solve (Suc_Theory.elim_NEq_Zero (constrs_fm n \<phi>)) = None"
   shows "\<not> v \<turnstile> \<phi>"

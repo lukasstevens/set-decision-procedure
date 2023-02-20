@@ -32,7 +32,7 @@
 \usepackage{tikz}
 \usepackage{pgfplots}
 
-\usepackage{enumitem}
+\usepackage[inline]{enumitem}
 
 \usepackage{array}
 \usepackage{multirow}
@@ -264,13 +264,6 @@ definition vars $\phi$ $\equiv$ $\bigcup$(vars ` atoms $\phi$)
 Similarly to \lstinline!vars!, we introduce the overloaded constant \lstinline!subterms :: 'b $\Rightarrow$ 'a pset_term set!, which returns all the set terms that are subterms of a set term, set atom, or formula, respectively. Lastly, we consider the subformulae of a formula and define a function \lstinline!subfms :: 'a fm $\Rightarrow$ 'a fm set! that computes them.
 The functions \lstinline!subterms! and \lstinline!subfms! are defined in the usual way (cf. Appendix \todo{reference Appendix}).
 
-\textit{Literals} are a type of subformulae of particular importance, so we define a predicate for them.
-\begin{lstlisting}
-fun is_literal :: 'a fm $\Rightarrow$ bool where
-  is_literal (&\fmAtom& _) = True | is_literal (&\fmNeg{(\fmAtom{} \_)}&) = True
-| is_literal _ = False
-\end{lstlisting}
-
 \subsection{Semantics}
 The original paper~\cite{new_fast_tableau} bases the semantics of \MLSS{} on the von Neumann hierarchy of sets $\mathcal{V}$. 
 While there is an entry~\cite{zfc_in_hol_afp} in the \textit{Archive of Formal Proofs} (AFP) that axiomatises this hierarchy,
@@ -284,7 +277,7 @@ The entry defines a type \lstinline!hf! that comes with the following functional
 \item Finally, the empty set coincides with the ordinal $0$, so it is denoted by \lstinline!0 :: hf!.
 \end{itemize}
 
-Equipped with the above, we define the interpretation functions
+Equipped with the above, we define the interpretation functions 
 \begin{itemize}
   \item \lstinline!&\Ist& :: ('a $\Rightarrow$ hf) $\Rightarrow$ 'a pset_term $\Rightarrow$ hf! and 
   \item \lstinline!&\Isa& :: ('a $\Rightarrow$ hf) $\Rightarrow$ 'a pset_atom $\Rightarrow$ hf!
@@ -294,7 +287,7 @@ For the concrete definition we refer to the appendix.
 
 We write \lstinline!M $\models$ $\phi$! for the judgement that the formula $\phi$ holds under the valuation function \lstinline!M!.
 The implementation of $\models$ coincides with the interpretation function of \citeauthor{lqe}~\cite{lqe}.
-As usual, a formula \lstinline!$\phi$! is called \textit{satisfiable} if there exists a model \lstinline!$M$! with \lstinline!$M$ $\models$ $\phi$!.
+As usual, a formula \lstinline!$\phi$! is called \textit{satisfiable} if there exists a model \lstinline!M! with \lstinline!M $\models$ $\phi$!.
 Otherwise, \lstinline!$\phi$! is called \textit{unsatisfiable}.
 
 \section{A Tableau Calculus for MLSS}
@@ -580,9 +573,9 @@ definition bgraph b $\equiv$ let vs = Var ` pwits b $\cup$ subterms' b
 \end{lstlisting}
 
 The realisation function is defined relative to this graph.
-As mentioned before, the pure witnesses \lstinline!Var ` pwits b! and the rest of the set terms \lstinline!subterms' b! are treated differently by the realisation function.
+As mentioned before, the pure witnesses are treated differently than the rest of the set terms by the realisation function.
 Terms in the latter set are evaluated in accordance to the structure of the graph, i.e.\ the realisation of a vertex is defined as the union of the realisations of the parent vertices. 
-For the former set, we choose a function \lstinline!I! that assigns the witnesses in \lstinline!Var ` pwits b! pairwise distinct sets with cardinality greater than that of the vertices.
+For the former set, we choose a function \lstinline!I! that assigns the pure witnesses pairwise distinct sets with cardinality greater than that of the vertices.
 We can always choose such a function since we assume an infinite universe of variables.
 Then, we return the singleton set \lstinline!HF {I x}!, which, together with the cardinality constraint, guarantees that realisations are distinct between pure witnesses themselves as well as between pure witnesses and set terms.  
 The notation \lstinline!u $\rightarrow_\text{G}$ s! in the definition below indicates that there is an edge from \lstinline!u! to \lstinline!s! in the graph \lstinline!G!.
@@ -614,6 +607,7 @@ lemma lemma_2:
   shows (Var c $\eqS$ t) $\notin$ set b and (t $\eqS$ Var c) $\notin$ set b
     and (t $\inS$ Var c) $\notin$ set b
 \end{lstlisting}
+\newcommand{\reflemmatwo}{\hyperref[lst:lemma_2]{\lstinline!lemma_2!}}
 So why are pure witnesses treated differently?
 According to the definition of \lstinline!realise!, the pure witnesses would be evaluated to the empty set \lstinline!0 :: hf!, were they not treated separately. 
 To see that this is a problem, consider the branch
@@ -627,22 +621,22 @@ for some fresh \lstinline!x! and \lstinline!y!.
 Assigning both \lstinline!Var x! and \lstinline!Var y! a value of \lstinline!0! would contradict the literal \lstinline!Var x $\neqS$ Var y!.
 To prevent this, we assign the pure witnesses pairwise different values.
 
-The proof of \hyperref[lst:lemma_2]{\lstinline!lemma_2!} is more technical than interesting so we refer the reader to the formalisation.
+The proof of \reflemmatwo is more technical than interesting so we refer the reader to the formalisation.
 
 \subsection{Realisation of an Open Branch\label{sec:real}}
 Remember that for completeness, we need to show that the realisation function for an open and saturated branch \lstinline!b! actually constitutes a model for all formulae in the branch.
 We start by verifying that the realisation function models all literals in the branch; more formally, the following propositions hold:
-\begin{enumerate}[label={(\roman*)}]
+\begin{enumerate}[label={(\arabic*)}]
   \item\label{it:at_mem} We have \lstinline!realise s $\hfmem$ realise t! if it holds that \lstinline!s $\inS$ t! is in \lstinline!b!. 
   \item\label{it:at_eq} We have \lstinline!realise s $=$ realise t! if \lstinline!s $\eqS$ t! is in \lstinline!b!.
   \item\label{it:af_eq} We have \lstinline!realise s $\neq$ realise t! if \lstinline!s $\neqS$ t! is in \lstinline!b!.
   \item\label{it:af_mem} We have \lstinline!realise s $\hfnotmem$ realise t! if it holds that \lstinline!s $\notinS$ t! is in \lstinline!b!. 
 \end{enumerate}
-To illustrate the usefulness of \hyperref[lst:lemma_2]{\lstinline!lemma_2!}, we prove Proposition~\ref{it:at_eq}.
+To illustrate the usefulness of \reflemmatwo, we prove Proposition~\ref{it:at_eq}.
 The proofs of all propositions translate well into Isabelle, so we refer to the original paper~\cite{new_fast_tableau} for the remaining proofs. 
 \begin{proof}[Proof of Proposition~\ref{it:at_eq}]
   Assume that \lstinline!s $\eqS$ t! is in \lstinline!b!.
-  If there exists a \lstinline!c $\in$ pwits b! where \lstinline!s = Var c! or \lstinline!t = Var c!, we arrive at a contradiction due to \hyperref[lst:lemma_2]{\lstinline!lemma_2!}.
+  If there exists a \lstinline!c $\in$ pwits b! where \lstinline!s = Var c! or \lstinline!t = Var c!, we arrive at a contradiction due to \reflemmatwo.
   Therefore, both \lstinline!s $\in$ subterms' b! and \lstinline!t $\in$ subterms' b! must hold.
   Now, assume for contradiction that \lstinline!realise s $\neq$ realise t!.
   Without loss of generality --- the other case is symmetric --- we obtain an \lstinline!e! such that
@@ -685,11 +679,11 @@ The coherence property finishes the proof of completeness of the calculus as it 
 
 \section{Soundness of the Calculus\label{sec:sound}}
 A tableau calculus is sound if for any closed tableau, the corresponding formula is unsatisfiable. 
-We prove the following two properties to establish soundness.
-\begin{enumerate}[label={(\roman*)}]
+We prove the following two properties to establish soundness:
+\begin{enumerate*}[label={(\arabic*)}]
   \item A closed branch contains an unsatisfiable formula.
   \item The expansion rules maintain satisfiability.
-\end{enumerate}
+\end{enumerate*}
 
 We formalise the first property in Isabelle below.
 
@@ -743,7 +737,7 @@ lemma card_wf_branch_ub:
 \end{lstlisting}
 Remember that \lstinline!mlss_proc_branch! only applies a linear expansion rule to a branch if the application results in new formulae.   
 Moreover, the subsumption conditions of the branching expansion rules ensure that each of the newly created branches contain new formulae.
-Ultimately, we conclude that the procedure must terminate because the number of formualae increases in each step but it is also bounded. 
+Ultimately, we conclude that the procedure must terminate because the number of formulae increases in each step but is also bounded. 
 \begin{lstlisting}
 lemma mlss_proc_branch_dom_if_wf_branch:
   assumes wf_branch b shows mlss_proc_branch_dom b
@@ -779,19 +773,45 @@ In the introduction, we motivated the verification of \lstinline!mlss_proc! with
 For this to work, we need to replay a proof in the tableau calculus through Isabelle/HOL, i.e.\ we need to map every branch expansion rule to a corresponding theorem in Isabelle/HOL.
 This is straightforward for all expansion rules except for the last branching expansion rule.
 To illustrate, suppose that we are to disprove a statement of the form \lstinline!s $\neq$ (t :: 'a) $\land$ s $\in$ (A :: 'a set) $\cup$ B $\land$ $\ldots$! in Isabelle/HOL
-that corresponds to \lstinline!s' $\neqS$ t' $\fmAndSymbol$ s' $\inS$ A' $\unionS$ B' $\fmAndSymbol$ $\ldots$! in our set syntax.
-Applying the decision procedure to this goal might result in a tableau proof containing an application of the last branching rule rule to \lstinline!(s' $\neqS$ t') $\in$ set b!, which creates the branches \lstinline![Var x $\inS$ s', Var x $\notinS$ t'] @ b! and \lstinline![Var x $\notinS$ s', Var x $\inS$ t'] @ b!.
+that corresponds to \lstinline!s' $\neqS$ t' $\fmAndSymbol$ s' $\inS$ A' $\unionS$ B' $\fmAndSymbol$ $\ldots$! in our set syntax for some \lstinline!s'!, \lstinline!t'!, \lstinline!A'!, and \lstinline!B'!.
+Applying the decision procedure to this formula might result in a tableau proof containing an application of the last branching rule rule to \lstinline!(s' $\neqS$ t') $\in$ set b!, which creates the branches \lstinline![Var x $\inS$ s', Var x $\notinS$ t'] @ b! and \lstinline![Var x $\notinS$ s', Var x $\inS$ t'] @ b!.
 But this can not be converted to a proof in Isabelle/HOL since \lstinline!s! and \lstinline!t! are not sets.
 
-To deal with this problem, we introduce a light-weight type system that, given a mapping from variables to natural numbers, assigns a natural number to each set term. 
+To deal with this problem, we introduce a light-weight type system that, given a mapping $\Gamma$ from variables to natural numbers, assigns a natural number \lstinline!l!, which we call level, to each set term \lstinline!t'!. 
+We write \lstinline!$\Gamma$ $\vdash$ t' : l! for this judgement.
+Intuitively speaking, this indicates that the corresponding term \lstinline!t! in Isabelle/HOL has type
+\[
+  \texttt{'a}\ \underbrace{\texttt{set}\ \ldots\ \texttt{set}}_{\texttt{l}\ \text{times}}
+\]
+for some \lstinline!'a!.
+We can extend this to a judgement \lstinline!$\Gamma$ $\vdash$ a! for atoms \lstinline!a!, where we require the levels of \lstinline!s'! and \lstinline!t'! to be equal if \lstinline!a = s' $\eqS$ t'! and the level of \lstinline!t'! to be the successor of that of \lstinline!s'! if \lstinline!a = s' $\inS$ t'!.
+By only judging the atoms, we can extend this to formulas for which we use the same notation.
 
-\begin{itemize}
-  \item Give example from HOL
-  \item Show how branch is expanded
-  \item Mention implemented constraint solver
-  \item Show how definition of realise needs to be changed
-  \item Syntax needs to be changed for empty set
-\end{itemize}
+We can now define the urelements with respect to a formula, i.e.\ those set terms whose corresponding type in Isabelle/HOL might not be a set.
+\begin{lstlisting}
+definition urelem :: 'a pset_fm $\Rightarrow$ 'a pset_term $\Rightarrow$ bool where
+  urelem $\phi$ t $\equiv$ $\exists\Gamma$. $\Gamma$ $\vdash$ $\phi$ $\land$ $\Gamma$ $\vdash$ t : 0
+\end{lstlisting}
+Using this definition, we make two changes to the specification of the calculus: 
+\begin{enumerate*}[label=(\arabic*)]
+  \item First and foremost, we require that neither \lstinline!s! nor \lstinline!t! is an urelement in the precondition of the last branching expansion rule.
+  \item We add an argument to the $\emptyset$ constructor that specifies the level of each instance of $\emptyset$.
+    This argument is only used for the typing judgement; it has no impact on the semantics.
+\end{enumerate*}
+
+Soundness, of course, is not affected by these changes but we have to make a few amendments to maintain completeness:
+\begin{enumerate*}[label=(\arabic*)]
+  \item The first equation of the realisation function now also needs to account for the urelements.
+    In particular, it needs to ensure that urelements receive pairwise different values unless they are related through equality atoms. 
+    This has no effect on pure witnesses since they can not be related through equality atoms due to \reflemmatwo.
+  \item We need to adjust the existing completeness proof in those places where it directly refers to the definition of \lstinline!realise! to account for the case where a given term is an urelement.
+  \item The completeness theorem receives the additional assumption that \lstinline!$\Gamma$ $\vdash$ $\phi$! holds for the initial formula $\phi$. 
+  \item For the completeness proof, we need to show that the typing judgement is invariant under branch expansion.
+\end{enumerate*}
+
+All in all, having the formalisation allows us to confidently modify the calculus as Isabelle immediately shows us where the proofs break.
+
+TODO: Reference type inference and wrap up.
 
 \section{Conclusion and Future Work}
 By closely following a paper by \citeauthor{new_fast_tableau}~\cite{new_fast_tableau}, we developed a formalisation of a tableau calculus for a ground fragment of set theory called \MLSS{}.
@@ -811,6 +831,7 @@ The author thanks Kevin Kappelmann for his comments on a draft version of the pa
 
 \appendix
 \clearpage\chapter*{Appendix}
+\todo[inline]{Clean up Appendix}
 
 \section{Subterms and Subformulas}
 
@@ -1061,6 +1082,12 @@ fun &\Isa& :: ('a $\Rightarrow$ hf) $\Rightarrow$ 'a pset_atom $\Rightarrow$ boo
 \end{table*}
 
 \section{Upper-Bounding the Cardinality of a Branch}
+\textit{Literals} are a type of subformulae of particular importance, so we define a predicate for them.
+\begin{lstlisting}
+fun is_literal :: 'a fm $\Rightarrow$ bool where
+  is_literal (&\fmAtom& _) = True | is_literal (&\fmNeg{(\fmAtom{} \_)}&) = True
+| is_literal _ = False
+\end{lstlisting}
 
 We still need to give a termination proof to ascertain total correctness.
 The core of our argument is that the number of distinct formulae that can be derived with the expansion rules is finite.

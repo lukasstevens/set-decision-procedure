@@ -32,6 +32,10 @@
 \usepackage{tikz}
 \usepackage{pgfplots}
 
+% Set float spacing
+%\setlength{\abovecaptionskip}{0pt}
+%\setlength{\textfloatsep}{14pt plus 2pt minus 2pt}
+
 \usepackage[inline]{enumitem}
 
 \usepackage{array}
@@ -153,10 +157,6 @@
   We also provide an abstract specification of a decision procedure that applies the rules of the calculus exhaustively and prove its termination.
   \keywords{First TODO \and Second TODO\todo{keywords}}
 \end{abstract}
-
-\listoftodos{}
-
-\clearpage
 
 \section{Introduction}
 In contrast to pen-and-paper proofs where we expect the reader to fill in trivial details, interactive theorem provers (ITPs) require us to justify each proof step rigorously.
@@ -289,6 +289,7 @@ We write \lstinline!M $\models$ $\phi$! for the judgement that the formula $\phi
 The implementation of $\models$ coincides with the interpretation function of \citeauthor{lqe}~\cite{lqe}.
 As usual, a formula \lstinline!$\phi$! is called \textit{satisfiable} if there exists a model \lstinline!M! with \lstinline!M $\models$ $\phi$!.
 Otherwise, \lstinline!$\phi$! is called \textit{unsatisfiable}.
+\todo[inline]{Introduce the initial formula}
 
 \section{A Tableau Calculus for MLSS}
 We formalise the tableau calculus for \MLSS{} as described by \citeauthor{new_fast_tableau}~\cite{new_fast_tableau}.
@@ -621,7 +622,7 @@ for some fresh \lstinline!x! and \lstinline!y!.
 Assigning both \lstinline!Var x! and \lstinline!Var y! a value of \lstinline!0! would contradict the literal \lstinline!Var x $\neqS$ Var y!.
 To prevent this, we assign the pure witnesses pairwise different values.
 
-The proof of \reflemmatwo is more technical than interesting so we refer the reader to the formalisation.
+The proof of \reflemmatwo{} is more technical than interesting so we refer the reader to the formalisation.
 
 \subsection{Realisation of an Open Branch\label{sec:real}}
 Remember that for completeness, we need to show that the realisation function for an open and saturated branch \lstinline!b! actually constitutes a model for all formulae in the branch.
@@ -632,11 +633,11 @@ We start by verifying that the realisation function models all literals in the b
   \item\label{it:af_eq} We have \lstinline!realise s $\neq$ realise t! if \lstinline!s $\neqS$ t! is in \lstinline!b!.
   \item\label{it:af_mem} We have \lstinline!realise s $\hfnotmem$ realise t! if it holds that \lstinline!s $\notinS$ t! is in \lstinline!b!. 
 \end{enumerate}
-To illustrate the usefulness of \reflemmatwo, we prove Proposition~\ref{it:at_eq}.
+To illustrate the usefulness of \reflemmatwo{}, we prove Proposition~\ref{it:at_eq}.
 The proofs of all propositions translate well into Isabelle, so we refer to the original paper~\cite{new_fast_tableau} for the remaining proofs. 
 \begin{proof}[Proof of Proposition~\ref{it:at_eq}]
   Assume that \lstinline!s $\eqS$ t! is in \lstinline!b!.
-  If there exists a \lstinline!c $\in$ pwits b! where \lstinline!s = Var c! or \lstinline!t = Var c!, we arrive at a contradiction due to \reflemmatwo.
+  If there exists a \lstinline!c $\in$ pwits b! where \lstinline!s = Var c! or \lstinline!t = Var c!, we arrive at a contradiction due to \reflemmatwo{}.
   Therefore, both \lstinline!s $\in$ subterms' b! and \lstinline!t $\in$ subterms' b! must hold.
   Now, assume for contradiction that \lstinline!realise s $\neq$ realise t!.
   Without loss of generality --- the other case is symmetric --- we obtain an \lstinline!e! such that
@@ -645,8 +646,8 @@ The proofs of all propositions translate well into Isabelle, so we refer to the 
   This, in turn, yields that \lstinline!u $\inS$ s! must be in \lstinline!b!.
   Together with the assumption \lstinline!(s $\eqS$ t) $\in$ set b! and the saturation of \lstinline!b!, it follows that \lstinline!u $\inS$ t! must also be in \lstinline!b!.
   But then we have
-  \lstinline!realise u $\hfmem$ realise t = e $\hfmem$ realise t!
-  using Proposition~\ref{it:at_mem}, which stands in contradiction to the assumption \lstinline!e $\hfnotmem$ realise t!.
+  \lstinline!realise u $\hfmem$ realise t $\longleftrightarrow$ e $\hfmem$ realise t!
+  using Proposition~\ref{it:at_mem}, which is a contradiction to the assumption \lstinline!e $\hfnotmem$ realise t!.
 \end{proof}
 
 \noindent The results on literals can now be lowered to set terms.
@@ -777,15 +778,52 @@ that corresponds to \lstinline!s' $\neqS$ t' $\fmAndSymbol$ s' $\inS$ A' $\union
 Applying the decision procedure to this formula might result in a tableau proof containing an application of the last branching rule rule to \lstinline!(s' $\neqS$ t') $\in$ set b!, which creates the branches \lstinline![Var x $\inS$ s', Var x $\notinS$ t'] @ b! and \lstinline![Var x $\notinS$ s', Var x $\inS$ t'] @ b!.
 But this can not be converted to a proof in Isabelle/HOL since \lstinline!s! and \lstinline!t! are not sets.
 
-To deal with this problem, we introduce a light-weight type system that, given a mapping $\Gamma$ from variables to natural numbers, assigns a natural number \lstinline!l!, which we call level, to each set term \lstinline!t'!. 
-We write \lstinline!$\Gamma$ $\vdash$ t' : l! for this judgement.
-Intuitively speaking, this indicates that the corresponding term \lstinline!t! in Isabelle/HOL has type
+\begin{figure}[t]
+  \centering
+  \lstset{
+    escapeinside={@}{@}
+  }
+  \begin{tabular}{c}
+    \begin{tabular}{ccccc}
+      &\qquad\quad&&\qquad\quad& \lstinline!$\Gamma$ $\vdash$ t : l! \\
+      \cmidrule{1-1}\cmidrule{3-3}\cmidrule{5-5}
+      \lstinline!$\Gamma$ $\vdash$ $\emptyset$ n : Suc n! & &
+      \lstinline!$\Gamma$ $\vdash$ Var x : $\Gamma$ x! & &
+      \lstinline!$\Gamma$ $\vdash$ Single t : Suc l! \\
+    \end{tabular}
+    \\[2em]
+    \begin{tabular}{c}
+      \lstinline!$\star_\text{s}$ $\in$ {$\unionS$,$\,\interS$,$\,\diffS$}! \quad
+      \lstinline!$\Gamma$ $\vdash$ s : l! \quad
+      \lstinline!$\Gamma$ $\vdash$ t : l! \quad 
+      \lstinline!l $\neq$ 0! \\
+      \midrule
+      \lstinline!$\Gamma$ $\vdash$ s $\star_\text{s}$ t : l! \\
+    \end{tabular}
+    \\[2.5em]
+    \begin{tabular}{ccc}
+      \lstinline!$\Gamma$ $\vdash$ s : l! \quad \lstinline!$\Gamma$ $\vdash$ t : l! &\qquad\quad&
+      \lstinline!$\Gamma$ $\vdash$ s : l! \quad \lstinline!$\Gamma$ $\vdash$ t : Suc l!
+      \\
+      \cmidrule{1-1}\cmidrule{3-3}
+      \lstinline!$\Gamma$ $\vdash$ s $\eqS$ t! && \lstinline!$\Gamma$ $\vdash$ s $\inS$ t! \\
+    \end{tabular}
+  \end{tabular}
+  \caption{The type system for set terms and atoms.\label{fig:types}}
+\end{figure}
+
+To deal with this problem, we introduce a light-weight type system as displayed in \autoref{fig:types}. 
+The type of a set term in this system is just a natural number which we call level.
+Intuitively speaking, the level indicates that the corresponding term \lstinline!t! in Isabelle/HOL has type
 \[
   \texttt{'a}\ \underbrace{\texttt{set}\ \ldots\ \texttt{set}}_{\texttt{l}\ \text{times}}
 \]
 for some \lstinline!'a!.
-We can extend this to a judgement \lstinline!$\Gamma$ $\vdash$ a! for atoms \lstinline!a!, where we require the levels of \lstinline!s'! and \lstinline!t'! to be equal if \lstinline!a = s' $\eqS$ t'! and the level of \lstinline!t'! to be the successor of that of \lstinline!s'! if \lstinline!a = s' $\inS$ t'!.
-By only judging the atoms, we can extend this to formulas for which we use the same notation.
+Note that the constructor $\emptyset$ now receives an additional argument that indicates the level of each instance of $\emptyset$.
+
+Moreover, the typing judgement extends to set atoms by matching up the levels of its component set terms.
+
+Ultimately, we define \lstinline!$\Gamma$ $\vdash$ $\psi$ $\equiv$ $\forall$a $\in$ atoms $\phi$. $\Gamma$ $\vdash$ a! in order to type formulae.
 
 We can now define the urelements with respect to a formula, i.e.\ those set terms whose corresponding type in Isabelle/HOL might not be a set.
 \begin{lstlisting}
@@ -795,15 +833,15 @@ definition urelem :: 'a pset_fm $\Rightarrow$ 'a pset_term $\Rightarrow$ bool wh
 Using this definition, we make two changes to the specification of the calculus: 
 \begin{enumerate*}[label=(\arabic*)]
   \item First and foremost, we require that neither \lstinline!s! nor \lstinline!t! is an urelement in the precondition of the last branching expansion rule.
-  \item We add an argument to the $\emptyset$ constructor that specifies the level of each instance of $\emptyset$.
+  \item As mentioned above, we add an argument to the $\emptyset$ constructor.
     This argument is only used for the typing judgement; it has no impact on the semantics.
 \end{enumerate*}
 
 Soundness, of course, is not affected by these changes but we have to make a few amendments to maintain completeness:
 \begin{enumerate*}[label=(\arabic*)]
-  \item The first equation of the realisation function now also needs to account for the urelements.
+  \item The first equation of \lstinline!realise! now also needs to account for the urelements.
     In particular, it needs to ensure that urelements receive pairwise different values unless they are related through equality atoms. 
-    This has no effect on pure witnesses since they can not be related through equality atoms due to \reflemmatwo.
+    This has no effect on pure witnesses since they can not be related through equality atoms due to \reflemmatwo{}.
   \item We need to adjust the existing completeness proof in those places where it directly refers to the definition of \lstinline!realise! to account for the case where a given term is an urelement.
   \item The completeness theorem receives the additional assumption that \lstinline!$\Gamma$ $\vdash$ $\phi$! holds for the initial formula $\phi$. 
   \item For the completeness proof, we need to show that the typing judgement is invariant under branch expansion.
@@ -811,7 +849,18 @@ Soundness, of course, is not affected by these changes but we have to make a few
 
 All in all, having the formalisation allows us to confidently modify the calculus as Isabelle immediately shows us where the proofs break.
 
-TODO: Reference type inference and wrap up.
+The modifications above ensure that the proof can be replayed through Isabelle/HOL.
+To actually use the calculus, we need to determine the urelements of the initial formula $\phi$, though.
+In other words, we need to implement an inference algorithm for our light-weight type system.
+The algorithm is, in essence, a simplified version of Hindley-Milney type inference so it has the same two phases:
+it generates constraints using syntax directed rules and then passes them to a constraint solver.
+
+Since we are only interested in the level of a term, we can encode all constraints into the theory consisting of $0$, the successor function \lstinline!S!, and equality (but no disequality).
+Note that constraints of the form \lstinline!l $\neq$ 0! can be replaced by \lstinline!l $=$ S i! with \lstinline!i! being a fresh variable.
+A solver for this theory is straightforward to implement;
+nevertheless, we have to be careful that it computes the minimum assignment $\Gamma$ from variables to levels that fulfils the constraints. 
+This is to guarantee that a set term \lstinline!t! is not an urelement \textbf{iff} \lstinline!$\Gamma$ t > 0!.
+Conversely, all terms \lstinline!s! with \lstinline!$\Gamma$ s $=$ 0! are urelements.
 
 \section{Conclusion and Future Work}
 By closely following a paper by \citeauthor{new_fast_tableau}~\cite{new_fast_tableau}, we developed a formalisation of a tableau calculus for a ground fragment of set theory called \MLSS{}.
@@ -829,7 +878,9 @@ The author thanks Kevin Kappelmann for his comments on a draft version of the pa
 
 \bibliography{sources}
 
+%\clearpage\listoftodos
 \appendix
+
 \clearpage\chapter*{Appendix}
 \todo[inline]{Clean up Appendix}
 

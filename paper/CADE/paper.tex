@@ -144,7 +144,8 @@
 
 \setcounter{tocdepth}{1}
 
-\title{Towards a Verified Tableau Prover for a Ground Fragment of Set Theory}
+\title{Towards a Verified Tableau Prover for an Unquantified Fragment of Set Theory}
+\titlerunning{Towards a Verified Tableau Prover for MLSS}
 \author{Lukas Stevens\orcidID{0000-0003-0222-6858}}
 \institute{Technical University of Munich, Boltzmannstr.\ 3, 85748 Garching, Germany
   \email{lukas.stevens@in.tum.de}}
@@ -152,40 +153,49 @@
 \maketitle
 
 \begin{abstract}
-  Using Isabelle/HOL, we verify the state-of-the-art decision procedure for multi-level syllogistic with singleton (\MLSS{} for short), which is a ground fragment of set theory.
+  Using Isabelle/HOL, we verify the state-of-the-art decision procedure for multi-level syllogistic with singleton (\MLSS{} for short), which is an unquantified fragment of set theory.
   We formalise the syntax and semantics of \MLSS{} as well as a sound and complete tableau calculus for it.
   We also provide an abstract specification of a decision procedure that applies the rules of the calculus exhaustively and prove its termination.
   \keywords{First TODO \and Second TODO\todo{keywords}}
 \end{abstract}
 
 \section{Introduction}
-In contrast to pen-and-paper proofs where we expect the reader to fill in trivial details, interactive theorem provers (ITPs) require us to justify each proof step rigorously.
-Manually reducing each proof step down to the axioms would be impractical, though;
+In contrast to pen-and-paper proofs where we expect the reader to fill in trivial details, interactive theorem provers (ITPs) require us to justify each proof step rigorously;
 hence, ITPs usually offer a wide array of automated methods to deal with the proof goals that arise during interactive use.
 
 In Isabelle/HOL, there are specialised procedures for dealing with e.g.\ natural numbers, linear arithmetic, and metric spaces.
 Some of these procedures have been verified in Isabelle/HOL such as a procedure for Presburger arithmetic~\cite{presburger} that was later extended to mixed real-integer arithmetic~\cite{arithmetic}.
 This procedure, though, uses reflection to work on goals in Isabelle/HOL, which, during execution, either sacrifices speed by going through the simplifier or soundness by trusting generated code.
 More recently, \citeauthor{orders}~\cite{orders} presented a verified decision procedure for orders that produces certificates. 
-This approach offers efficient execution by using generated code as well as soundness as the certificates are replayed through Isabelle's inference kernel.
+This approach offers efficient execution by using generated code as well as soundness because the certificates are replayed through Isabelle's inference kernel.
 
 The focus of this paper is another ubiquitous structure in mathematics, namely sets.
-In particular, we consider a ground fragment of set theory which \citeauthor{new_fast_tableau}~\cite{new_fast_tableau} call multi-level syllogistic with singleton (\MLSS{}).
+To the best of our knowledge, we present the first formally verified decision procedure for (a fragment of) set theory.
+In particular, we consider an unquantified fragment which \citeauthor{new_fast_tableau}~\cite{new_fast_tableau} call multi-level syllogistic with singleton (\MLSS{}).
 The fragment includes the usual set operations of union, intersection, difference, membership, equality and, in addition, it allows the construction of singleton sets.
-Due to the omnipresence of sets, we think that automation for this fragment will benefit the users of Isabelle, especially when integrated into the simplifier like the aforementioned order solver.
-We also expect that the generation of certificates will be straightforward since \MLSS{} admits a tableau calculus.
+
+Since \MLSS{} admits a tableau calculus, we expect that the generation of certificates will be straightforward.
+Like with the aforementioned order solver, this would pave the way towards an integration of the decision procedure into Isabelle, adding to its growing body of verified decision procedures.
 
 \subsection{Contributions}
-In this paper, we present a formalisation in Isabelle/HOL of a tableau calculus for \MLSS{} due to \citeauthor{new_fast_tableau}~\cite{new_fast_tableau}\cite[Chapter 14]{set_theory}.
+This paper is about the formalisation in Isabelle/HOL of a tableau calculus for \MLSS{} due to \citeauthor{new_fast_tableau}~\cite{new_fast_tableau}\cite[Chapter 14]{set_theory}.
 We prove soundness and completeness of the calculus and give an abstract specification of a decision procedure that applies the rules of the calculus exhaustively.
 To obtain total correctness of the procedure, we prove its termination.
-The formalisation follows the paper closely but gives a more thorough account of some important details:
+The formalisation initially follows the paper but gives a more thorough account of some important details:
 \begin{itemize}
   \item We deliver the omitted proof of Lemma~2 in the paper~\cite{new_fast_tableau}, which is a key building block for the completeness proof of the calculus.
   \item The formal proof of completeness lead to the discovery that the calculus was missing a rule for eliminating double negation. 
   \item We derive an explicit upper bound for the number of formulae in a branch of the tableau.
-  \item We restrict one branching rule\todo{Elaborate}.
 \end{itemize}
+
+In the context of Isabelle/HOL, there is one important aspect that requires us to modify the calculus in the paper:
+the calculus works under the assumption that every variable is a set;
+however, this is not the case in Isabelle/HOL, e.g.\ consider the expression \lstinline!n $\in$ A! where \lstinline!n! is a natural number.
+In order to deal with these urelements, we extend the calculus with a light-weight type system and a verified inference algorithm that identifies the urelements.
+
+The modification of the calculus required non-trivial changes to the completeness proof.
+Here, the formalisation was instrumental because Isabelle immediately revealed broken proofs that needed fixing.
+This illustrates the usefulness of ITPs for developing logic calculi: they allow us to confidently make modifications without compromising correctness. 
 
 \subsection{Related Work}
 Since the literature on decidable fragments of set theory is vast, we only focus on \MLSS{} here.
@@ -199,12 +209,17 @@ Later extensions of the calculus added certain interpreted functions such as mon
 The latter extension notably includes the Cartesian product.
 Those extensions, though, did not improve upon the tableau calculus for \MLSS{}.
 
+Abstract framework to prove completeness for first-order tableau systems~\cite{completeness_coinductive}.
+Verified sequent calculus prover for first-order logic~\cite{sequent_first_order}.
+Tableau calculus for temporal logic CTL in Coq~\cite{ctl_tableau}
+Abstract framework for synthetic completeness in AFP~\cite{synthetic_completeness_afp}.
+
+
 While a lot of work has gone into the verification of decision procedures, seemingly little has been put towards the verification of tableau calculi.
 In Lean, there is a verified tableau calculus for basic modal logic~\cite{modal_logic_lean}.
 In Coq, there is a formalisation of a tableau calculus for ecumenical logic~\cite{ecumenical_logic}; it is, however, missing a completeness proof.
 Concerning Isabelle/HOL, there is formalisation of a sound and complete tableau calculus for hybrid logic~\cite{hybrid_logic} available in the \textit{Archive of Formal Proofs}~\cite{hybrid_logic_afp}.
 The termination proof is part of ongoing work~\cite{hybrid_logic_workshop}.
-\todo[inline]{Mention SteP, Check reviewr comment}
 % TODO: Formalisation de la logique temporelle dans le coq.
 
 \subsection{Notation}
@@ -386,6 +401,7 @@ As the name suggests, branching rules lead to the creation of new branches in th
 \autoref{tab:lexpands} shows the linear expansion rules.
 Note that in the first two rules for \lstinline!$\eqS$!, \lstinline!l! is a literal occurring in the branch.
 Furthermore, the term-for-term substitution \lstinline!l{s/t}! is restricted to replace \lstinline!t! only if it occurs as a top-level set terms of \lstinline!l!, i.e.\ it occurs directly under one of the atom constructors \lstinline!$\inS$! or \lstinline!$\eqS$!.
+As an example, \lstinline!u! and \lstinline!s $\interS$ t! are top-level terms of \lstinline!u $\inS$ s $\interS$ t! but \lstinline!s! and \lstinline!t! are not.
 
 The more crucial restriction of the linear rules is that that no new subterm may be created by their application;
 for instance, the second rule for \lstinline!$\unionS$! is
@@ -769,12 +785,12 @@ theorem mlss_proc_sound:
   assumes M $\models$ $\phi$ shows $\neg$ mlss_proc $\phi$
 \end{lstlisting}
 
-\section{Dealing with Urelements}
+\section{Dealing with Urelements\label{sec:urelements}}
 In the introduction, we motivated the verification of \lstinline!mlss_proc! with the prospect of integrating it as a tactic into Isabelle.
 For this to work, we need to replay a proof in the tableau calculus through Isabelle/HOL, i.e.\ we need to map every branch expansion rule to a corresponding theorem in Isabelle/HOL.
 This is straightforward for all expansion rules except for the last branching expansion rule.
-To illustrate, suppose that we are to disprove a statement of the form \lstinline!s $\neq$ (t :: 'a) $\land$ s $\in$ (A :: 'a set) $\cup$ B $\land$ $\ldots$! in Isabelle/HOL
-that corresponds to \lstinline!s' $\neqS$ t' $\fmAndSymbol$ s' $\inS$ A' $\unionS$ B' $\fmAndSymbol$ $\ldots$! in our set syntax for some \lstinline!s'!, \lstinline!t'!, \lstinline!A'!, and \lstinline!B'!.
+To illustrate, suppose that we are to disprove a statement of the form \lstinline!s $\neq$ (t :: 'a) $\land$ s $\in$ (A :: 'a set) $\cup$ B $\land$ $\ldots$! in Isabelle/HOL.
+By way of reification, we convert this statement to \lstinline!s' $\neqS$ t' $\fmAndSymbol$ s' $\inS$ A' $\unionS$ B' $\fmAndSymbol$ $\ldots$! in our set syntax for some \lstinline!s'!, \lstinline!t'!, \lstinline!A'!, and \lstinline!B'!.
 Applying the decision procedure to this formula might result in a tableau proof containing an application of the last branching rule rule to \lstinline!(s' $\neqS$ t') $\in$ set b!, which creates the branches \lstinline![Var x $\inS$ s', Var x $\notinS$ t'] @ b! and \lstinline![Var x $\notinS$ s', Var x $\inS$ t'] @ b!.
 But this can not be converted to a proof in Isabelle/HOL since \lstinline!s! and \lstinline!t! are not sets.
 
@@ -825,7 +841,8 @@ Moreover, the typing judgement extends to set atoms by matching up the levels of
 
 Ultimately, we define \lstinline!$\Gamma$ $\vdash$ $\psi$ $\equiv$ $\forall$a $\in$ atoms $\phi$. $\Gamma$ $\vdash$ a! in order to type formulae.
 
-We can now define the urelements with respect to a formula, i.e.\ those set terms whose corresponding type in Isabelle/HOL might not be a set.
+We can now define the urelements with respect to a formula.
+An urelement is a set term whose corresponding type in Isabelle/HOL might not be a set.
 \begin{lstlisting}
 definition urelem :: 'a pset_fm $\Rightarrow$ 'a pset_term $\Rightarrow$ bool where
   urelem $\phi$ t $\equiv$ $\exists\Gamma$. $\Gamma$ $\vdash$ $\phi$ $\land$ $\Gamma$ $\vdash$ t : 0
@@ -842,12 +859,12 @@ Soundness, of course, is not affected by these changes but we have to make a few
   \item The first equation of \lstinline!realise! now also needs to account for the urelements.
     In particular, it needs to ensure that urelements receive pairwise different values unless they are related through equality atoms. 
     This has no effect on pure witnesses since they can not be related through equality atoms due to \reflemmatwo{}.
-  \item We need to adjust the existing completeness proof in those places where it directly refers to the definition of \lstinline!realise! to account for the case where a given term is an urelement.
+  \item We need to adjust the completeness proof in those places where it directly refers to the definition of \lstinline!realise! to account for the case where a given term is an urelement.
   \item The completeness theorem receives the additional assumption that \lstinline!$\Gamma$ $\vdash$ $\phi$! holds for the initial formula $\phi$. 
   \item For the completeness proof, we need to show that the typing judgement is invariant under branch expansion.
 \end{enumerate*}
 
-All in all, having the formalisation allows us to confidently modify the calculus as Isabelle immediately shows us where the proofs break.
+All in all, having the formalisation allows us to confidently modify the calculus as Isabelle immediately shows us where the proofs break.\todo{Longer description}
 
 The modifications above ensure that the proof can be replayed through Isabelle/HOL.
 To actually use the calculus, we need to determine the urelements of the initial formula $\phi$, though.
@@ -859,11 +876,11 @@ Since we are only interested in the level of a term, we can encode all constrain
 Note that constraints of the form \lstinline!l $\neq$ 0! can be replaced by \lstinline!l $=$ S i! with \lstinline!i! being a fresh variable.
 A solver for this theory is straightforward to implement;
 nevertheless, we have to be careful that it computes the minimum assignment $\Gamma$ from variables to levels that fulfils the constraints. 
-This is to guarantee that a set term \lstinline!t! is not an urelement \textbf{iff} \lstinline!$\Gamma$ t > 0!.
+This is to guarantee that a set term \lstinline!t! is not an urelement \textbf{iff} \lstinline!$\Gamma$ t $>$ 0!.
 Conversely, all terms \lstinline!s! with \lstinline!$\Gamma$ s $=$ 0! are urelements.
 
 \section{Conclusion and Future Work}
-By closely following a paper by \citeauthor{new_fast_tableau}~\cite{new_fast_tableau}, we developed a formalisation of a tableau calculus for a ground fragment of set theory called \MLSS{}.
+By closely following a paper by \citeauthor{new_fast_tableau}~\cite{new_fast_tableau}, we developed a formalisation of a tableau calculus for an unquantified fragment of set theory called \MLSS{}.
 The formalisation includes an abstract description of a decision procedure that builds on the calculus.
 
 The refinement of the abstract description to an executable specification from which code can be exported is left for future work.

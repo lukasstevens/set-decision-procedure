@@ -154,8 +154,9 @@
 
 \begin{abstract}
   Using Isabelle/HOL, we verify the state-of-the-art decision procedure for multi-level syllogistic with singleton (\MLSS{} for short), which is an unquantified fragment of set theory.
-  We formalise the syntax and semantics of \MLSS{} as well as a sound and complete tableau calculus for it.
+  We formalise its syntax and semantics as well as a sound and complete tableau calculus for it.
   We also provide an abstract specification of a decision procedure that applies the rules of the calculus exhaustively and prove its termination.
+  Furthermore, we extend the calculus with a light-weight type system that paves the way for an integration of the procedure into Isabelle/HOL.
   \keywords{First TODO \and Second TODO\todo{keywords}}
 \end{abstract}
 
@@ -178,7 +179,7 @@ Since \MLSS{} admits a tableau calculus, we expect that the generation of certif
 Like with the aforementioned order solver, this would pave the way towards an integration of the decision procedure into Isabelle, adding to its growing body of verified decision procedures.
 
 \subsection{Contributions}
-This paper is about the formalisation in Isabelle/HOL of a tableau calculus for \MLSS{} due to \citeauthor{new_fast_tableau}~\cite{new_fast_tableau}\cite[Chapter 14]{set_theory}.
+We present a formalisation in Isabelle/HOL of a tableau calculus for \MLSS{} due to \citeauthor{new_fast_tableau}~\cite{new_fast_tableau}\cite[Chapter 14]{set_theory}.
 We prove soundness and completeness of the calculus and give an abstract specification of a decision procedure that applies the rules of the calculus exhaustively.
 To obtain total correctness of the procedure, we prove its termination.
 The formalisation initially follows the paper but gives a more thorough account of some important details:
@@ -209,17 +210,14 @@ Later extensions of the calculus added certain interpreted functions such as mon
 The latter extension notably includes the Cartesian product.
 Those extensions, though, did not improve upon the tableau calculus for \MLSS{}.
 
-Abstract framework to prove completeness for first-order tableau systems~\cite{completeness_coinductive}.
-Verified sequent calculus prover for first-order logic~\cite{sequent_first_order}.
-Tableau calculus for temporal logic CTL in Coq~\cite{ctl_tableau}
-Abstract framework for synthetic completeness in AFP~\cite{synthetic_completeness_afp}.
+There is a large body of work at the intersection of ITPs and tableau methods but to keep with the theme of the paper we only consider formalisations of correctness here.
+For first-order logic, there are abstract completeness proofs using the \emph{Beth-Hintikka style} of possibly infinite derivation trees~\cite{completeness_coinductive} as well as the \emph{Henkin style} of maximally consistent sets~\cite{synthetic_completeness_afp}.
+Both are abstract enough to be instantiated with a wide range of concrete calculi.
+A more concrete formalisation~\cite{sequent_first_order} verifies a sequent calculus for first-order logic whose completeness proof is via a translation to semantic tableau.
 
-
-While a lot of work has gone into the verification of decision procedures, seemingly little has been put towards the verification of tableau calculi.
-In Lean, there is a verified tableau calculus for basic modal logic~\cite{modal_logic_lean}.
-In Coq, there is a formalisation of a tableau calculus for ecumenical logic~\cite{ecumenical_logic}; it is, however, missing a completeness proof.
-Concerning Isabelle/HOL, there is formalisation of a sound and complete tableau calculus for hybrid logic~\cite{hybrid_logic} available in the \textit{Archive of Formal Proofs}~\cite{hybrid_logic_afp}.
-The termination proof is part of ongoing work~\cite{hybrid_logic_workshop}.
+Beyond completeness, we target decidability which is more attainable for propositional logic.  
+There is a verified tableau calculus for the modal logic S5~\cite{lean_modal_logic} in Lean and one for hybrid logic~\cite{hybrid_logic} in Isabelle/HOL.
+Both of these formalisation do not prove termination but there is a formalisation of a tableau calculus for the temporal logic CTL in Coq~\cite{ctl_tableau} that does.
 % TODO: Formalisation de la logique temporelle dans le coq.
 
 \subsection{Notation}
@@ -268,21 +266,23 @@ datatype (atoms: 'a) fm =
 type_synonym 'a pset_fm = 'a pset_atom fm
 \end{lstlisting}
 We will often drop the atom constructor \lstinline!&\fmAtom{}&! to reduce clutter.
-Additionally, we use the abbreviations \lstinline!s $\notinS$ t! and \lstinline!s $\neqS$ t! to denote \lstinline!&\fmNeg{\fmAtom{} (s $\inS$ t)}&! and \lstinline!&\fmNeg{\fmAtom{} (s $\eqS$ t)}&!, respectively.
+Additionally, we use \lstinline!s $\notinS$ t! and \lstinline!s $\neqS$ t! to denote \lstinline!&\fmNeg{\fmAtom{} (s $\inS$ t)}&! and \lstinline!&\fmNeg{\fmAtom{} (s $\eqS$ t)}&!, respectively.
 
-Like the function \lstinline!vars!, the automatically defined function \lstinline!atoms :: 'a fm $\Rightarrow$ 'a set! retrieves all set atoms in a formula.
+Similarly to \lstinline!vars!, we get the function \lstinline!atoms :: 'a fm $\Rightarrow$ 'a set! for free which retrieves all set atoms in a formula.
 We combine these functions to extract all the variables occurring in a set formula.
 \begin{lstlisting}
 definition vars $\phi$ $\equiv$ $\bigcup$(vars ` atoms $\phi$)
 \end{lstlisting}
 
-Similarly to \lstinline!vars!, we introduce the overloaded constant \lstinline!subterms :: 'b $\Rightarrow$ 'a pset_term set!, which returns all the set terms that are subterms of a set term, set atom, or formula, respectively. Lastly, we consider the subformulae of a formula and define a function \lstinline!subfms :: 'a fm $\Rightarrow$ 'a fm set! that computes them.
-The functions \lstinline!subterms! and \lstinline!subfms! are defined in the usual way (cf. Appendix \todo{reference Appendix}).
+Likewise, we fix the constant \lstinline!subterms :: 'b $\Rightarrow$ 'a pset_term set!.
+We overload this constant to return the set terms that are subterms of a set term, set atom, or formula, respectively. Lastly, we consider the subformulae of a formula and define a function \lstinline!subfms :: 'a fm $\Rightarrow$ 'a fm set! that computes them.
+The functions \lstinline!subterms! and \lstinline!subfms! are defined in the usual way (cf.\ \appendixname~\ref{appendix:subterms}).
 
 \subsection{Semantics}
 The original paper~\cite{new_fast_tableau} bases the semantics of \MLSS{} on the von Neumann hierarchy of sets $\mathcal{V}$. 
-While there is an entry~\cite{zfc_in_hol_afp} in the \textit{Archive of Formal Proofs} (AFP) that axiomatises this hierarchy,
-we instead use the hierarchy of \textit{hereditarily finite sets} (HF sets) which fulfil all the same axioms as $\mathcal{V}$ --- that is, the axioms of ZF --- except for the axiom of infinity.\todo{Membership is well-founded.}
+While there is an entry~\cite{zfc_in_hol_afp} in the \emph{Archive of Formal Proofs} (AFP) that axiomatises this hierarchy,
+we instead use the hierarchy of \emph{hereditarily finite sets} (HF sets) which fulfil all the same axioms as $\mathcal{V}$ --- that is, the axioms of ZF --- except for the axiom of infinity.
+In particular, the membership relation is well-founded.
 The HF sets are sufficient for our purposes as \MLSS{} is not powerful enough to force infinite models~\cite[Chapter~14.2]{set_theory}.
 In contrast to $\mathcal{V}$, the HF sets are directly representable in Isabelle/HOL, and indeed, there is an AFP entry~\cite{hf_AFP} that formalises them.
 The entry defines a type \lstinline!hf! that comes with the following functionality:
@@ -298,26 +298,26 @@ Equipped with the above, we define the interpretation functions
   \item \lstinline!&\Isa& :: ('a $\Rightarrow$ hf) $\Rightarrow$ 'a pset_atom $\Rightarrow$ hf!
 \end{itemize}
 in the standard way, i.e.\ by mapping each syntactic construct to the corresponding operation on HF sets and interpreting variables with respect to a given valuation function \lstinline!M :: 'a $\Rightarrow$ hf!.
-For the concrete definition we refer to the appendix.
+For the concrete definition we refer to formalisation (cf.\ \appendixname~\ref{appendix:semantics}).
 
 We write \lstinline!M $\models$ $\phi$! for the judgement that the formula $\phi$ holds under the valuation function \lstinline!M!.
 The implementation of $\models$ coincides with the interpretation function of \citeauthor{lqe}~\cite{lqe}.
-As usual, a formula \lstinline!$\phi$! is called \textit{satisfiable} if there exists a model \lstinline!M! with \lstinline!M $\models$ $\phi$!.
-Otherwise, \lstinline!$\phi$! is called \textit{unsatisfiable}.
-\todo[inline]{Introduce the initial formula}
+As usual, a formula \lstinline!$\phi$! is called \emph{satisfiable} if there exists a model \lstinline!M! with \lstinline!M $\models$ $\phi$!.
+Otherwise, \lstinline!$\phi$! is called \emph{unsatisfiable}.
 
 \section{A Tableau Calculus for MLSS}
 We formalise the tableau calculus for \MLSS{} as described by \citeauthor{new_fast_tableau}~\cite{new_fast_tableau}.
 Inspired by the formalisation of a tableau calculus for hybrid logic by \citeauthor{hybrid_logic_afp}~\cite{hybrid_logic_afp}, we simply use a list to represent a branch of the tableau tree.
-Note that formulae are added to the front of the list during branch expansion, so \lstinline!last b! for a branch \lstinline!b! is always the formula that we are trying to disprove with the tableau. 
+Note that formulae are added to the front of the list during branch expansion, so \lstinline!last b! for a branch \lstinline!b! is always the formula that we are trying to disprove with the tableau.
+We sometimes call this formula the \emph{initial formula}.
 \begin{lstlisting}
 type_synonym 'a branch = 'a pset_fm list
 \end{lstlisting}
 
 \noindent The functions \lstinline!vars! and \lstinline!subterms! are lifted to branches in the expected way.
 
-In the standard tableau calculus for propositional logic as \citeauthor{tableau}~\cite{tableau} describes it, a branch is called \textit{closed} if it contains both the negation of a formula and the formula itself;
-conversely, it is called \textit{open} if it is not closed.
+In the standard tableau calculus for propositional logic as \citeauthor{tableau}~\cite{tableau} describes it, a branch is called \emph{closed} if it contains both the negation of a formula and the formula itself;
+conversely, it is called \emph{open} if it is not closed.
 For \MLSS{}, we extend the notion of closedness with three additional rules; the first two are straightforward while the last one states that a branch is closed when the branch contains a membership cycle
 \lstinline!t$_\text{0}$ $\inS$ t$_\text{1}$, t$_\text{1}$ $\inS$ t$_\text{2}$, $\ldots$, t$_\text{k}$ $\inS$ t$_\text{0}$!.
 
@@ -330,7 +330,7 @@ inductive bclosed :: 'a branch $\Rightarrow$ bool where
 
 abbreviation bopen b $\equiv$ $\neg$ bclosed b
 \end{lstlisting}
-A tableau is called \textit{closed} if all of its branches are closed.
+A tableau is called \emph{closed} if all of its branches are closed.
 
 \subsection{Linear Expansion Rules}
 \begin{table*}[t]
@@ -360,22 +360,20 @@ A tableau is called \textit{closed} if all of its branches are closed.
     \lstinline!s $\in$ $\ttw$! & $\Longrightarrow$ & \lstinline!s $\inS$ $\ton$ $\unionS$ $\ttw$! \\
     \lstinline!s $\inS$ $\ton$ $\unionS$ $\ttw$!, \newline \lstinline!s $\notinS$ $\ton$! & $\Longrightarrow$ & \lstinline!s $\inS$ $\ttw$! \\
     \lstinline!s $\inS$ $\ton$ $\unionS$ $\ttw$!, \newline \lstinline!s $\notinS$ $\ttw$! & $\Longrightarrow$ & \lstinline!s $\inS$ $\ton$! \\
-    \lstinline!s $\notinS$ $\ton$, s $\notinS$ $\ttw$! & $\Longrightarrow$ & \lstinline!s $\notinS$ $\ton$ $\unionS$ $\ttw$! \\
+    \lstinline!s $\notinS$ $\ton$, s $\notinS$ $\ttw$! & $\Longrightarrow$ & \lstinline!s $\notinS$ $\ton$ $\unionS$ $\ttw$! \\[0.9em]
     \end{tabular}
-    \\
     \\
 
     Rules for \lstinline!$\interS$! && Rules for \lstinline!$\diffS$! \\
     \cmidrule(l{1pt}){1-1}\cmidrule(r{1pt}){3-3}
     \begin{tabular}{c}
-      $\vdots$ \\
+      $\vdots$
     \end{tabular}
     & &
     \begin{tabular}{c}
       $\vdots$ \\
     \end{tabular}
-    \\
-    \\
+    \\[0.9em]
 
     Rules for \lstinline!Single! && Rules for \lstinline!$\eqS$! \\
     \cmidrule(l{1pt}){1-1}\cmidrule(r{1pt}){3-3}
@@ -394,13 +392,14 @@ A tableau is called \textit{closed} if all of its branches are closed.
     \bottomrule
   \end{tabular}
   \bigskip
-  \caption{Linear expansion rules.\label{tab:lexpands}}
+  \caption{Linear expansion rules.\label{tab:lexpands} We omit the rules for $\interS$ and $\diffS$ as they coincide with the original paper (cf.\ \appendixname~\ref{appendix:rules}).}
 \end{table*}
-The calculus considers two kinds of branch expansion rules: \textit{linear} and \textit{branching} rules.
+
+The calculus considers two kinds of branch expansion rules: \emph{linear} and \emph{branching} rules.
 As the name suggests, branching rules lead to the creation of new branches in the tableau while linear rules only extend a branch \lstinline!b! with new formulae \lstinline[breaklines=true]!b' = [$\psi_1$,$\ldots$,$\psi_n$]!, which we denote by \lstinline!&\lexpands{b'}{b}&!.
 \autoref{tab:lexpands} shows the linear expansion rules.
 Note that in the first two rules for \lstinline!$\eqS$!, \lstinline!l! is a literal occurring in the branch.
-Furthermore, the term-for-term substitution \lstinline!l{s/t}! is restricted to replace \lstinline!t! only if it occurs as a top-level set terms of \lstinline!l!, i.e.\ it occurs directly under one of the atom constructors \lstinline!$\inS$! or \lstinline!$\eqS$!.
+Furthermore, the term-for-term substitution \lstinline!l{s/t}! is restricted to replace \lstinline!t! only if it occurs as a top-level set terms of \lstinline!l!.
 As an example, \lstinline!u! and \lstinline!s $\interS$ t! are top-level terms of \lstinline!u $\inS$ s $\interS$ t! but \lstinline!s! and \lstinline!t! are not.
 
 The more crucial restriction of the linear rules is that that no new subterm may be created by their application;
@@ -413,9 +412,9 @@ which formally represents
 may only be used under the condition
 \lstinline[breaklines]!t$_\text{1}$ $\unionS$ t$_\text{2}$ $\in$ subterms (last b)!.
 The purpose of this restriction is to prevent unbounded expansion of the branch.
-In fact, we give an explicit upper bound for the number of formulae in a branch in \autoref{sec:bound}.
+In fact, we give an explicit upper bound for the number of formulae in a branch in \autoref{sec:correct}.
 
-Due to boundedness, repeated expansion with linear rules eventually results in a \textit{linearly saturated} branch, i.e.\ a branch where no application of linear rules would produce new formulae.
+Due to boundedness, repeated expansion with linear rules eventually results in a \emph{linearly saturated} branch, i.e.\ a branch where no application of linear rules would produce new formulae.
 \begin{lstlisting}
 definition lin_sat b $\equiv$ $\forall$b'. &\lexpands{b'}{b}& $\longrightarrow$ set b' $\subseteq$ set b
 \end{lstlisting}
@@ -426,7 +425,7 @@ This rule is required for completeness, though, considering that the branch
 is saturated --- neither linear nor branching rules apply --- and open, but there clearly is no model for the initial formula \lstinline!&\fmAnd{\fmNeg{\fmNeg{\fmNeg{p}}}}{p}&!.
 
 \subsection{Branching Rules\label{sec:branching}}
-\begin{table*}
+\begin{table*}[t]
   \lstset{
     escapeinside={@}{@}
   }
@@ -495,25 +494,40 @@ is saturated --- neither linear nor branching rules apply --- and open, but ther
          \bottomrule
   \end{tabular}
   \bigskip
-  \caption{Branching expansion rules.\label{tab:bexpands} We write \lstinline!$\phi$! for \lstinline!last b! here.}
+  \caption{Branching expansion rules.\label{tab:bexpands} We write \lstinline!$\phi$! for \lstinline!last b! here. The omitted rules coincide with the original paper (cf.\ \appendixname~\ref{appendix:rules}).}
 \end{table*}
 After running out of linear rules to apply, only the branching rules shown in \autoref{tab:bexpands} remain.
-A rule is applicable if its \textit{precondition} is met and, to prevent unnecessary branching, it is not subsumed as indicated by the \textit{subsumption condition}.
+A rule is applicable if its \emph{precondition} is met and, to prevent unnecessary branching, it is not subsumed as indicated by the \emph{subsumption condition}.
 These rules create multiple branches in the tableau, so we represent the different possibilities \lstinline!bs'! to expand a branch \lstinline!b! as a set and write \lstinline!&\fexpands{bs'}{b}&!. 
 Accordingly, we get a new branch \lstinline!b' @ b! in the tableau for each \lstinline!b' $\in$ set bs'!.
 
-A linearly saturated branch where no further branching is possible is called a \textit{saturated} branch. 
+A linearly saturated branch where no further branching is possible is called a \emph{saturated} branch. 
 \begin{lstlisting}
 definition sat b $\equiv$ lin_sat b $\land$ ($\nexists$bs'. &\fexpands{bs'}{b}&)
 \end{lstlisting}
 
 Note that even branching rules are defined such that they never create new subterms with exception of the last rule, which adds a new variable to the branch.
-These variables serve to manifest an inequality; hence, we call them \textit{witnesses}.
+These variables serve to manifest an inequality; hence, we call them \emph{witnesses}.
 \begin{lstlisting}
 definition wits b $\equiv$ vars b - vars (last b)
 \end{lstlisting}
 
 \section{A Decision Procedure for MLSS}
+The mechanics of the decision procedure are typical for a procedure based on a tableau calculus:
+it decides the satisfiability of a given formula \lstinline!$\phi$! by determining whether the formula has a closed tableau.
+More specifically, it initialises the tableau with the singleton branch \lstinline![$\phi$]! and checks whether this branch can be expanded to a closed tableau.
+
+We abstractly specify the behaviour of the decision procedure, leaving an executable specification from which code can be generated to future work.
+The implementation uses a couple of features of Isabelle/HOL's function package:
+instead of defining the function via pattern matching, we specify the equations of the function as conditional rewrite rules.
+This requires us to prove that the assumptions of the equations are non-overlapping, which is done by automation.
+The other concern is that Isabelle/HOL requires functions to be total, so a recursive function needs to terminate in order for it to be well-defined;
+nevertheless, the termination proof is separated from the definition of the function for modularity.
+The function package maintains the soundness of the definition by introducing a so-called domain predicate \lstinline!mlss_proc_branch_dom! which characterises for which arguments the function terminates.
+Each equation of the function is guarded by an assumption that the predicate holds for the argument.
+In \autoref{sec:correct}, we will show that the domain predicate holds for the context that \lstinline!mlss_proc_branch! is called in.
+Before we go into more detail on how the termination is proved, we discuss its definition as shown below.
+
 \begin{lstlisting}
 function mlss_proc_branch :: 'a branch $\Rightarrow$ bool where
   $\neg$ lin_sat b $\Longrightarrow$ mlss_proc_branch b =
@@ -528,20 +542,6 @@ definition mlss_proc :: 'a pset_fm $\Rightarrow$ bool where
   mlss_proc $\phi$ $\equiv$ mlss_proc_branch [$\phi$]
 \end{lstlisting}
 
-\noindent The mechanics of the decision procedure are typical for a procedure based on a tableau calculus:
-it decides the satisfiability of a given formula \lstinline!$\phi$! by determining whether the formula has a closed tableau.
-More specifically, it initialises the tableau with the singleton branch \lstinline![$\phi$]! and checks whether this branch can be expanded to a closed tableau.
-
-We abstractly specify the behaviour of the decision procedure, leaving an executable specification from which code can be generated to future work.
-The implementation as displayed in \todo{How to reference algorithm?} uses a couple of features of Isabelle/HOL's function package:
-instead of defining the function via pattern matching, we specify the equations of the function as conditional rewrite rules.
-This requires us to prove that the assumptions of the equations are non-overlapping, which is done by automation.
-The other concern is that Isabelle/HOL requires functions to be total, so a recursive function needs to terminate in order for it to be well-defined;
-nevertheless, the termination proof is separated from the definition of the function for modularity.
-The function package maintains the soundness of the definition by introducing a so-called domain predicate \lstinline!mlss_proc_branch_dom! which characterises for which arguments the function terminates.
-Each equation of the function is guarded by an assumption that the predicate holds for the argument.
-In \autoref{sec:correct}, we will show that the domain predicate holds for the context that \lstinline!mlss_proc_branch! is called in.
-Before we go into more detail on how the termination is proved, we discuss its definition.
 
 The purpose of the function is to determine whether a given branch can be expanded to a closed tableau.
 As stated before, we first use linear expansion rules in order to prevent premature branching;
@@ -554,7 +554,7 @@ The final equation applies once no further branch expansion is possible, in whic
 The procedure \lstinline!mlss_proc! then calls \lstinline!mlss_proc_branch! with a singleton branch \lstinline![$\phi$]! to determine the satisfiability of a given formula \lstinline!$\phi$!.
 
 This means that \lstinline!mlss_proc_branch! is only applied to branches that result from applying the expansion rules.
-We call this kind of branches \textit{well-formed}.
+We call this kind of branches \emph{well-formed}.
 In the definition below, the expression \lstinline!&\expandss{b'}{b}&! denotes that \lstinline!b'! is one of the branches that results from applying (potentially zero) expansion rules to \lstinline!b!.
 \begin{lstlisting}
 definition wf_branch b $\equiv$ $\exists$$\phi$. &\expandss{b}{[$\phi$]}&
@@ -567,14 +567,13 @@ In \autoref{sec:correct}, we also show that both properties easily transfer to \
 \section{Completeness of the Calculus\label{sec:complete}}
 For completeness of the calculus, we need to show that every unsatisfiable formula has a closed tableau or, conversely, that the formula is satisfiable if there is a saturated and open branch in the tableau.
 To facilitate inductive reasoning, we show a stronger statement by constructing a model \lstinline!M! such that \lstinline!M $\models$ $\phi$! for all \lstinline!$\phi$ $\in$ set b!.
-At the core of the model, there is a \textit{realisation} function that maps set terms to sets of type \lstinline!hf!.
-A subset of the witnesses, which we call \textit{pure} witnesses, receives special treatment from the realisation function for reasons that will become apparent in \autoref{sec:pwits}.
+At the core of the model, there is a \emph{realisation} function that maps set terms to sets of type \lstinline!hf!.
+A subset of the witnesses, which we call \emph{pure} witnesses, receives special treatment from the realisation function for reasons that will become apparent in \autoref{sec:pwits}.
 The collection of set terms of a branch can thus be partitioned into two collections as defined below.
 \begin{lstlisting}
 definition pwits :: 'a branch $\Rightarrow$ 'a set where
   pwits b $\equiv$ {c $\in$ wits b. $\forall$t $\in$ subterms (last b).
-                          AT (Var c $\eqS$ t) $\notin$ set b $\land$
-                          AT (t $\eqS$ Var c) $\notin$ set b} 
+         $\phantom{\equiv}$     AT (Var c $\eqS$ t) $\notin$ set b $\land$ AT (t $\eqS$ Var c) $\notin$ set b} 
 
 definition subterms' :: 'a branch $\Rightarrow$ 'a pset_term set where
   subterms' b $\equiv$ subterms (last b) $\cup$ Var ` (wits b - pwits b)
@@ -658,11 +657,11 @@ The proofs of all propositions translate well into Isabelle, so we refer to the 
   Now, assume for contradiction that \lstinline!realise s $\neq$ realise t!.
   Without loss of generality --- the other case is symmetric --- we obtain an \lstinline!e! such that
   \lstinline!e $\hfmem$ realise s! and \lstinline!e $\hfnotmem$ realise t!. 
-  Considering that \lstinline!s $\in$ subterms' b! and the definition of \lstinline!realise!, we obtain an \lstinline!u! where \lstinline!e = realise u! and \lstinline!u $\rightarrow_\text{bgraph b}$ s!.
-  This, in turn, yields that \lstinline!u $\inS$ s! must be in \lstinline!b!.
-  Together with the assumption \lstinline!(s $\eqS$ t) $\in$ set b! and the saturation of \lstinline!b!, it follows that \lstinline!u $\inS$ t! must also be in \lstinline!b!.
+  Considering that \lstinline!s $\in$ subterms' b! and the definition of \lstinline!realise!, we obtain a \lstinline!d! \lstinline!e = realise d! and \lstinline!d $\rightarrow_\text{bgraph b}$ s!.
+  This, in turn, yields that \lstinline!d $\inS$ s! must be in \lstinline!b!.
+  Together with the assumption \lstinline!(s $\eqS$ t) $\in$ set b! and the saturation of \lstinline!b!, it follows that \lstinline!d $\inS$ t! must also be in \lstinline!b!.
   But then we have
-  \lstinline!realise u $\hfmem$ realise t $\longleftrightarrow$ e $\hfmem$ realise t!
+  \lstinline!realise d $\hfmem$ realise t $\longleftrightarrow$ e $\hfmem$ realise t!
   using Proposition~\ref{it:at_mem}, which is a contradiction to the assumption \lstinline!e $\hfnotmem$ realise t!.
 \end{proof}
 
@@ -745,7 +744,7 @@ lemma bexpands_sound:
 
 \section{Total Correctness of the Decision Procedure\label{sec:correct}}
 We first demonstrate the termination of the procedure for well-formed branches, i.e.\ every well-formed branch is in the domain of \lstinline!mlss_proc_branch!.
-To this end, we derive an upper bound for the number of distinct formulae in a branch whose proof we omit here for brevity (cf. Appendix\todo{Reference Appendix}).
+To this end, we derive an upper bound for the number of distinct formulae in a branch whose proof we omit here for brevity (cf.\ \appendixname~\ref{appendix:bound}).
 We should point out that this bound is not to be construed as the complexity of the procedure as it may create exponentially many branches in general.
 \begin{lstlisting}[label={lst:card_branch}]
 lemma card_wf_branch_ub:
@@ -754,13 +753,12 @@ lemma card_wf_branch_ub:
 \end{lstlisting}
 Remember that \lstinline!mlss_proc_branch! only applies a linear expansion rule to a branch if the application results in new formulae.   
 Moreover, the subsumption conditions of the branching expansion rules ensure that each of the newly created branches contain new formulae.
-Ultimately, we conclude that the procedure must terminate because the number of formulae increases in each step but is also bounded. 
+Ultimately, we conclude that the procedure must terminate for well-formed branches because the number of formulae increases in each step but is also bounded. 
 \begin{lstlisting}
-lemma mlss_proc_branch_dom_if_wf_branch:
-  assumes wf_branch b shows mlss_proc_branch_dom b
+lemma assumes wf_branch b shows mlss_proc_branch_dom b
 \end{lstlisting}
 
-The above lemma allows us to use the computation induction rule of \lstinline!mlss_proc_branch! on well-formed branches, which we use to prove soundness and completeness.
+The above lemma allows us to utilise the computation induction rule of \lstinline!mlss_proc_branch! on well-formed branches, which we use to prove soundness and completeness.
 As both proofs are essentially an application of soundness, respectively completeness, of the calculus, we refer the reader to the formalisation.
 \begin{lstlisting}
 lemma mlss_proc_branch_complete:
@@ -786,15 +784,20 @@ theorem mlss_proc_sound:
 \end{lstlisting}
 
 \section{Dealing with Urelements\label{sec:urelements}}
-In the introduction, we motivated the verification of \lstinline!mlss_proc! with the prospect of integrating it as a tactic into Isabelle.
-For this to work, we need to replay a proof in the tableau calculus through Isabelle/HOL, i.e.\ we need to map every branch expansion rule to a corresponding theorem in Isabelle/HOL.
+In the introduction, we stated the goal of integrating \lstinline!mlss_proc! as a tactic into Isabelle.
+For this to work, we need to map every branch expansion rule to a corresponding theorem in Isabelle/HOL.
 This is straightforward for all expansion rules except for the last branching expansion rule.
-To illustrate, suppose that we are to disprove a statement of the form \lstinline!s $\neq$ (t :: 'a) $\land$ s $\in$ (A :: 'a set) $\cup$ B $\land$ $\ldots$! in Isabelle/HOL.
-By way of reification, we convert this statement to \lstinline!s' $\neqS$ t' $\fmAndSymbol$ s' $\inS$ A' $\unionS$ B' $\fmAndSymbol$ $\ldots$! in our set syntax for some \lstinline!s'!, \lstinline!t'!, \lstinline!A'!, and \lstinline!B'!.
-Applying the decision procedure to this formula might result in a tableau proof containing an application of the last branching rule rule to \lstinline!(s' $\neqS$ t') $\in$ set b!, which creates the branches \lstinline![Var x $\inS$ s', Var x $\notinS$ t'] @ b! and \lstinline![Var x $\notinS$ s', Var x $\inS$ t'] @ b!.
-But this can not be converted to a proof in Isabelle/HOL since \lstinline!s! and \lstinline!t! are not sets.
+To illustrate, suppose that we are to disprove a statement of the form
+\begin{lstlisting}
+  s $\neq$ (t :: 'a) $\land$ s $\in$ (A :: 'a set) $\cup$ B $\land$ $\ldots$
+\end{lstlisting}
+in Isabelle/HOL.
+By way of reification, we convert this to a formula of the shape \lstinline!s' $\neqS$ t' $\fmAndSymbol$ s' $\inS$ A' $\unionS$ B' $\fmAndSymbol$ $\ldots$! in our set syntax for some \lstinline!s'!, \lstinline!t'!, \lstinline!A'!, and \lstinline!B'!.
+When we apply the decision procedure to this formula, we might get back a tableau proof that contains an application of the last branching rule to \lstinline!(s' $\neqS$ t') $\in$ set b!.
+This results in two branches, one of which is \lstinline![Var x $\inS$ s', Var x $\notinS$ t'] @ b!;
+however, there is no matching rule in Isabelle/HOL since \lstinline!s! and \lstinline!t! are not sets.
 
-\begin{figure}[t]
+\begin{figure}[b]
   \centering
   \lstset{
     escapeinside={@}{@}
@@ -864,8 +867,6 @@ Soundness, of course, is not affected by these changes but we have to make a few
   \item For the completeness proof, we need to show that the typing judgement is invariant under branch expansion.
 \end{enumerate*}
 
-All in all, having the formalisation allows us to confidently modify the calculus as Isabelle immediately shows us where the proofs break.\todo{Longer description}
-
 The modifications above ensure that the proof can be replayed through Isabelle/HOL.
 To actually use the calculus, we need to determine the urelements of the initial formula $\phi$, though.
 In other words, we need to implement an inference algorithm for our light-weight type system.
@@ -901,7 +902,7 @@ The author thanks Kevin Kappelmann for his comments on a draft version of the pa
 \clearpage\chapter*{Appendix}
 \todo[inline]{Clean up Appendix}
 
-\section{Subterms and Subformulas}
+\section{Subterms and Subformulas\label{appendix:subterms}}
 
 Similarly to \lstinline!vars!, we introduce the overloaded constant \lstinline!subterms!.
 \begin{lstlisting}
@@ -942,7 +943,7 @@ definition subterms :: 'a branch $\Rightarrow$ 'a pset_term set where
   subterms b $\equiv$ $\bigcup$(subterms ` set b)
 \end{lstlisting}
 
-\section{Definition of the Interpretation Functions}
+\section{Definition of the Interpretation Functions\label{appendix:semantics}}
 
 \begin{lstlisting}
 fun &\Ist& :: ('a $\Rightarrow$ hf) $\Rightarrow$ 'a pset_term $\Rightarrow$ hf where
@@ -960,7 +961,7 @@ fun &\Isa& :: ('a $\Rightarrow$ hf) $\Rightarrow$ 'a pset_atom $\Rightarrow$ boo
 | &\Isa& M (s $\eqS$ t) $\longleftrightarrow$ &\Ist& M s = &\Ist& M t
 \end{lstlisting}
 
-\section{Expansion Rules}
+\section{Expansion Rules\label{appendix:rules}}
 
 \begin{table*}[h!]
   \centering
@@ -1149,8 +1150,8 @@ fun &\Isa& :: ('a $\Rightarrow$ hf) $\Rightarrow$ 'a pset_atom $\Rightarrow$ boo
   \caption{Branching expansion rules. We write \lstinline!$\phi$! for \lstinline!last b! here.}
 \end{table*}
 
-\section{Upper-Bounding the Cardinality of a Branch}
-\textit{Literals} are a type of subformulae of particular importance, so we define a predicate for them.
+\section{Upper-Bounding the Cardinality of a Branch\label{appendix:bound}}
+\emph{Literals} are a type of subformulae of particular importance, so we define a predicate for them.
 \begin{lstlisting}
 fun is_literal :: 'a fm $\Rightarrow$ bool where
   is_literal (&\fmAtom& _) = True | is_literal (&\fmNeg{(\fmAtom{} \_)}&) = True

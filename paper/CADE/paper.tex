@@ -157,7 +157,7 @@
   We formalise its syntax and semantics as well as a sound and complete tableau calculus for it.
   We also provide an abstract specification of a decision procedure that applies the rules of the calculus exhaustively and prove its termination.
   Furthermore, we extend the calculus with a light-weight type system that paves the way for an integration of the procedure into Isabelle/HOL.
-  \keywords{First TODO \and Second TODO\todo{keywords}}
+  \keywords{Decision procedures \and Tableau \and Proof assistants \and Set theory}
 \end{abstract}
 
 \section{Introduction}
@@ -195,7 +195,7 @@ however, this is not the case in Isabelle/HOL, e.g.\ consider the expression \ls
 In order to deal with these urelements, we extend the calculus with a light-weight type system and a verified inference algorithm that identifies the urelements.
 
 The modification of the calculus required non-trivial changes to the completeness proof.
-Here, the formalisation was instrumental because Isabelle immediately revealed broken proofs that needed fixing.
+Here, the formalisation was instrumental because Isabelle immediately revealed which proofs had been broken.
 This illustrates the usefulness of ITPs for developing logic calculi: they allow us to confidently make modifications without compromising correctness. 
 
 \subsection{Related Work}
@@ -207,7 +207,7 @@ Both of these procedures construct a model during execution that is used to guid
 \citeauthor{tableau_quantifier_free} also cover an extension of the calculus with uninterpreted functions, which was revisited by \citeauthor{mlss_quantification}~\cite{mlss_quantification} who avoided the construction of a model during execution.
 In this paper, we consider a version of the latter procedure due to \citeauthor{new_fast_tableau}~\cite{new_fast_tableau} that is specialised to \MLSS{} and where the branching rules of the calculus are set up in a way to guarantee mutual exclusivity of the branches.
 Later extensions of the calculus added certain interpreted functions such as monotone functions~\cite{mlss_monotone_functions} and the inverse of a function~\cite{mlss_cartesian_map}.
-The latter extension notably includes the Cartesian product.
+The second extension notably includes the Cartesian product.
 Those extensions, though, did not improve upon the tableau calculus for \MLSS{}.
 
 There is a large body of work at the intersection of ITPs and tableau methods but to keep with the theme of the paper we only consider formalisations of correctness here.
@@ -275,8 +275,8 @@ definition vars $\phi$ $\equiv$ $\bigcup$(vars ` atoms $\phi$)
 \end{lstlisting}
 
 Likewise, we fix the constant \lstinline!subterms :: 'b $\Rightarrow$ 'a pset_term set!.
-We overload this constant to return the set terms that are subterms of a set term, set atom, or formula, respectively. Lastly, we consider the subformulae of a formula and define a function \lstinline!subfms :: 'a fm $\Rightarrow$ 'a fm set! that computes them.
-The functions \lstinline!subterms! and \lstinline!subfms! are defined in the usual way (cf.\ \appendixname~\ref{appendix:subterms}).
+We overload this constant to return the set terms that are subterms of a set term, set atom, or formula, respectively. Lastly, we compute the subformulae of a formula with the function \lstinline!subfms :: 'a fm $\Rightarrow$ 'a fm set!.
+The functions \lstinline!subterms! and \lstinline!subfms! are defined in the  way (cf.\ \appendixname~\ref{appendix:subterms}).
 
 \subsection{Semantics}
 The original paper~\cite{new_fast_tableau} bases the semantics of \MLSS{} on the von Neumann hierarchy of sets $\mathcal{V}$. 
@@ -340,6 +340,7 @@ A tableau is called \emph{closed} if all of its branches are closed.
   }
   \newcommand{\ton}{\text{t}_\text{1}}
   \newcommand{\ttw}{\text{t}_\text{2}}
+  \caption{Linear expansion rules.\label{tab:lexpands} We omit the rules for $\interS$ and $\diffS$ as they coincide with the original paper (cf.\ \appendixname~\ref{appendix:linear_rules}).}
   \begin{tabular}{ccc}
     \toprule
     Propositional Rules & {\hskip 6pt} & Rules for \lstinline!$\unionS$! \\
@@ -391,12 +392,10 @@ A tableau is called \emph{closed} if all of its branches are closed.
     \\
     \bottomrule
   \end{tabular}
-  \bigskip
-  \caption{Linear expansion rules.\label{tab:lexpands} We omit the rules for $\interS$ and $\diffS$ as they coincide with the original paper (cf.\ \appendixname~\ref{appendix:rules}).}
 \end{table*}
 
 The calculus considers two kinds of branch expansion rules: \emph{linear} and \emph{branching} rules.
-As the name suggests, branching rules lead to the creation of new branches in the tableau while linear rules only extend a branch \lstinline!b! with new formulae \lstinline[breaklines=true]!b' = [$\psi_1$,$\ldots$,$\psi_n$]!, which we denote by \lstinline!&\lexpands{b'}{b}&!.
+As the name suggests, branching rules lead to the creation of new branches in the tableau while linear rules only extend a branch \lstinline!b! with new formulae \lstinline!b' = [$\psi_1$,$\ldots$,$\psi_n$]!, which we denote by \lstinline!&\lexpands{b'}{b}&!.
 \autoref{tab:lexpands} shows the linear expansion rules.
 Note that in the first two rules for \lstinline!$\eqS$!, \lstinline!l! is a literal occurring in the branch.
 Furthermore, the term-for-term substitution \lstinline!l{s/t}! is restricted to replace \lstinline!t! only if it occurs as a top-level set terms of \lstinline!l!.
@@ -433,6 +432,7 @@ is saturated --- neither linear nor branching rules apply --- and open, but ther
   \newcommand{\ton}{\text{t}_\text{1}}
   \newcommand{\ttw}{\text{t}_\text{2}}
   \newcommand{\lpipe}{\rule[-0.4ex]{0.6pt}{2.3ex}}
+  \caption{Branching expansion rules.\label{tab:bexpands} We write \lstinline!$\phi$! for \lstinline!last b! here. The omitted rules coincide with the original paper (cf.\ \appendixname~\ref{appendix:branching_rules}).}
   \begin{tabular}{>{\centering\arraybackslash}p{0.34\textwidth} >{\centering\arraybackslash}p{0.32\textwidth} >{\centering\arraybackslash}p{0.3\textwidth}}
     \toprule
     Rule & Precondition & Subsumption condition \\
@@ -493,8 +493,6 @@ is saturated --- neither linear nor branching rules apply --- and open, but ther
          \\
          \bottomrule
   \end{tabular}
-  \bigskip
-  \caption{Branching expansion rules.\label{tab:bexpands} We write \lstinline!$\phi$! for \lstinline!last b! here. The omitted rules coincide with the original paper (cf.\ \appendixname~\ref{appendix:rules}).}
 \end{table*}
 After running out of linear rules to apply, only the branching rules shown in \autoref{tab:bexpands} remain.
 A rule is applicable if its \emph{precondition} is met and, to prevent unnecessary branching, it is not subsumed as indicated by the \emph{subsumption condition}.
@@ -523,7 +521,7 @@ instead of defining the function via pattern matching, we specify the equations 
 This requires us to prove that the assumptions of the equations are non-overlapping, which is done by automation.
 The other concern is that Isabelle/HOL requires functions to be total, so a recursive function needs to terminate in order for it to be well-defined;
 nevertheless, the termination proof is separated from the definition of the function for modularity.
-The function package maintains the soundness of the definition by introducing a so-called domain predicate \lstinline!mlss_proc_branch_dom! which characterises for which arguments the function terminates.
+The function package maintains the soundness of the definition by introducing a so-called domain predicate \lstinline!mlss_proc_branch_dom! which characterises the arguments for which the function terminates.
 Each equation of the function is guarded by an assumption that the predicate holds for the argument.
 In \autoref{sec:correct}, we will show that the domain predicate holds for the context that \lstinline!mlss_proc_branch! is called in.
 Before we go into more detail on how the termination is proved, we discuss its definition as shown below.
@@ -657,7 +655,7 @@ The proofs of all propositions translate well into Isabelle, so we refer to the 
   Now, assume for contradiction that \lstinline!realise s $\neq$ realise t!.
   Without loss of generality --- the other case is symmetric --- we obtain an \lstinline!e! such that
   \lstinline!e $\hfmem$ realise s! and \lstinline!e $\hfnotmem$ realise t!. 
-  Considering that \lstinline!s $\in$ subterms' b! and the definition of \lstinline!realise!, we obtain a \lstinline!d! \lstinline!e = realise d! and \lstinline!d $\rightarrow_\text{bgraph b}$ s!.
+  Considering that \lstinline!s $\in$ subterms' b! and the definition of \lstinline!realise!, we obtain a \lstinline!d! with \lstinline!e = realise d! and \lstinline!d $\rightarrow_\text{bgraph b}$ s!.
   This, in turn, yields that \lstinline!d $\inS$ s! must be in \lstinline!b!.
   Together with the assumption \lstinline!(s $\eqS$ t) $\in$ set b! and the saturation of \lstinline!b!, it follows that \lstinline!d $\inS$ t! must also be in \lstinline!b!.
   But then we have
@@ -728,7 +726,7 @@ lemma bexpands_sound:
   shows $\exists$M'. $\exists$b' $\in$ bs'. $\forall$$\psi$ $\in$ set (b' @ b). M' $\models$ $\psi$
 \end{lstlisting}
 \begin{proof}
-  We only consider the case where \lstinline!&\fexpands{bs'}{b}&! was proved by applying the last rule to \lstinline!s $\neqS$ t! for some \lstinline!s! and \lstinline!t!.
+  We only consider the case where \lstinline!&\fexpands{bs'}{b}&! was proved by applying the last branching expansion rule to \lstinline!s $\neqS$ t! for some \lstinline!s! and \lstinline!t!.
   We have 
 \begin{lstlisting}
   bs' = {[Var x $\inS$ s, Var x $\notinS$ t], [Var x $\inS$ t, Var x $\notinS$ s]}
@@ -883,6 +881,7 @@ Conversely, all terms \lstinline!s! with \lstinline!$\Gamma$ s $=$ 0! are urelem
 \section{Conclusion and Future Work}
 By closely following a paper by \citeauthor{new_fast_tableau}~\cite{new_fast_tableau}, we developed a formalisation of a tableau calculus for an unquantified fragment of set theory called \MLSS{}.
 The formalisation includes an abstract description of a decision procedure that builds on the calculus.
+To make the decision procedure compatible with Isabelle/HOL, we extended the calculus with a light-weight type system while maintaining completeness.
 
 The refinement of the abstract description to an executable specification from which code can be exported is left for future work.
 This executable specification should generate certificates that can be replayed through Isabelle's inference kernel in order to facilitate the integration of the procedure into Isabelle.
@@ -891,8 +890,8 @@ This executable specification should generate certificates that can be replayed 
 %Additional constructs such as finiteness and pairs.
 %Optimisations for the algorithm.
 
-\subsubsection{Acknowledgements}
-The author thanks Kevin Kappelmann for his comments on a draft version of the paper.
+%\subsubsection{Acknowledgements}
+%The author thanks Kevin Kappelmann for his comments on a draft version of the paper.
 
 \bibliography{sources}
 
@@ -900,11 +899,10 @@ The author thanks Kevin Kappelmann for his comments on a draft version of the pa
 \appendix
 
 \clearpage\chapter*{Appendix}
-\todo[inline]{Clean up Appendix}
-
 \section{Subterms and Subformulas\label{appendix:subterms}}
 
-Similarly to \lstinline!vars!, we introduce the overloaded constant \lstinline!subterms!.
+We introduce the function \lstinline!subterms :: 'b $\Rightarrow$ 'a pset_term! that is overloaded in its argument.
+We first overload the function for set terms.
 \begin{lstlisting}
 fun subterms :: 'a pset_term $\Rightarrow$ 'a pset_term set where
   subterms $\emptyset$ = {$\emptyset$}
@@ -926,7 +924,7 @@ definition subterms :: 'a pset_fm $\Rightarrow$ 'a pset_term set where
   subterms $\phi$ $\equiv$ $\bigcup$(subterms ` atoms $\phi$)
 \end{lstlisting}
 
-Lastly, we consider the subformulae of a formula and define a function that computes them.
+We also consider the subformulae of a formula and define a function that computes them.
 \begin{lstlisting}
 fun subfms :: 'a fm $\Rightarrow$ 'a fm set where
   subfms (&\fmAtom& a) = {&\fmAtom& a}
@@ -935,6 +933,7 @@ fun subfms :: 'a fm $\Rightarrow$ 'a fm set where
 | subfms (&\fmNeg{q}&) = {&\fmNeg{q}&} $\cup$ subfms q
 \end{lstlisting}
 
+Finally, we lift the functions \lstinline!vars! and \lstinline!subterms! to branches.
 \begin{lstlisting}
 definition vars :: 'a branch $\Rightarrow$ 'a set 
   vars b $\equiv$ $\bigcup$(vars ` set b)
@@ -943,8 +942,11 @@ definition subterms :: 'a branch $\Rightarrow$ 'a pset_term set where
   subterms b $\equiv$ $\bigcup$(subterms ` set b)
 \end{lstlisting}
 
+\clearpage
+
 \section{Definition of the Interpretation Functions\label{appendix:semantics}}
 
+We define the interpretation function \lstinline!&\Ist&! for set atoms.
 \begin{lstlisting}
 fun &\Ist& :: ('a $\Rightarrow$ hf) $\Rightarrow$ 'a pset_term $\Rightarrow$ hf where
   &\Ist& M $\emptyset$ = 0
@@ -961,7 +963,67 @@ fun &\Isa& :: ('a $\Rightarrow$ hf) $\Rightarrow$ 'a pset_atom $\Rightarrow$ boo
 | &\Isa& M (s $\eqS$ t) $\longleftrightarrow$ &\Ist& M s = &\Ist& M t
 \end{lstlisting}
 
-\section{Expansion Rules\label{appendix:rules}}
+\section{Upper-Bounding the Cardinality of a Branch\label{appendix:bound}}
+The argument below argues about the \emph{literals} of a branch, which are defined as follows.
+\begin{lstlisting}
+fun is_literal :: 'a fm $\Rightarrow$ bool where
+  is_literal (&\fmAtom& _) = True | is_literal (&\fmNeg{(\fmAtom{} \_)}&) = True
+| is_literal _ = False
+\end{lstlisting}
+
+We still need to give a termination proof to ascertain total correctness.
+The core of our argument is that the number of distinct formulae that can be derived with the expansion rules is finite.
+In particular, we claim that the following upper bound holds.
+\begin{lstlisting}
+  &\phantom{$\leq$}& |set b|
+  &\textover{$=$}{$\leq$}& |{$\psi$ $\in$ set b. $\neg$ is_literal $\psi$}| +
+  &\phantom{$\leq$}& |{$\psi$ $\in$ set b. is_literal $\psi$}|
+  $\leq$ 2 * |subfms (last b)| + |{$\psi$ $\in$ set b. is_literal $\psi$}|
+  $\leq$ 2 * |subfms (last b)| + 16 * |subterms (last b)|$^4$
+\end{lstlisting}
+We treat both inequalities separately, starting with the first one whose justification hinges on an invariant: 
+every new composite subformula that is introduced by an expansion rule is the negation of a subformula that already occurs in \lstinline!last b!.
+Written as a formula, we have
+\begin{lstlisting}
+  &\phantom{$\subseteq$}& {$\psi$ $\in$ set b. $\neg$ is_literal $\psi$}
+  $\subseteq$ subfms (last b) $\cup$ $\fmNegSymbol$ ` subfms (last b).
+\end{lstlisting}
+Confirming that this is an invariant is an easy exercise of going through each of the propositional rules in \autoref{tab:lexpands} and the first two branching rules in \autoref{tab:bexpands}.
+Thus, we have
+\begin{lstlisting}
+  &\phantom{$\leq$}& |{$\psi$ $\in$ set b. $\neg$ is_literal $\psi$}|
+  $\leq$ |subfms (last b)| + |$\fmNegSymbol$ ` subfms (last b)|
+  $\leq$ 2 * |subfms (last b)|
+\end{lstlisting}
+which is the first inequality we asserted. 
+
+Concerning the second inequality, first observe that each literal contains an atom, implying that the set of literals is at most twice as large as the set of atoms in a branch. 
+In addition, an atom is formed by combining two subterms occurring in the branch with either \lstinline!$\inS$! or \lstinline!$\eqS$!;
+hence, we have
+\begin{lstlisting}
+  &\phantom{$\leq$}& |{$\psi$ $\in$ set b. is_literal $\psi$}|
+  $\leq$ 2 * |$\bigcup$(atoms ` set b)| $\leq$ 2 * 2 * |subterms b|$^\text{2}$.
+\end{lstlisting}
+Since no expansion rule introduces new subterms, we know the cardinality of the subterms in a branch \lstinline!b! is limited by the subterms of \lstinline!last b! plus the number of witnesses added to the branch.
+Note that the last branching rule requires \lstinline!s $\neqS$ t! to be in \lstinline!b! for some \lstinline!s,t $\in$ subterms (last b)!.
+The subsumption condition then prohibits that the rule can be applied again for the combination of \lstinline!s! and \lstinline!t!, thus yielding an upper bound of \lstinline!|subterms (last b)|$^\text{2}$! for the witnesses.
+This allows us to finish the calculation that justifies the second inequality:
+\begin{lstlisting}
+  &\phantom{$\leq$}& 4 * |subterms b|$^\text{2}$
+  $\leq$ 4 * |subterms (last b)| + |wits b|$^\text{2}$
+  $\leq$ 4 * |subterms (last b)| + (|subterms (last b)|$^\text{2}$)$^\text{2}$
+  $\leq$ 4 * 4 * |subterms (last b)|$^\text{4}$.
+\end{lstlisting}
+All in all, we get the following lemma.
+\begin{lstlisting}[label={lst:card_branch}]
+lemma card_wf_branch_ub:
+  assumes wf_branch b
+  shows |set b|
+      $\leq$ 2 * |subfms (last b)| + 16 * |subterms (last b)|$^\text{4}$
+\end{lstlisting}
+
+\clearpage
+\section{Linear Expansion Rules\label{appendix:linear_rules}}
 
 \begin{table*}[h!]
   \centering
@@ -970,6 +1032,7 @@ fun &\Isa& :: ('a $\Rightarrow$ hf) $\Rightarrow$ 'a pset_atom $\Rightarrow$ boo
   }
   \newcommand{\ton}{\text{t}_\text{1}}
   \newcommand{\ttw}{\text{t}_\text{2}}
+  \caption{Linear expansion rules.}
   \begin{tabular}{>{\centering\arraybackslash}p{0.48\textwidth}m{0.02\textwidth}>{\centering\arraybackslash}p{0.48\textwidth}}
     \toprule
     Propositional Rules & & Rules for \lstinline!$\unionS$! \\
@@ -1033,11 +1096,12 @@ fun &\Isa& :: ('a $\Rightarrow$ hf) $\Rightarrow$ 'a pset_atom $\Rightarrow$ boo
     \\
     \bottomrule
   \end{tabular}
-  \bigskip
-  \caption{Linear expansion rules}
 \end{table*}
 
-\begin{table*}
+\clearpage
+\section{Branching Expansion Rules\label{appendix:branching_rules}}
+
+\begin{table*}[h]
   \lstset{
     escapeinside={@}{@}
   }
@@ -1045,6 +1109,7 @@ fun &\Isa& :: ('a $\Rightarrow$ hf) $\Rightarrow$ 'a pset_atom $\Rightarrow$ boo
   \newcommand{\ton}{\text{t}_\text{1}}
   \newcommand{\ttw}{\text{t}_\text{2}}
   \newcommand{\lpipe}{\rule[-0.4ex]{0.6pt}{2.3ex}}
+  \caption{Branching expansion rules. We write \lstinline!$\phi$! for \lstinline!last b! here.}
   \begin{tabular}{>{\centering\arraybackslash}p{0.34\textwidth} >{\centering\arraybackslash}p{0.32\textwidth} >{\centering\arraybackslash}p{0.3\textwidth}}
     \toprule
     Rule & Precondition & Subsumption condition \\
@@ -1146,67 +1211,7 @@ fun &\Isa& :: ('a $\Rightarrow$ hf) $\Rightarrow$ 'a pset_atom $\Rightarrow$ boo
          \\
          \bottomrule
   \end{tabular}
-  \bigskip
-  \caption{Branching expansion rules. We write \lstinline!$\phi$! for \lstinline!last b! here.}
 \end{table*}
 
-\section{Upper-Bounding the Cardinality of a Branch\label{appendix:bound}}
-\emph{Literals} are a type of subformulae of particular importance, so we define a predicate for them.
-\begin{lstlisting}
-fun is_literal :: 'a fm $\Rightarrow$ bool where
-  is_literal (&\fmAtom& _) = True | is_literal (&\fmNeg{(\fmAtom{} \_)}&) = True
-| is_literal _ = False
-\end{lstlisting}
-
-We still need to give a termination proof to ascertain total correctness.
-The core of our argument is that the number of distinct formulae that can be derived with the expansion rules is finite.
-In particular, we claim that the following upper bound holds.
-\begin{lstlisting}
-  &\phantom{$\leq$}& |set b|
-  &\textover{$=$}{$\leq$}& |{$\psi$ $\in$ set b. $\neg$ is_literal $\psi$}| +
-  &\phantom{$\leq$}& |{$\psi$ $\in$ set b. is_literal $\psi$}|
-  $\leq$ 2 * |subfms (last b)| + |{$\psi$ $\in$ set b. is_literal $\psi$}|
-  $\leq$ 2 * |subfms (last b)| + 16 * |subterms (last b)|$^4$
-\end{lstlisting}
-We treat both inequalities separately, starting with the first one whose justification hinges on an invariant: 
-every new composite subformula that is introduced by an expansion rule is the negation of a subformula that already occurs in \lstinline!last b!.
-Written as a formula, we have
-\begin{lstlisting}
-  &\phantom{$\subseteq$}& {$\psi$ $\in$ set b. $\neg$ is_literal $\psi$}
-  $\subseteq$ subfms (last b) $\cup$ $\fmNegSymbol$ ` subfms (last b).
-\end{lstlisting}
-Confirming that this is an invariant is an easy exercise of going through each of the propositional rules in \autoref{tab:lexpands} and the first two branching rules in \autoref{tab:bexpands}.
-Thus, we have
-\begin{lstlisting}
-  &\phantom{$\leq$}& |{$\psi$ $\in$ set b. $\neg$ is_literal $\psi$}|
-  $\leq$ |subfms (last b)| + |$\fmNegSymbol$ ` subfms (last b)|
-  $\leq$ 2 * |subfms (last b)|
-\end{lstlisting}
-which is the first inequality we asserted. 
-
-Concerning the second inequality, first observe that each literal contains an atom, implying that the set of literals is at most twice as large as the set of atoms in a branch. 
-In addition, an atom is formed by combining two subterms occurring in the branch with either \lstinline!$\inS$! or \lstinline!$\eqS$!;
-hence, we have
-\begin{lstlisting}
-  &\phantom{$\leq$}& |{$\psi$ $\in$ set b. is_literal $\psi$}|
-  $\leq$ 2 * |$\bigcup$(atoms ` set b)| $\leq$ 2 * 2 * |subterms b|$^\text{2}$.
-\end{lstlisting}
-Since no expansion rule introduces new subterms, we know the cardinality of the subterms in a branch \lstinline!b! is limited by the subterms of \lstinline!last b! plus the number of witnesses added to the branch.
-Note that the last branching rule requires \lstinline!s $\neqS$ t! to be in \lstinline!b! for some \lstinline!s,t $\in$ subterms (last b)!.
-The subsumption condition then prohibits that the rule can be applied again for the combination of \lstinline!s! and \lstinline!t!, thus yielding an upper bound of \lstinline!|subterms (last b)|$^\text{2}$! for the witnesses.
-This allows us to finish the calculation that justifies the second inequality:
-\begin{lstlisting}
-  &\phantom{$\leq$}& 4 * |subterms b|$^\text{2}$
-  $\leq$ 4 * |subterms (last b)| + |wits b|$^\text{2}$
-  $\leq$ 4 * |subterms (last b)| + (|subterms (last b)|$^\text{2}$)$^\text{2}$
-  $\leq$ 4 * 4 * |subterms (last b)|$^\text{4}$.
-\end{lstlisting}
-All in all, we get the following lemma.
-\begin{lstlisting}[label={lst:card_branch}]
-lemma card_wf_branch_ub:
-  assumes wf_branch b
-  shows |set b|
-      $\leq$ 2 * |subfms (last b)| + 16 * |subterms (last b)|$^\text{4}$
-\end{lstlisting}
 
 \end{document}

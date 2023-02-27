@@ -2,6 +2,14 @@ theory Set_Semantics
   imports Logic HereditarilyFinite.Finitary "HOL-Library.Adhoc_Overloading" "HOL-Library.Monad_Syntax"
 begin
 
+chapter \<open>Definition of MLSS\<close>
+text \<open>
+  Here, we define the syntax and semantics of multi-level syllogistic
+  with singleton (MLSS). Additionally, we define a number of functions
+  working on the syntax such as a function that collects all the subterms
+  of a term.
+\<close>
+
 section \<open>Syntax and Semantics\<close>
 
 datatype (vars_term: 'a) pset_term = 

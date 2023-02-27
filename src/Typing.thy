@@ -2,6 +2,14 @@ theory Typing
   imports Set_Calculus
 begin
 
+section \<open>Typing and Branch Expansion\<close>
+text \<open>
+  In this theory, we prove that the branch expansion rules
+  preserve well-typedness.
+\<close>
+
+no_notation Set.member  ("(_/ : _)" [51, 51] 50)
+
 lemma types_term_unique: "v \<turnstile> t : l1 \<Longrightarrow> v \<turnstile> t : l2 \<Longrightarrow> l2 = l1"
   apply(induction arbitrary: l2 rule: types_pset_term.induct)
   apply (metis types_pset_term_cases)+
@@ -129,9 +137,8 @@ next
   proof(induction rule: lexpands_un.induct)
     case (1 s t1 t2 b)
     then show ?thesis
-      apply(auto dest!: types_fmD(5,6) "1"(4) intro!: types_fmI(2,3,4)
-                  intro: types_pset_atom_Member_Union_D)
-      done
+      by (auto dest!: types_fmD(5,6) "1"(4) intro!: types_fmI(2,3,4)
+               intro: types_pset_atom_Member_Union_D)
   next
     case (2 s t1 b t2)
     then have "v \<turnstile> last b"
@@ -147,23 +154,20 @@ next
   next
     case (4 s t1 t2 b)
     then show ?case
-      apply(auto dest!: types_fmD(5,6) "4"(5) intro!: types_fmI(2,3,4)
-                 intro: types_pset_atom_Member_Union_D)
-      done
+      by (auto dest!: types_fmD(5,6) "4"(5) intro!: types_fmI(2,3,4)
+               intro: types_pset_atom_Member_Union_D)
   next
     case (5 s t1 t2 b)
     then show ?case
-      apply(auto dest!: types_fmD(5,6) "5"(5) intro!: types_fmI(2,3,4)
-                 intro: types_pset_atom_Member_Union_D)
-      done
+      by (auto dest!: types_fmD(5,6) "5"(5) intro!: types_fmI(2,3,4)
+               intro: types_pset_atom_Member_Union_D)
   next
     case (6 s t1 b t2)
     then have "v \<turnstile> last b"
       by auto
     note types_if_types_Member_and_subterms[where ?f="(\<squnion>\<^sub>s)", OF _ this "6"(3), simplified]
     with 6 show ?case
-      apply(auto dest!: types_fmD(5,6) "6"(6) intro!: types_fmI(2,3,4))
-      done
+      by (auto dest!: types_fmD(5,6) "6"(6) intro!: types_fmI(2,3,4))
   qed
 next
   case (3 b' b)
@@ -171,9 +175,8 @@ next
   proof(induction rule: lexpands_int.induct)
     case (1 s t1 t2 b)
     then show ?thesis
-      apply(auto dest!: types_fmD(5,6) "1"(4) intro!: types_fmI(2,3,4)
-                  intro: types_pset_atom_Member_Inter_D)
-      done
+      by (auto dest!: types_fmD(5,6) "1"(4) intro!: types_fmI(2,3,4)
+               intro: types_pset_atom_Member_Inter_D)
   next
     case (2 s t1 b t2)
     then have "v \<turnstile> last b"
@@ -189,23 +192,20 @@ next
   next
     case (4 s t1 t2 b)
     then show ?case
-      apply(auto dest!: types_fmD(5,6) "4"(5) intro!: types_fmI(2,3,4)
-                 intro: types_pset_atom_Member_Inter_D)
-      done
+      by (auto dest!: types_fmD(5,6) "4"(5) intro!: types_fmI(2,3,4)
+               intro: types_pset_atom_Member_Inter_D)
   next
     case (5 s t1 t2 b)
     then show ?case
-      apply(auto dest!: types_fmD(5,6) "5"(5) intro!: types_fmI(2,3,4)
-                 intro: types_pset_atom_Member_Inter_D)
-      done
+      by (auto dest!: types_fmD(5,6) "5"(5) intro!: types_fmI(2,3,4)
+               intro: types_pset_atom_Member_Inter_D)
   next
     case (6 s t1 b t2)
     then have "v \<turnstile> last b"
       by auto
     note types_if_types_Member_and_subterms[where ?f="(\<sqinter>\<^sub>s)", OF _ this "6"(3), simplified]
     with 6 show ?case
-      apply(auto dest!: types_fmD(5,6) "6"(6) intro!: types_fmI(2,3,4))
-      done
+      by (auto dest!: types_fmD(5,6) "6"(6) intro!: types_fmI(2,3,4))
   qed
 next
   case (4 b' b)
@@ -213,9 +213,8 @@ next
     proof(induction rule: lexpands_diff.induct)
     case (1 s t1 t2 b)
     then show ?thesis
-      apply(auto dest!: types_fmD(5,6) "1"(4) intro!: types_fmI(2,3,4)
-                  intro: types_pset_atom_Member_Diff_D)
-      done
+      by (auto dest!: types_fmD(5,6) "1"(4) intro!: types_fmI(2,3,4)
+               intro: types_pset_atom_Member_Diff_D)
   next
     case (2 s t1 b t2)
     then have "v \<turnstile> last b"
@@ -231,23 +230,20 @@ next
   next
     case (4 s t1 t2 b)
     then show ?case
-      apply(auto dest!: types_fmD(5,6) "4"(5) intro!: types_fmI(2,3,4)
-                 intro: types_pset_atom_Member_Diff_D)
-      done
+      by (auto dest!: types_fmD(5,6) "4"(5) intro!: types_fmI(2,3,4)
+               intro: types_pset_atom_Member_Diff_D)
   next
     case (5 s t1 t2 b)
     then show ?case
-      apply(auto dest!: types_fmD(5,6) "5"(5) intro!: types_fmI(2,3,4)
-                 intro: types_pset_atom_Member_Diff_D)
-      done
+      by (auto dest!: types_fmD(5,6) "5"(5) intro!: types_fmI(2,3,4)
+               intro: types_pset_atom_Member_Diff_D)
   next
     case (6 s t1 b t2)
     then have "v \<turnstile> last b"
       by auto
     note types_if_types_Member_and_subterms[where ?f="(-\<^sub>s)", OF _ this "6"(3), simplified]
     with 6 show ?case
-      apply(auto dest!: types_fmD(5,6) "6"(6) intro!: types_fmI(2,3,4))
-      done
+      by (auto dest!: types_fmD(5,6) "6"(6) intro!: types_fmI(2,3,4))
   qed
 next
   case (5 b' b)
@@ -281,13 +277,13 @@ next
             intro!: types_fmI(3,4) types_subst_tlvl)
 qed
 
-lemma types_bexpands_noparam:
+lemma types_bexpands_nowit:
   fixes \<phi> :: "'a pset_fm"
-  assumes "bexpands_noparam bs' b" "b' \<in> bs'" "\<phi> \<in> set b'"
+  assumes "bexpands_nowit bs' b" "b' \<in> bs'" "\<phi> \<in> set b'"
   assumes "\<And>(\<phi> :: 'a pset_fm). \<phi> \<in> set b \<Longrightarrow> v \<turnstile> \<phi>"
   shows "v \<turnstile> \<phi>"
   using assms(1)
-proof(cases rule: bexpands_noparam.cases)
+proof(cases rule: bexpands_nowit.cases)
   case (1 p q)
   from assms "1"(2) show ?thesis
     unfolding "1"(1)
@@ -336,9 +332,7 @@ lemma types_pset_atom_if_on_vars_eq:
   assumes "\<forall>x \<in> vars a. v' x = v x"
   shows "v' \<turnstile> a \<longleftrightarrow> v \<turnstile> a"
   using assms
-  apply (auto simp: ball_Un types_pset_atom.simps)
-     apply (metis types_term_if_on_vars_eq)+
-  done
+  by (auto simp: ball_Un types_pset_atom.simps dest!: types_term_if_on_vars_eq)
 
 lemma types_pset_fm_if_on_vars_eq:
   fixes \<phi> :: "'a pset_fm"
@@ -364,14 +358,14 @@ lemma types_pset_fm_fun_upd:
   shows "v(x := l) \<turnstile> \<phi> \<longleftrightarrow> v \<turnstile> \<phi>"
   using assms types_pset_fm_if_on_vars_eq by (metis fun_upd_other)
 
-lemma types_bexpands_param:
+lemma types_bexpands_wit:
   fixes b :: "'a branch" and bs' :: "'a branch set"
-  assumes "bexpands_param t1 t2 x bs' b" "b \<noteq> []"
+  assumes "bexpands_wit t1 t2 x bs' b" "b \<noteq> []"
   assumes "\<And>(\<phi> :: 'a pset_fm). \<phi> \<in> set b \<Longrightarrow> v \<turnstile> \<phi>"
   obtains l where "\<forall>\<phi> \<in> set b. v(x := l) \<turnstile> \<phi>"
                   "\<forall>b' \<in> bs'. \<forall>\<phi> \<in> set b'. v(x := l) \<turnstile> \<phi>"
   using assms(1)
-proof(cases rule: bexpands_param.cases)
+proof(cases rule: bexpands_wit.cases)
   case 1
   from assms(3)[OF "1"(2)] obtain lt where lt: "v \<turnstile> t1 : lt" "v \<turnstile> t2 : lt"
     by (auto dest!: types_fmD simp: types_pset_atom.simps)
@@ -384,8 +378,8 @@ proof(cases rule: bexpands_param.cases)
   moreover from \<open>x \<notin> vars b\<close> \<open>AF (t1 =\<^sub>s t2) \<in> set b\<close> have not_in_vars: "x \<notin> vars t1" "x \<notin> vars t2"
     using assms(2) by (auto simp: vars_fm_vars_branchI)
   from this[THEN types_term_fun_upd] have "\<forall>b' \<in> bs'. \<forall>\<phi> \<in> set b'. v(x := ltp) \<turnstile> \<phi>"
-    using ltp  unfolding "1"(1) 
-    apply(auto intro!: types_fmI types_pset_term_intros'(2) simp: types_pset_atom.simps )
+    using ltp unfolding "1"(1) 
+    apply(auto intro!: types_fmI types_pset_term_intros'(2) simp: types_pset_atom.simps)
     apply (metis fun_upd_same fun_upd_upd types_pset_term.intros(2))+
     done
   ultimately show ?thesis
@@ -416,16 +410,16 @@ next
   from \<open>bexpands bs b2\<close> show ?case
   proof(cases rule: bexpands.cases)
     case 1
-    from types_bexpands_noparam[OF this] v' \<open>b3 \<in> bs\<close> have "\<forall>\<phi> \<in> set b3. v' \<turnstile> \<phi>"
+    from types_bexpands_nowit[OF this] v' \<open>b3 \<in> bs\<close> have "\<forall>\<phi> \<in> set b3. v' \<turnstile> \<phi>"
       by blast
     with v' "3.prems" show ?thesis
       by force
   next
     case (2 t1 t2 x)
-    from types_bexpands_param[OF this] v' \<open>b3 \<in> bs\<close> obtain l
+    from types_bexpands_wit[OF this] v' \<open>b3 \<in> bs\<close> obtain l
       where "\<forall>\<phi> \<in> set b3. v'(x := l) \<turnstile> \<phi>"
       using expandss_not_Nil[OF \<open>expandss b2 b1\<close> \<open>b1 \<noteq> []\<close>] by metis
-    moreover from bexpands_paramD(7)[OF 2] have "x \<notin> vars b1"
+    moreover from bexpands_witD(7)[OF 2] have "x \<notin> vars b1"
       using expandss_mono[OF \<open>expandss b2 b1\<close>] unfolding vars_branch_def by blast
     then have "\<forall>y \<in> vars b1. (v'(x := l)) y = v y"
       using v'(1) by simp

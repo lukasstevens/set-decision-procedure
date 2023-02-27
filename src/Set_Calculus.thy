@@ -1,6 +1,11 @@
 theory Set_Calculus
-  imports Set_Semantics Typing_Defs "HOL-Library.Sublist"
+  imports "HOL-Library.Sublist" Set_Semantics Typing_Defs
 begin
+
+chapter \<open>A Tableau Calculus for MLSS\<close>
+text \<open>
+  In this theory, we define a tableau calculus for MLSS.
+\<close>
 
 section \<open>Closedness\<close>
 
@@ -178,48 +183,47 @@ lemma lexpands_induct[consumes 1]:
 
 section \<open>Fulfilling Expansion Rules\<close>
 
-(* Maybe rename noparam thing*)
-inductive bexpands_noparam :: "'a branch set \<Rightarrow> 'a branch \<Rightarrow> bool" where
+inductive bexpands_nowit :: "'a branch set \<Rightarrow> 'a branch \<Rightarrow> bool" where
   "\<lbrakk> Or p q \<in> set b;
      p \<notin> set b; Neg p \<notin> set b \<rbrakk>
-    \<Longrightarrow> bexpands_noparam {[p], [Neg p]} b"
+    \<Longrightarrow> bexpands_nowit {[p], [Neg p]} b"
 | "\<lbrakk> Neg (And p q) \<in> set b;
      Neg p \<notin> set b; p \<notin> set b \<rbrakk>
-    \<Longrightarrow> bexpands_noparam {[Neg p], [p]} b"
+    \<Longrightarrow> bexpands_nowit {[Neg p], [p]} b"
 | "\<lbrakk> AT (s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2) \<in> set b; t1 \<squnion>\<^sub>s t2 \<in> subterms (last b);
      AT (s \<in>\<^sub>s t1) \<notin> set b; AF (s \<in>\<^sub>s t1) \<notin> set b \<rbrakk>
-    \<Longrightarrow> bexpands_noparam {[AT (s \<in>\<^sub>s t1)], [AF (s \<in>\<^sub>s t1)]} b"
+    \<Longrightarrow> bexpands_nowit {[AT (s \<in>\<^sub>s t1)], [AF (s \<in>\<^sub>s t1)]} b"
 | "\<lbrakk> AT (s \<in>\<^sub>s t1) \<in> set b; t1 \<sqinter>\<^sub>s t2 \<in> subterms (last b);
      AT (s \<in>\<^sub>s t2) \<notin> set b; AF (s \<in>\<^sub>s t2) \<notin> set b \<rbrakk>
-    \<Longrightarrow> bexpands_noparam {[AT (s \<in>\<^sub>s t2)], [AF (s \<in>\<^sub>s t2)]} b"
+    \<Longrightarrow> bexpands_nowit {[AT (s \<in>\<^sub>s t2)], [AF (s \<in>\<^sub>s t2)]} b"
 | "\<lbrakk> AT (s \<in>\<^sub>s t1) \<in> set b; t1 -\<^sub>s t2 \<in> subterms (last b);
      AT (s \<in>\<^sub>s t2) \<notin> set b; AF (s \<in>\<^sub>s t2) \<notin> set b \<rbrakk>
-    \<Longrightarrow> bexpands_noparam {[AT (s \<in>\<^sub>s t2)], [AF (s \<in>\<^sub>s t2)]} b"
+    \<Longrightarrow> bexpands_nowit {[AT (s \<in>\<^sub>s t2)], [AF (s \<in>\<^sub>s t2)]} b"
 
-inductive bexpands_param ::
+inductive bexpands_wit ::
   "'a pset_term \<Rightarrow> 'a pset_term \<Rightarrow> 'a \<Rightarrow> 'a branch set \<Rightarrow> 'a branch \<Rightarrow> bool" for t1 t2 x where
   "\<lbrakk> AF (t1 =\<^sub>s t2) \<in> set b; t1 \<in> subterms (last b); t2 \<in> subterms (last b);
      \<nexists>x. AT (x \<in>\<^sub>s t1) \<in> set b \<and> AF (x \<in>\<^sub>s t2) \<in> set b;
      \<nexists>x. AT (x \<in>\<^sub>s t2) \<in> set b \<and> AF (x \<in>\<^sub>s t1) \<in> set b;
      x \<notin> vars b; \<not> urelem (last b) t1; \<not> urelem (last b) t2 \<rbrakk>
-    \<Longrightarrow> bexpands_param t1 t2 x {[AT (Var x \<in>\<^sub>s t1), AF (Var x \<in>\<^sub>s t2)],
+    \<Longrightarrow> bexpands_wit t1 t2 x {[AT (Var x \<in>\<^sub>s t1), AF (Var x \<in>\<^sub>s t2)],
                                [AT (Var x \<in>\<^sub>s t2), AF (Var x \<in>\<^sub>s t1)]} b"
 
-inductive_cases bexpands_param_cases[consumes 1]: "bexpands_param t1 t2 x bs' b"
+inductive_cases bexpands_wit_cases[consumes 1]: "bexpands_wit t1 t2 x bs' b"
 
-lemma bexpands_paramD:
-  assumes "bexpands_param t1 t2 x bs' b"
+lemma bexpands_witD:
+  assumes "bexpands_wit t1 t2 x bs' b"
   shows "bs' = {[AT (Var x \<in>\<^sub>s t1), AF (Var x \<in>\<^sub>s t2)],
                [AT (Var x \<in>\<^sub>s t2), AF (Var x \<in>\<^sub>s t1)]}"
         "AF (t1 =\<^sub>s t2) \<in> set b" "t1 \<in> subterms (last b)" "t2 \<in> subterms (last b)"
         "\<nexists>x. AT (x \<in>\<^sub>s t1) \<in> set b \<and> AF (x \<in>\<^sub>s t2) \<in> set b"
         "\<nexists>x. AT (x \<in>\<^sub>s t2) \<in> set b \<and> AF (x \<in>\<^sub>s t1) \<in> set b"
         "x \<notin> vars b"
-  using bexpands_param.cases[OF assms] by metis+
+  using bexpands_wit.cases[OF assms] by metis+
 
 inductive bexpands :: "'a branch set \<Rightarrow> 'a branch \<Rightarrow> bool" where
-  "bexpands_noparam bs' b \<Longrightarrow> bexpands bs' b"
-| "bexpands_param t1 t2 x bs' b \<Longrightarrow> bexpands bs' b"
+  "bexpands_nowit bs' b \<Longrightarrow> bexpands bs' b"
+| "bexpands_wit t1 t2 x bs' b \<Longrightarrow> bexpands bs' b"
 
 lemma bexpands_disjnt:
   assumes "bexpands bs' b" "b' \<in> bs'"
@@ -228,11 +232,11 @@ lemma bexpands_disjnt:
 proof(induction bs' b rule: bexpands.induct)
   case (1 bs b)
   then show ?case
-    by (induction rule: bexpands_noparam.induct) (auto intro: list.set_intros(1))
+    by (induction rule: bexpands_nowit.induct) (auto intro: list.set_intros(1))
 next
   case (2 t1 t2 x bs b)
   then show ?case
-  proof(induction rule: bexpands_param.induct)
+  proof(induction rule: bexpands_wit.induct)
     case (1 b)
     from \<open>x \<notin> vars b\<close>
     have "AT (Var x \<in>\<^sub>s t1) \<notin> set b" "AF (Var x \<in>\<^sub>s t1) \<notin> set b"
@@ -249,20 +253,20 @@ lemma bexpands_branch_not_Nil:
 proof(induction bs' b rule: bexpands.induct)
   case (1 bs' b)
   then show ?case
-    by (induction rule: bexpands_noparam.induct) auto
+    by (induction rule: bexpands_nowit.induct) auto
 next
   case (2 t1 t2 x bs' b)
   then show ?case
-    by (induction rule: bexpands_param.induct) auto
+    by (induction rule: bexpands_wit.induct) auto
 qed
 
 lemma bexpands_nonempty: "bexpands bs' b \<Longrightarrow> bs' \<noteq> {}"
 proof(induction rule: bexpands.induct)
   case (1 bs' b)
-  then show ?case by (induction rule: bexpands_noparam.induct) auto
+  then show ?case by (induction rule: bexpands_nowit.induct) auto
 next
   case (2 t1 t2 x bs' b)
-  then show ?case by (induction rule: bexpands_param.induct) auto
+  then show ?case by (induction rule: bexpands_wit.induct) auto
 qed
 
 lemma bexpands_strict_mono:

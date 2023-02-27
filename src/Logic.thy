@@ -2,6 +2,14 @@ theory Logic
   imports Main
 begin
 
+chapter \<open>Propositional formulae\<close>
+text \<open>
+  This theory contains syntax and semantics of propositional formulae.
+  Furthermore, it contains a function that converts a formula into
+  disjunctive normal form. This conversion is justified
+  with a proof term. 
+\<close>
+
 datatype (atoms: 'a) fm =
   is_Atom: Atom 'a | And "'a fm" "'a fm" | Or "'a fm" "'a fm" |
   Neg "'a fm"

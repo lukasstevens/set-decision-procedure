@@ -1,8 +1,16 @@
 theory Typing_Defs
-  imports Set_Semantics
+  imports Set_Semantics "HOL-Library.Adhoc_Overloading"
 begin
 
-inductive types_pset_term :: "('a \<Rightarrow> nat) \<Rightarrow> 'a pset_term \<Rightarrow> nat \<Rightarrow> bool" ("_ \<turnstile> _ : _" 45) where
+section \<open>Typing Rules\<close>
+text \<open>
+  We define the typing rules for set terms and atoms, as well as
+  for formulae
+\<close>
+
+no_notation Set.member  ("(_/ : _)" [51, 51] 50)
+
+inductive types_pset_term :: "('a \<Rightarrow> nat) \<Rightarrow> 'a pset_term \<Rightarrow> nat \<Rightarrow> bool" ("_ \<turnstile> _ : _" [46, 46, 46] 46) where
   "v \<turnstile> \<emptyset> n : Suc n"
 | "v \<turnstile> Var x : v x"
 | "v \<turnstile> t : l \<Longrightarrow> v \<turnstile> Single t : Suc l"
@@ -23,15 +31,18 @@ lemma types_pset_term_intros':
 definition type_of_term :: "('a \<Rightarrow> nat) \<Rightarrow> 'a pset_term \<Rightarrow> nat" where
   "type_of_term v t \<equiv> THE l. v \<turnstile> t : l"
 
-inductive types_pset_atom :: "('a \<Rightarrow> nat) \<Rightarrow> 'a pset_atom \<Rightarrow> bool" (infix "\<turnstile>" 45) where
-  "\<lbrakk> v \<turnstile> s : l; v \<turnstile> t : l \<rbrakk> \<Longrightarrow> v \<turnstile> s =\<^sub>s t"
-| "\<lbrakk> v \<turnstile> s : l; v \<turnstile> t : Suc l\<rbrakk> \<Longrightarrow> v \<turnstile> s \<in>\<^sub>s t"
+inductive types_pset_atom :: "('a \<Rightarrow> nat) \<Rightarrow> 'a pset_atom \<Rightarrow> bool" where
+  "\<lbrakk> v \<turnstile> s : l; v \<turnstile> t : l \<rbrakk> \<Longrightarrow> types_pset_atom v (s =\<^sub>s t)"
+| "\<lbrakk> v \<turnstile> s : l; v \<turnstile> t : Suc l\<rbrakk> \<Longrightarrow> types_pset_atom v (s \<in>\<^sub>s t)"
+
+definition types_pset_fm :: "('a \<Rightarrow> nat) \<Rightarrow> 'a pset_fm \<Rightarrow> bool" where
+  "types_pset_fm v \<phi> \<equiv> (\<forall>a \<in> atoms \<phi>. types_pset_atom v a)"
+
+consts types :: "('a \<Rightarrow> nat) \<Rightarrow> 'b \<Rightarrow> bool" (infix "\<turnstile>" 45)
+adhoc_overloading types types_pset_atom types_pset_fm
 
 inductive_cases types_pset_atom_Member_cases:
   "v \<turnstile> s \<in>\<^sub>s t1 \<squnion>\<^sub>s t2" "v \<turnstile> s \<in>\<^sub>s t1 \<sqinter>\<^sub>s t2" "v \<turnstile> s \<in>\<^sub>s t1 -\<^sub>s t2" "v \<turnstile> s \<in>\<^sub>s Single t"
-
-definition types_pset_fm :: "('a \<Rightarrow> nat) \<Rightarrow> 'a pset_fm \<Rightarrow> bool" (infix "\<turnstile>" 45) where
-  "types_pset_fm v \<phi> \<equiv> (\<forall>a \<in> atoms \<phi>. v \<turnstile> a)"
 
 abbreviation "urelem' v (\<phi> :: 'a pset_fm) t \<equiv> v \<turnstile> \<phi> \<and> v \<turnstile> t : 0"
 

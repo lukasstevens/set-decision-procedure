@@ -2,6 +2,12 @@ theory Realisation
   imports HereditarilyFinite.Finitary Graph_Theory.Graph_Theory
 begin
 
+section \<open>The Realisation Function\<close>
+text \<open>
+  This theory contains an abstract formulation of a model
+  for membership relations.
+\<close>
+
 abbreviation parents :: "('a,'b) pre_digraph \<Rightarrow> 'a \<Rightarrow> 'a set"
   where "parents G s \<equiv> {u. u \<rightarrow>\<^bsub>G\<^esub> s}"
 
@@ -58,27 +64,33 @@ lemma card_ancestors_strict_mono:
 
 end
 
+text \<open>
+  The realisation assumes that the terms can be split into
+  a set of base terms \<open>B\<close> that are realised with the function \<open>I\<close>
+  and set terms \<open>T\<close> that are realised according to the structure
+  of the membership relation (represented as a graph \<open>G\<close>).
+\<close>
 locale realisation = dag G for G +
-  fixes P T :: "'a set"
+  fixes B T :: "'a set"
   fixes I :: "'a \<Rightarrow> hf"
   fixes eq :: "'a rel"
-  assumes P_T_partition_verts: "P \<inter> T = {}" "verts G = P \<union> T"
-  assumes P_urelems: "\<And>p t. p \<in> P \<Longrightarrow> \<not> t \<rightarrow>\<^bsub>G\<^esub> p"
+  assumes B_T_partition_verts: "B \<inter> T = {}" "verts G = B \<union> T"
+  assumes P_urelems: "\<And>p t. p \<in> B \<Longrightarrow> \<not> t \<rightarrow>\<^bsub>G\<^esub> p"
 begin
 
 lemma
-  shows finite_P: "finite P"
+  shows finite_B: "finite B"
     and finite_T: "finite T"
-    and finite_P_un_T: "finite (P \<union> T)"
-  using finite_verts P_T_partition_verts by auto
+    and finite_B_un_T: "finite (B \<union> T)"
+  using finite_verts B_T_partition_verts by auto
 
 abbreviation "eq_class x \<equiv> eq `` {x}"
 
 function realise :: "'a \<Rightarrow> hf" where
-  "x \<in> P \<Longrightarrow> realise x = HF (realise ` parents G x) \<squnion> HF (I ` eq_class x)"
+  "x \<in> B \<Longrightarrow> realise x = HF (realise ` parents G x) \<squnion> HF (I ` eq_class x)"
 | "t \<in> T \<Longrightarrow> realise t = HF (realise ` parents G t)"
-| "x \<notin> P \<union> T \<Longrightarrow> realise x = 0"
-  using P_T_partition_verts by auto
+| "x \<notin> B \<union> T \<Longrightarrow> realise x = 0"
+  using B_T_partition_verts by auto
 termination
   by (relation "measure (\<lambda>t. card (ancestors G t))") (simp_all add: card_ancestors_strict_mono)
 
@@ -141,7 +153,7 @@ qed blast
 
 lemma lemma1_2':
   assumes "\<And>x y. I x \<noteq> realise y"
-  assumes "t1 \<in> P \<union> T" "t2 \<in> P \<union> T" "realise t1 = realise t2"
+  assumes "t1 \<in> B \<union> T" "t2 \<in> B \<union> T" "realise t1 = realise t2"
   shows "height t1 \<le> height t2"
   using assms(2-)
 proof(induction "height t1" arbitrary: t1 t2 rule: less_induct)
@@ -165,20 +177,20 @@ proof(induction "height t1" arbitrary: t1 t2 rule: less_induct)
     qed
     moreover
     have "height w \<le> height v"
-      if "w \<rightarrow>\<^bsub>G\<^esub> t1" "v \<in> P \<union> T" "realise w = realise v" for w v
+      if "w \<rightarrow>\<^bsub>G\<^esub> t1" "v \<in> B \<union> T" "realise w = realise v" for w v
     proof -
-      have "w \<in> P \<union> T"
-        using adj_in_verts[OF that(1)] P_T_partition_verts(2) by blast
+      have "w \<in> B \<union> T"
+        using adj_in_verts[OF that(1)] B_T_partition_verts(2) by blast
       from "less.hyps"[OF lemma1_1, OF that(1) this that(2,3)] show ?thesis .
     qed
-    ultimately have IH': "\<exists>v \<in> parents (G) t2. height w \<le> height v"
-      if "w \<in> parents (G) t1" for w
-      by (metis that adj_in_verts(1) mem_Collect_eq P_T_partition_verts(2))
-    then have Max_le: "Max (height ` parents (G) t1) \<le> Max (height ` parents (G) t2)"
+    ultimately have IH': "\<exists>v \<in> parents G t2. height w \<le> height v"
+      if "w \<in> parents G t1" for w
+      by (metis that adj_in_verts(1) mem_Collect_eq B_T_partition_verts(2))
+    then have Max_le: "Max (height ` parents G t1) \<le> Max (height ` parents G t2)"
     proof -
-      have "finite (height ` parents (G) t1)"
-           "finite (height ` parents (G) t2)"
-           "height ` parents (G) t1 \<noteq> {}"
+      have "finite (height ` parents G t1)"
+           "finite (height ` parents G t2)"
+           "height ` parents G t1 \<noteq> {}"
         using finite_parents \<open>s1 \<rightarrow>\<^bsub>G\<^esub> t1\<close> by blast+
       with Max_le_if_All_Ex_le[OF this] IH' show ?thesis by blast
     qed
@@ -194,13 +206,13 @@ qed
 
 lemma lemma1_2:
   assumes "\<And>x y. I x \<noteq> realise y"
-  assumes "t1 \<in> P \<union> T" "t2 \<in> P \<union> T" "realise t1 = realise t2"
+  assumes "t1 \<in> B \<union> T" "t2 \<in> B \<union> T" "realise t1 = realise t2"
   shows "height t1 = height t2"
   using assms lemma1_2' le_antisym by metis
 
 lemma lemma1_3:
   assumes "\<And>x y. I x \<noteq> realise y"
-  assumes "s \<in> P \<union> T" "t \<in> P \<union> T" "realise s \<^bold>\<in> realise t"
+  assumes "s \<in> B \<union> T" "t \<in> B \<union> T" "realise s \<^bold>\<in> realise t"
   shows "height s < height t"
 proof -
   from dominates_if_mem_realisation[OF assms(1,4)] obtain s'
@@ -208,7 +220,7 @@ proof -
     by metis
   then have "height s = height s'"
     using lemma1_2[OF assms(1,2)]
-    by (metis adj_in_verts(1) P_T_partition_verts(2))
+    by (metis adj_in_verts(1) B_T_partition_verts(2))
   also have "\<dots> < height t"
     using \<open>s' \<rightarrow>\<^bsub>G\<^esub> t\<close> lemma1_1 by blast
   finally show ?thesis .

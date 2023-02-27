@@ -1,6 +1,15 @@
 theory Typing_Urelems
-  imports Typing Suc_Theory
+  imports Suc_Theory Typing
 begin
+
+section \<open>Typing the Urelements\<close>
+text \<open>
+  In this theory, we define a recursive procedure that generates Typing
+  constraints. We then prove that the constraints can be solved with
+  \<^term>\<open>Suc_Theory.assign\<close>. The solution then gives us the urelements.
+\<close>
+
+no_notation Set.member  ("(_/ : _)" [51, 51] 50)
 
 abbreviation "SVar \<equiv> Suc_Theory.Var"
 abbreviation "SEq \<equiv> Suc_Theory.Eq"
@@ -38,47 +47,33 @@ fun constrs_fm :: "('a pset_term \<Rightarrow> 'b) \<Rightarrow> 'a pset_fm \<Ri
 
 lemma is_Succ_normal_constrs_term:
   "\<forall>a \<in> set (constrs_term n t). Suc_Theory.is_Eq a \<longrightarrow> is_Succ_normal a"
-  apply(induction t)
-       apply(auto)
-  done
+  by (induction t) auto
 
 lemma is_Succ_normal_constrs_atom:
   "\<forall>a \<in> set (constrs_atom n a). Suc_Theory.is_Eq a \<longrightarrow> is_Succ_normal a"
-  apply(cases a)
-  using is_Succ_normal_constrs_term apply(auto)
-  done
+  by (cases a) (use is_Succ_normal_constrs_term in auto)
 
 lemma is_Succ_normal_constrs_fm:
   "\<forall>a \<in> set (constrs_fm n \<phi>). Suc_Theory.is_Eq a \<longrightarrow> is_Succ_normal a"
-  apply(induction \<phi>)
-  using is_Succ_normal_constrs_atom apply(auto)
-  done
+  by (induction \<phi>) (use is_Succ_normal_constrs_atom in auto)
 
 lemma is_Var_Eq_Zero_if_is_NEq_constrs_term:
   "\<forall>a \<in> set (constrs_term n t). Suc_Theory.is_NEq a \<longrightarrow> (\<exists>x. a = SNEq (SVar x) Zero)"
-  apply(induction t)
-       apply(auto)
-  done
+  by (induction t) auto
 
 lemma is_Var_Eq_Zero_if_is_NEq_constrs_atom:
   "\<forall>a \<in> set (constrs_atom n a). Suc_Theory.is_NEq a \<longrightarrow> (\<exists>x. a = SNEq (SVar x) Zero)"
-  apply(cases a)
-       using is_Var_Eq_Zero_if_is_NEq_constrs_term apply(auto)
-  done
+  by (cases a) (use is_Var_Eq_Zero_if_is_NEq_constrs_term in auto)
 
 lemma is_Var_Eq_Zero_if_is_NEq_constrs_fm:
   "\<forall>a \<in> set (constrs_fm n \<phi>). Suc_Theory.is_NEq a \<longrightarrow> (\<exists>x. a = SNEq (SVar x) Zero)"
-  apply(induction \<phi>)
-       using is_Var_Eq_Zero_if_is_NEq_constrs_atom apply(auto)
-  done
+  by (induction \<phi>) (use is_Var_Eq_Zero_if_is_NEq_constrs_atom in auto)
 
 lemma types_term_if_I_atom_constrs_term:
   assumes "(\<forall>e \<in> set (constrs_term n t). Suc_Theory.I_atom v e)"
   shows "(\<lambda>x. v (n (Var x))) \<turnstile> t : v (n t)"
   using assms
-  apply(induction t)
-       apply(auto intro: types_pset_term.intros)
-  done
+  by (induction t) (auto intro: types_pset_term.intros)
 
 lemma types_pset_atom_if_I_atom_constrs_atom:
   fixes a :: "'a pset_atom"
@@ -101,12 +96,10 @@ lemma I_atom_constrs_term_if_types_term:
   assumes "v \<turnstile> t : k"
   shows "(\<forall>e \<in> set (constrs_term n t).
     Suc_Theory.I_atom (\<lambda>x. type_of_term v (inv_into T n x)) e)"
-  using assms
-  apply(induction t arbitrary: T k)
-       apply(auto elim!: types_pset_term_cases intro!: type_of_term_if_types_term
-                  simp: type_of_term_if_types_term)
-  apply (metis inv_into_f_f subsetD subterms_refl type_of_term_if_types_term)+
-  done
+  using assms inv_into_f_f[OF assms(1) subsetD[OF assms(2)]]
+  by (induction t arbitrary: T k)
+     (auto elim!: types_pset_term_cases intro!: type_of_term_if_types_term
+           simp: type_of_term_if_types_term)
 
 lemma I_atom_constrs_atom_if_types_pset_atom:
   fixes a :: "'a pset_atom"
@@ -136,21 +129,15 @@ lemma inv_into_f_eq_if_subs:
 
 lemma UN_set_suc_atom_constrs_term_eq_image_subterms:
   "\<Union>(set_suc_atom ` set (constrs_term n t)) = n ` subterms t"
-  apply(induction t)
-       apply(auto)
-  done
+  by (induction t) auto
 
 lemma UN_set_suc_atom_constrs_atom_eq_image_subterms:
   "\<Union>(set_suc_atom ` set (constrs_atom n a)) = n ` subterms a"
-  apply(induction a)
-       apply(auto simp: UN_set_suc_atom_constrs_term_eq_image_subterms)
-  done
+  by (induction a) (auto simp: UN_set_suc_atom_constrs_term_eq_image_subterms)
 
 lemma UN_set_suc_atom_constrs_fm_eq_image_subterms:
   "\<Union>(set_suc_atom ` set (constrs_fm n \<phi>)) = n ` subterms \<phi>"
-  apply(induction \<phi>)
-       apply(auto simp: UN_set_suc_atom_constrs_atom_eq_image_subterms)
-  done
+  by (induction \<phi>) (auto simp: UN_set_suc_atom_constrs_atom_eq_image_subterms)
 
 lemma
   fixes \<phi> :: "'a pset_fm"
@@ -191,17 +178,13 @@ lemma types_term_minimal:
   assumes "v_min \<turnstile> t : k'" "v \<turnstile> t : k"
   shows "k' \<le> k"
   using assms
-  apply(induction t arbitrary: k' k)
-       apply(auto elim!: types_pset_term_cases)
-  done
+  by (induction t arbitrary: k' k) (auto elim!: types_pset_term_cases)
 
 lemma constrs_term_subs_constrs_term:
   assumes "s \<in> subterms t"
   shows "set (constrs_term n s) \<subseteq> set (constrs_term n t)"
   using assms
-  apply(induction t)
-       apply(auto)
-  done
+  by (induction t) auto
 
 lemma constrs_term_subs_constrs_atom:
   assumes "t \<in> subterms a"

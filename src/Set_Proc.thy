@@ -1419,7 +1419,7 @@ proof -
   moreover have "t \<in> subterms' b" if "s \<in> subterms' b"
   proof -
     have "s \<notin> urelems b"
-      using that P_T_partition_verts(1) unfolding base_vars_def by blast
+      using that B_T_partition_verts(1) unfolding base_vars_def by blast
     with v'(1) mem_subterms(1) have "\<not> v' \<turnstile> s : 0"
       using urelems_def by blast
     with lst v'(2) have "t \<notin> urelems b"
@@ -1543,7 +1543,7 @@ proof(cases "t \<in> subterms (last b) - base_vars b")
       "AT (t =\<^sub>s t') \<in> set b \<or> AT (t' =\<^sub>s t) \<in> set b"
       unfolding pwits_def by blast
     with \<open>t \<in> subterms' b\<close> have "t' \<notin> base_vars b"
-      using AT_eq_urelems_subterms'_cases P_T_partition_verts(1)
+      using AT_eq_urelems_subterms'_cases B_T_partition_verts(1)
       by (metis Un_iff base_vars_def disjoint_iff)
     with t' that show ?thesis
       by blast

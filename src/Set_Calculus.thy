@@ -207,7 +207,7 @@ inductive bexpands_wit ::
      \<nexists>x. AT (x \<in>\<^sub>s t2) \<in> set b \<and> AF (x \<in>\<^sub>s t1) \<in> set b;
      x \<notin> vars b; \<not> urelem (last b) t1; \<not> urelem (last b) t2 \<rbrakk>
     \<Longrightarrow> bexpands_wit t1 t2 x {[AT (Var x \<in>\<^sub>s t1), AF (Var x \<in>\<^sub>s t2)],
-                               [AT (Var x \<in>\<^sub>s t2), AF (Var x \<in>\<^sub>s t1)]} b"
+                              [AT (Var x \<in>\<^sub>s t2), AF (Var x \<in>\<^sub>s t1)]} b"
 
 inductive_cases bexpands_wit_cases[consumes 1]: "bexpands_wit t1 t2 x bs' b"
 
@@ -218,6 +218,7 @@ lemma bexpands_witD:
         "AF (t1 =\<^sub>s t2) \<in> set b" "t1 \<in> subterms (last b)" "t2 \<in> subterms (last b)"
         "\<nexists>x. AT (x \<in>\<^sub>s t1) \<in> set b \<and> AF (x \<in>\<^sub>s t2) \<in> set b"
         "\<nexists>x. AT (x \<in>\<^sub>s t2) \<in> set b \<and> AF (x \<in>\<^sub>s t1) \<in> set b"
+        "\<not> urelem (last b) t1" "\<not> urelem (last b) t2"
         "x \<notin> vars b"
   using bexpands_wit.cases[OF assms] by metis+
 

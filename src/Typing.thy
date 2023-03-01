@@ -419,7 +419,7 @@ next
     from types_bexpands_wit[OF this] v' \<open>b3 \<in> bs\<close> obtain l
       where "\<forall>\<phi> \<in> set b3. v'(x := l) \<turnstile> \<phi>"
       using expandss_not_Nil[OF \<open>expandss b2 b1\<close> \<open>b1 \<noteq> []\<close>] by metis
-    moreover from bexpands_witD(7)[OF 2] have "x \<notin> vars b1"
+    moreover from bexpands_witD(9)[OF 2] have "x \<notin> vars b1"
       using expandss_mono[OF \<open>expandss b2 b1\<close>] unfolding vars_branch_def by blast
     then have "\<forall>y \<in> vars b1. (v'(x := l)) y = v y"
       using v'(1) by simp

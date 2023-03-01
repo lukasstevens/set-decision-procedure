@@ -2653,12 +2653,21 @@ qed
 
 section \<open>The Decision Procedure\<close>
 
+locale mlss_proc =
+  fixes lexpand :: "'a branch \<Rightarrow> 'a branch"
+  assumes lexpands_lexpand:
+    "\<not> lin_sat b \<Longrightarrow> lexpands (lexpand b) b \<and> set b \<subset> set (lexpand b @ b)"
+  fixes bexpand :: "'a branch \<Rightarrow> 'a branch set"
+  assumes bexpands_bexpand:
+    "\<not> sat b \<Longrightarrow> lin_sat b \<Longrightarrow> bexpands (bexpand b) b"
+begin
+
 function (domintros) mlss_proc_branch :: "'a branch \<Rightarrow> bool" where
   "\<not> lin_sat b
-  \<Longrightarrow> mlss_proc_branch b = mlss_proc_branch ((SOME b'. lexpands b' b \<and> set b \<subset> set (b' @ b)) @ b)"
+  \<Longrightarrow> mlss_proc_branch b = mlss_proc_branch (lexpand b @ b)"
 | "\<lbrakk> lin_sat b; bclosed b \<rbrakk> \<Longrightarrow> mlss_proc_branch b = True"
 | "\<lbrakk> \<not> sat b; bopen b; lin_sat b \<rbrakk>
-  \<Longrightarrow> mlss_proc_branch b = (\<forall>b' \<in> (SOME bs. bexpands bs b). mlss_proc_branch (b' @ b))"
+  \<Longrightarrow> mlss_proc_branch b = (\<forall>b' \<in> bexpand b. mlss_proc_branch (b' @ b))"
 | "\<lbrakk> lin_sat b; sat b \<rbrakk> \<Longrightarrow> mlss_proc_branch b = bclosed b"
   by auto
 
@@ -2699,13 +2708,13 @@ proof -
       proof(cases)
         case 1
         with less' show ?thesis 
-          using someI_ex mlss_proc_branch.domintros(1)
-          by (metis (mono_tags, lifting) expandss.intros(1,2) set_append)
+          using mlss_proc_branch.domintros(1)
+          by (metis expandss.intros(1,2) lexpands_lexpand)
       next
         case 2
         then show ?thesis
-          using less' mlss_proc_branch.domintros(2,3)
-          by (metis (mono_tags, lifting) bexpands_strict_mono expandss.intros(1,3) someI_ex)
+          using less' bexpands_bexpand mlss_proc_branch.domintros(2,3)
+          by (metis bexpands_strict_mono expandss.intros(1,3))
       qed
     qed (use mlss_proc_branch.domintros(4) sat_def in metis)
   qed
@@ -2725,12 +2734,10 @@ proof -
   show ?thesis
   proof(induction rule: mlss_proc_branch.pinduct)
     case (1 b)
-    let ?b' = "SOME b'. lexpands b' b \<and> set b \<subset> set (b' @ b)"
-    from 1 have b': "lexpands ?b' b" "set b \<subset> set (?b' @ b)"
-      by (metis (no_types, lifting) not_lin_satD some_eq_imp)+
-    with 1 have "wf_branch (?b' @ b)"
+    let ?b' = "lexpand b"
+    from 1 lexpands_lexpand have "wf_branch (?b' @ b)"
       using wf_branch_lexpands by blast
-    moreover from 1 b' have "\<not> mlss_proc_branch (?b' @ b)"
+    moreover from 1 lexpands_lexpand have "\<not> mlss_proc_branch (?b' @ b)"
       by (simp add: mlss_proc_branch.psimps)
     ultimately obtain M where "interp I\<^sub>s\<^sub>a M (last (?b' @ b))"
       using 1 by auto
@@ -2741,12 +2748,10 @@ proof -
     then show ?case by (simp add: mlss_proc_branch.psimps)
   next
     case (3 b)
-    let ?bs' = "SOME bs'. bexpands bs' b"
-    from 3 have bs': "bexpands ?bs' b"
-      by (meson sat_def someI_ex)
-    with 3 obtain b' where b': "b' \<in> ?bs'" "\<not> mlss_proc_branch (b' @ b)"
+    let ?bs' = "bexpand b"
+    from 3 bexpands_bexpand obtain b' where b': "b' \<in> ?bs'" "\<not> mlss_proc_branch (b' @ b)"
       using mlss_proc_branch.psimps(3) by metis
-    with bs' have "wf_branch (b' @ b)"
+    with 3 bexpands_bexpand have "wf_branch (b' @ b)"
       using wf_branch_expandss[OF \<open>wf_branch b\<close> expandss.intros(3)]
       using expandss.intros(1) by blast
     with 3 b' obtain M where "interp I\<^sub>s\<^sub>a M (last (b' @ b))"
@@ -2776,32 +2781,29 @@ proof
     using assms
   proof(induction arbitrary: M rule: mlss_proc_branch.pinduct)
     case (1 b)
-    let ?b' = "SOME b'. lexpands b' b \<and> set b \<subset> set (b' @ b)"
-    from 1 have b'_wd: "lexpands ?b' b" "set b \<subset> set (?b' @ b)"
-      by (metis (no_types, lifting) not_lin_satD someI_ex)+
-    with \<open>wf_branch b\<close> have "wf_branch (?b' @ b)"
-      using wf_branch_lexpands by blast
-    with 1 lexpands_sound[OF b'_wd(1)] obtain b'' where
+    let ?b' = "lexpand b"
+    from 1 lexpands_lexpand \<open>wf_branch b\<close> have "wf_branch (?b' @ b)"
+      using wf_branch_lexpands by metis
+    with 1 lexpands_sound lexpands_lexpand obtain b'' where
       "expandss b'' (?b' @ b)" "\<exists>M. \<forall>\<psi> \<in> set b''. interp I\<^sub>s\<^sub>a M \<psi>" "bclosed b''"
       by (fastforce simp: mlss_proc_branch.psimps)
-    with b'_wd show ?case
-      using expandss_trans expandss.intros(1,2) by blast
+    with 1 lexpands_lexpand show ?case
+      using expandss_trans expandss.intros(1,2) by meson
   next
     case (3 b)
-    let ?bs' = "SOME bs'. bexpands bs' b"
-    from 3 have bs'_wd: "bexpands ?bs' b"
-      by (meson sat_def someI_ex)
-    with \<open>wf_branch b\<close> have wf_branch_b': "wf_branch (b' @ b)" if "b' \<in> ?bs'" for b'
-      using that expandss.intros(3) wf_branch_def by blast
-    from bexpands_sound[OF bs'_wd] 3 obtain M' b' where
+    let ?bs' = "bexpand b"
+    from 3 \<open>wf_branch b\<close> bexpands_bexpand have wf_branch_b':
+      "wf_branch (b' @ b)" if "b' \<in> ?bs'" for b'
+      using that expandss.intros(3) wf_branch_def by metis
+    from bexpands_sound bexpands_bexpand 3 obtain M' b' where
       "b' \<in> ?bs'" "\<forall>\<psi> \<in> set (b' @ b). interp I\<^sub>s\<^sub>a M' \<psi>"
       by metis
     with "3.IH" \<open>mlss_proc_branch b\<close> wf_branch_b' obtain b'' where
       "b' \<in> ?bs'" "expandss b'' (b' @ b)"
       "\<exists>M. \<forall>\<psi> \<in> set b''. interp I\<^sub>s\<^sub>a M \<psi>" "bclosed b''"
       using mlss_proc_branch.psimps(3)[OF "3.hyps"(2-4,1)] by blast
-    with bs'_wd show ?case
-      using expandss_trans expandss.intros(1,3) by blast
+    with 3 bexpands_bexpand show ?case
+      using expandss_trans expandss.intros(1,3) by metis
   qed (use expandss.intros(1) mlss_proc_branch.psimps(4) in \<open>blast+\<close>)
   with bclosed_sound show False by blast
 qed
@@ -2820,5 +2822,7 @@ theorem mlss_proc_sound:
   shows "\<not> mlss_proc \<phi>"
   using assms mlss_proc_branch_sound[of "[\<phi>]"]
   unfolding mlss_proc_def by simp
+
+end
 
 end

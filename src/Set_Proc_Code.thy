@@ -371,10 +371,12 @@ qed auto
     
 lemma bexpands_wit_if_bexpand_wit:
   "bs' \<in> set ` set (bexpand_wit b) \<Longrightarrow> (\<exists>t1 t2 x. bexpands_wit t1 t2 x bs' b)"
-  using bexpands_wit_if_bexpand_wit1[of bs' b]
-  apply auto
-  using bexpands_wit.intros
-  sorry
+proof -
+  assume "bs' \<in> set ` set (bexpand_wit b)"
+  then obtain l where "bs' \<in> set ` set (bexpand_wit1 b l)" "l \<in> set b" 
+    unfolding bexpand_wit_def by auto
+  from bexpands_wit_if_bexpand_wit1[OF this] show ?thesis .
+qed
                                 
 definition "bexpand b \<equiv> bexpand_nowit b @ bexpand_wit b"
 
@@ -382,7 +384,7 @@ lemma bexpands_if_bexpand:
   "bs' \<in> set ` set (bexpand b) \<Longrightarrow> bexpands bs' b"
   unfolding bexpand_def
   using bexpands_nowit_if_bexpand_nowit bexpands_wit_if_bexpand_wit
-  using bexpands.simps by fastforce
+  by (metis bexpands.intros UnE image_Un set_append)
 
 lemma Not_bexpands_if_bexpand_empty:
   assumes "bexpand b = []"
@@ -397,11 +399,11 @@ proof
       unfolding bexpand_def by simp
   next
     case (2 t1 t2 x bs' b)
-    with bexpand_wit_if_bexpands_wit bexpands_witD[OF this(1)] show ?case
-      using fresh_notIn[OF finite_vars_branch, of b]
-      unfolding bexpand_def
-      by (metis Nil_is_append_conv bexpands_wit.intros empty_iff empty_set)
-     
+    note fresh_notIn[OF finite_vars_branch, of b]
+    with 2 obtain bs'' where "bexpands_wit t1 t2 (fresh (vars b) default) bs'' b"
+      by (auto simp: bexpands_wit.simps)
+    from 2 bexpand_wit_if_bexpands_wit[OF this] show ?case
+      by (simp add: bexpand_def)
   qed
 qed
 
@@ -413,7 +415,9 @@ lemma lin_sat_code:
 
 lemma sat_code:
   "sat b \<longleftrightarrow> lin_sat b \<and> bexpand b = []"
-  by (meson Not_bexpands_if_bexpand_empty bexpands_if_bexpand last_in_set sat_def)
+  using Not_bexpands_if_bexpand_empty bexpands_if_bexpand
+  unfolding sat_def
+  by (metis imageI list.set_intros(1) list_exhaust2)
 
 fun bclosed_code1 :: "'a branch \<Rightarrow> 'a pset_fm \<Rightarrow> bool" where
   "bclosed_code1 b (Neg \<phi>) \<longleftrightarrow>
@@ -477,7 +481,6 @@ lemma lexpands_lexpand_safe:
   unfolding lexpand_safe_def
   by (auto simp: lin_sat_code intro!: lexpands_if_lexpand dest: filter_eq_ConsD split: list.splits)
 
-
 lemma wf_branch_lexpand_safe:
   assumes "wf_branch b"
   shows "wf_branch (lexpand_safe b @ b)"
@@ -494,91 +497,190 @@ qed
 definition "bexpand_safe b \<equiv>
   case bexpand b of
     bs' # bss' \<Rightarrow> bs'
-  | [] \<Rightarrow> {[]}"
+  | [] \<Rightarrow> [[]]"
 
 lemma bexpands_bexpand_safe:
-  "\<not> sat b \<Longrightarrow> lin_sat b \<Longrightarrow> bexpands (bexpand_safe b) b"
+  "\<not> sat b \<Longrightarrow> lin_sat b \<Longrightarrow> bexpands (set (bexpand_safe b)) b"
   unfolding bexpand_safe_def
   by (auto simp: sat_code bexpands_if_bexpand split: list.splits)
 
 lemma wf_branch_bexpand_safe:
   assumes "wf_branch b"
-  shows "\<forall>b' \<in> bexpand_safe b. wf_branch (b' @ b)"
+  shows "\<forall>b' \<in> set (bexpand_safe b). wf_branch (b' @ b)"
 proof -
   note wf_branch_expandss[OF assms expandss.intros(3), OF bexpands_if_bexpand]
   with assms show ?thesis
     unfolding bexpand_safe_def
-    by (simp split: list.splits) (metis expandss.intros(1) list.set_intros(1))
+    by (simp split: list.splits) (metis expandss.intros(1) image_iff list.set_intros(1))
 qed
 
-global_interpretation mlss_naive: mlss_proc lexpand_safe bexpand_safe
+interpretation mlss_naive: mlss_proc lexpand_safe "set o bexpand_safe"
   apply(unfold_locales)
   using lexpands_lexpand_safe bexpands_bexpand_safe by auto
-
 
 lemma types_pset_fm_code:
   "(\<exists>v. v \<turnstile> \<phi>) \<longleftrightarrow> solve_constraints \<phi> \<noteq> None"
   using not_types_fm_if_solve_eq_None types_pset_fm_assign_solve
   by (meson inj_on_name_subterm_subterms not_Some_eq)
 
-typedef 'a wf_branch = "{b :: 'a branch. wf_branch b \<and> (\<exists>v. v \<turnstile> last b)}"
-proof -
-  have types: "(\<lambda>_. 0) \<turnstile> AT (\<emptyset> 0 =\<^sub>s \<emptyset> 0)"
-    unfolding types_pset_fm_def 
-    by (auto intro!: types_pset_atom.intros types_pset_term.intros)
-  show ?thesis
-    apply(rule exI[where ?x="[AT (\<emptyset> 0 =\<^sub>s \<emptyset> 0)]"])
-    using types wf_branch_singleton by auto
+fun foldl_option where
+  "foldl_option f a [] = Some a"
+| "foldl_option f _ (None # _) = None"
+| "foldl_option f a (Some x # xs) = foldl_option f (f a x) xs"
+
+lemma monotone_fold_option_conj[partial_function_mono]:
+  "monotone (list_all2 option_ord) option_ord (foldl_option f a)"
+proof
+  fix xs ys :: "'a option list"
+  assume "list_all2 option_ord xs ys"
+  then show "option_ord (foldl_option f a xs) (foldl_option f a ys)"
+  proof(induction xs ys arbitrary: a rule: list_all2_induct)
+    case Nil
+    then show ?case by (simp add: option.leq_refl)
+  next
+    case (Cons xo xos yo yos)
+    then consider
+        "xo = None" "yo = None"
+      | y where "xo = None" "yo = Some y"
+      | x y where "xo = Some x" "yo = Some y"
+      by (metis flat_ord_def option.exhaust)
+    then show ?case
+      using Cons
+      by cases (simp_all add: option.leq_refl flat_ord_def)
+  qed
 qed
-setup_lifting type_definition_wf_branch
 
-lift_definition lin_sat_wf :: "'a wf_branch \<Rightarrow> bool" is lin_sat .
-lift_definition sat_wf :: "'a wf_branch \<Rightarrow> bool" is sat .
+lemma monotone_map[partial_function_mono]:
+  assumes "monotone (list_all2 option_ord) ordb B"
+  shows "monotone option.le_fun ordb (\<lambda>h. B (map h xs))"
+  using assms
+  by (simp add: fun_ord_def list_all2_conv_all_nth monotone_on_def)
 
-lemma lin_sat_wf_code[code]:
-  "lin_sat_wf b
-  \<longleftrightarrow> filter (\<lambda>b'. \<not> set b' \<subseteq> set (Rep_wf_branch b)) (lexpand (Rep_wf_branch b)) = []"
-  by transfer (use lin_sat_code in blast)
+partial_function (option) mlss_proc_branch_partial
+  :: "('a::{fresh,default}) branch \<Rightarrow> bool option" where
+  "mlss_proc_branch_partial b =
+    (if \<not> lin_sat b then mlss_proc_branch_partial (lexpand_safe b @ b)
+     else if bclosed_code b then Some True
+     else if \<not> sat b then
+        foldl_option (\<and>) True (map mlss_proc_branch_partial (map (\<lambda>b'. b' @ b) (bexpand_safe b)))
+     else Some (bclosed_code b))"
 
-lemma sat_wf_code[code]:
-  "sat_wf b \<longleftrightarrow> lin_sat_wf b \<and> bexpand (Rep_wf_branch b) = []"
-  by transfer (use sat_code in blast)
+lemma mlss_proc_branch_partial_eq:
+  assumes "wf_branch b" "v \<turnstile> last b"
+  shows "mlss_proc_branch_partial b = Some (mlss_naive.mlss_proc_branch b)"
+    (is "?mlss_part b = Some (?mlss b)")
+  using mlss_naive.mlss_proc_branch_dom_if_wf_branch[OF assms(1)] assms
+proof(induction rule: mlss_naive.mlss_proc_branch.pinduct)
+  case (1 b)
+  then have "?mlss_part (lexpand_safe b @ b)
+    = Some (mlss_naive.mlss_proc_branch (lexpand_safe b @ b))"
+    using wf_branch_lexpand_safe[OF \<open>wf_branch b\<close>] by fastforce
+  with 1 show ?case
+    by (subst mlss_proc_branch_partial.simps)
+       (auto simp: mlss_naive.mlss_proc_branch.psimps)
+next
+  case (2 b)
+  then show ?case
+    by (subst mlss_proc_branch_partial.simps)
+       (auto simp: mlss_naive.mlss_proc_branch.psimps bclosed_code)
+next
+  case (3 b)
+  then have "?mlss_part (b' @ b) = Some (?mlss (b' @ b))"
+    if "b' \<in> set (bexpand_safe b)" for b'
+    using that wf_branch_bexpand_safe[OF \<open>wf_branch b\<close>] by fastforce
+  then have "map ?mlss_part (map (\<lambda>b'. b' @ b) (bexpand_safe b))
+    = map Some (map (\<lambda>b'. (?mlss (b' @ b))) (bexpand_safe b))"
+    by simp
+  moreover have "foldl_option (\<and>) a (map Some xs) = Some (a \<and> (\<forall>x \<in> set xs. x))" for a xs
+    by (induction xs arbitrary: a) auto
+  moreover have foldl_option_eq:
+    "foldl_option (\<and>) True (map ?mlss_part (map (\<lambda>b'. b' @ b) (bexpand_safe b)))
+    = Some (\<forall>b' \<in> set (bexpand_safe b). ?mlss (b' @ b))"
+    unfolding calculation by (auto simp: comp_def)
+  from 3 show ?case
+    by (subst mlss_proc_branch_partial.simps, subst foldl_option_eq)
+       (simp add: bclosed_code mlss_naive.mlss_proc_branch.psimps(3))
+next
+  case (4 b)
+  then show ?case
+    by (subst mlss_proc_branch_partial.simps)
+       (auto simp: mlss_naive.mlss_proc_branch.psimps bclosed_code)
+qed
 
-lift_definition bclosed_wf :: "'a wf_branch \<Rightarrow> bool" is bclosed .
-lift_definition bclosed_code_wf :: "'a wf_branch \<Rightarrow> bool" is bclosed_code .
+definition "mlss_proc_partial (\<phi> :: nat pset_fm) \<equiv>
+  if solve_constraints \<phi> = None then None else mlss_proc_branch_partial [\<phi>]"
 
-lemma bclosed_wf_code[code]:
-  "bclosed_wf b = bclosed_code_wf b"
-  by transfer (use bclosed_code in blast)
+lemma mlss_proc_partial_eq_None:
+  "mlss_proc_partial \<phi> = None \<Longrightarrow> (\<nexists>v. v \<turnstile> \<phi>)"
+  unfolding mlss_proc_partial_def
+  using types_pset_fm_code mlss_proc_branch_partial_eq wf_branch_singleton
+  by (metis last.simps option.discI)
 
-lift_definition lexpand_safe_app_wf :: "'a wf_branch \<Rightarrow> 'a wf_branch"
-  is "\<lambda>b. lexpand_safe b @ b"
-  using wf_branch_lexpand_safe by auto
+lemma mlss_proc_partial_complete:
+  assumes "mlss_proc_partial \<phi> = Some False"
+  shows "\<exists>M. interp I\<^sub>s\<^sub>a M \<phi>"
+proof -
+  from assms have "\<exists>v. v \<turnstile> \<phi>"
+    unfolding mlss_proc_partial_def using types_pset_fm_code by force
+  moreover have "\<not> mlss_naive.mlss_proc \<phi>"
+    using assms \<open>\<exists>v. v \<turnstile> \<phi>\<close> mlss_proc_branch_partial_eq calculation wf_branch_singleton
+    unfolding mlss_naive.mlss_proc_def mlss_proc_partial_def
+    by (metis last.simps option.discI option.inject)
+  ultimately show ?thesis
+    using mlss_naive.mlss_proc_complete by blast
+qed
 
-lift_definition bexpand_safe_app_wf :: "('a::{fresh,default}) wf_branch \<Rightarrow> 'a wf_branch set"
-  is "\<lambda>b. (\<lambda>b'. b' @ b) ` bexpand_safe b"
-  using wf_branch_bexpand_safe by auto
+lemma mlss_proc_partial_sound:
+  assumes "mlss_proc_partial \<phi> = Some True"
+  shows "\<not> interp I\<^sub>s\<^sub>a M \<phi>"
+proof -
+  from assms have "\<exists>v. v \<turnstile> \<phi>"
+    unfolding mlss_proc_partial_def using types_pset_fm_code by force
+  moreover have "mlss_naive.mlss_proc \<phi>"
+    using assms \<open>\<exists>v. v \<turnstile> \<phi>\<close> mlss_proc_branch_partial_eq calculation wf_branch_singleton
+    unfolding mlss_naive.mlss_proc_def mlss_proc_partial_def
+    by (metis last.simps option.discI option.inject)
+  ultimately show ?thesis
+    using mlss_naive.mlss_proc_sound by blast
+qed
 
-lift_definition mlss_proc_branch_wf :: "('a::{fresh,default}) wf_branch \<Rightarrow> bool"
-  is "mlss_naive.mlss_proc_branch" .
+declare lin_sat_code[code] sat_code[code]
+declare mlss_proc_branch_partial.simps[code]
+code_identifier
+    code_module Set_Calculus \<rightharpoonup> (SML) Set_Proc_Code
+  | code_module Set_Proc \<rightharpoonup> (SML) Set_Proc_Code
+export_code mlss_proc_partial in SML
 
-lemma mlss_proc_branch_wf_code[code]:
-  "mlss_proc_branch_wf b =
-    (if \<not> lin_sat_wf b then mlss_proc_branch_wf (lexpand_safe_app_wf b)
-     else if bclosed_wf b then True
-     else if \<not> sat_wf b then (\<forall>b' \<in> bexpand_safe_app_wf b. mlss_proc_branch_wf b')
-     else bclosed_wf b)"
-  apply transfer
-  apply (auto simp: mlss_naive.mlss_proc_branch_dom_if_wf_branch
-                    mlss_naive.mlss_proc_branch.psimps)
-  done
+context
+begin
 
-lemma Ball_bexpand_safe_app_wf[code_unfold]:
-  "(\<forall>b' \<in> bexpand_safe_app_wf b. mlss_proc_branch_wf b')
-  \<longleftrightarrow> (\<forall>b' \<in> bexpand_safe (Rep_wf_branch b). mlss_proc_branch_wf (Abs_wf_branch (b' @ b))"
-  sorry
+private definition "x \<equiv> Var 0"
+private definition "y \<equiv> Var 1"
+private definition "z \<equiv> Var 2"
+private definition "A \<equiv> Var 3"
+private definition "B \<equiv> Var 4"
 
-code_identifier code_module Set_Calculus \<rightharpoonup> (SML) Set_Proc_Code
-export_code mlss_proc_branch_wf in SML
+
+private definition Imp where "Imp P Q \<equiv> Or (Neg P) Q"
+private definition Subs_pset (infix "\<subseteq>\<^sub>s" 55) where "Subs_pset s t \<equiv> s \<squnion>\<^sub>s t =\<^sub>s t"
+
+notation Imp (infixr "\<longrightarrow>\<^sub>f" 47)
+notation And (infixr "\<and>\<^sub>f" 49)
+notation Or (infixr "\<or>\<^sub>f" 48)
+
+private definition "subset_trans_fm \<equiv>
+  Neg (AT (x \<subseteq>\<^sub>s y) \<and>\<^sub>f AT (y \<subseteq>\<^sub>s z) \<longrightarrow>\<^sub>f AT (x \<subseteq>\<^sub>s z))"
+
+private definition "subset_dest_fm \<equiv>
+  Neg (AT (A \<subseteq>\<^sub>s B) \<and>\<^sub>f AT (x \<in>\<^sub>s A) \<longrightarrow>\<^sub>f AT (x \<in>\<^sub>s B))"
+
+value "mlss_proc_partial subset_trans_fm"
+value "mlss_proc_partial subset_dest_fm"
+
+no_notation Subs_pset (infix "\<subseteq>\<^sub>s" 55)
+no_notation Imp (infixr "\<longrightarrow>\<^sub>f" 47)
+no_notation And (infixr "\<and>\<^sub>f" 49)
+no_notation Or (infixr "\<or>\<^sub>f" 48)
+end
 
 end

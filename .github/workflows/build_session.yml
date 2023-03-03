@@ -26,7 +26,7 @@ jobs:
       - name: Build Session
         run: |
           session="Set_Proc"
-          if [ "${{ github.branch }}" = "CADE_Typing" ]; then
+          if [ "$GITHUB_REF_NAME" = "CADE_Typing" ]; then
             session="Set_Proc_Typing"
           fi;
           /home/isabelle/Isabelle/bin/isabelle build -d src/ -d afp/thys -R $session
@@ -36,4 +36,4 @@ jobs:
         uses: actions/cache@v3
         with:
           path: /home/isabelle/.isabelle/Isabelle2022/heaps
-          restore-keys: heap-images-${{ github.branch }}
+          restore-keys: heap-images-${{ github.ref }}

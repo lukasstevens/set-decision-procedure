@@ -1,8 +1,11 @@
+chapter Set_Proc 
+
 session Set_Proc = HOL +
+  options [ browser_info ]
   sessions
     "HOL-Library"
     Graph_Theory
-    HereditarilyFinite 
+    HereditarilyFinite
     Fresh_Identifiers
   theories
     Set_Proc

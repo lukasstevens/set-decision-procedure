@@ -29,4 +29,4 @@ jobs:
           if [ "{{ github.branch }}" = "CADE_Typing" ]; then
             session="Set_Proc_Typing"
           fi;
-          ~/Isabelle/bin/isabelle build -d src/ -d afp/thys $session
+          /home/isabelle/Isabelle/bin/isabelle build -d src/ -d afp/thys $session

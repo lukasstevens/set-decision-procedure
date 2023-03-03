@@ -9,7 +9,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: makarius/isabelle:Isabelle2022
+    container:
+      image: makarius/isabelle:Isabelle2022
+      options: --user root
 
     steps:
       - name: Checkout

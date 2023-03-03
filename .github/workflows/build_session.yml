@@ -40,7 +40,7 @@ jobs:
           restore-keys: heap-images-${{ github.ref_name }}
 
       - name: Upload browser_info
-        uses: actions/upload-artifcat@v3
+        uses: actions/upload-artifact@v3
         with:
           name: browser_info-${{ github.ref_name }}
           path: ~/.isabelle/browser_info/

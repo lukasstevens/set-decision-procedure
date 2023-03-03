@@ -155,15 +155,15 @@
 \begin{abstract}
   Using Isabelle/HOL, we verify the state-of-the-art decision procedure for multi-level syllogistic with singleton (\MLSS{} for short), which is a quantifier-free fragment of set theory.
   We formalise its syntax and semantics as well as a sound and complete tableau calculus for it.
-  We also provide an abstract specification of a decision procedure that applies the rules of the calculus exhaustively and prove its termination.
+  We also provide an executable specification of a decision procedure that applies the rules of the calculus exhaustively and prove its termination.
   Furthermore, we extend the calculus with a light-weight type system that paves the way for an integration of the procedure into Isabelle/HOL.
   \keywords{Decision procedures \and Tableau \and Proof assistants \and Set theory}
 \end{abstract}
 
 \section{Introduction}
 In Isabelle/HOL, there are specialised procedures for dealing with e.g.\ natural numbers, linear arithmetic, and metric spaces.
-Some of these procedures\todo{Related work?} have been verified in Isabelle/HOL such as a procedure for Presburger arithmetic~\cite{presburger} that was later extended to mixed real-integer arithmetic~\cite{arithmetic}.
-This procedure, though, uses reflection to work on goals in Isabelle/HOL, which, during execution, either sacrifices\todo{Formulation: no sacrifices but trust} speed by going through the simplifier or soundness by trusting the code generator.
+Some of these procedures have been verified in Isabelle/HOL such as a procedure for Presburger arithmetic~\cite{presburger} that was later extended to mixed real-integer arithmetic~\cite{arithmetic}.
+This procedure, though, uses reflection to work on goals in Isabelle/HOL, which, during execution, either sacrifices speed by going through the simplifier or requires trusting the code generator.
 More recently, \citeauthor{orders}~\cite{orders} presented a verified decision procedure for orders that produces certificates. 
 This approach offers efficient execution by using generated code as well as soundness because the certificates are replayed through Isabelle's inference kernel.
 
@@ -172,13 +172,14 @@ To the best of our knowledge, we present the first formally verified decision pr
 In particular, we consider a quantifier-free fragment which \citeauthor{new_fast_tableau}~\cite{new_fast_tableau} call multi-level syllogistic with singleton (\MLSS{}).
 The fragment includes the usual set operations of union, intersection, difference, membership, equality and, in addition, it allows the construction of singleton sets.
 
-Since \MLSS{} admits a tableau calculus, we expect that the generation of certificates\todo{Formulation} will be straightforward.
-Like with the aforementioned order solver, this would pave the way towards an integration of the decision procedure into Isabelle, adding to its growing body of verified decision procedures.
+Since \MLSS{} admits a tableau calculus, the generation of certificates will be straightforward.
+Like with the aforementioned order solver, this paves the way towards an integration of the decision procedure into Isabelle, adding to its growing body of verified decision procedures.
 
 \subsection{Contributions}
 We present a formalisation in Isabelle/HOL of a tableau calculus for \MLSS{} due to \citeauthor{new_fast_tableau}~\cite{new_fast_tableau}\cite[Chapter 14]{set_theory}.
 We prove soundness and completeness of the calculus and give an abstract specification of a decision procedure that applies the rules of the calculus exhaustively.
 To obtain total correctness of the procedure, we prove its termination.
+We also formalise a refinement to an executable specification from which Isabelle can generate code.
 The formalisation initially follows the paper but gives a more thorough account of some important details:
 \begin{itemize}
   \item We deliver the omitted proof of Lemma~2 in the paper~\cite{new_fast_tableau}, which is a key building block for the completeness proof of the calculus.
@@ -194,6 +195,9 @@ In order to deal with these urelements, we extend the calculus with a light-weig
 The modification of the calculus required non-trivial changes to the completeness proof.
 Here, the formalisation was instrumental because Isabelle immediately revealed which proofs had been broken.
 This illustrates the usefulness of ITPs for developing logic calculi: they allow us to confidently make modifications without compromising correctness. 
+
+All in all, the formalisation amounts to over 6000 lines of theory.
+It is available online~\cite{formalisation}.
 
 \subsection{Related Work}
 Since the literature on decidable fragments of set theory is vast, we only focus on \MLSS{} here.
@@ -826,7 +830,7 @@ however, there is no matching rule in Isabelle/HOL since \lstinline!s! and \lsti
   \caption{The type system for set terms and atoms.\label{fig:types}}
 \end{figure}
 
-To deal with this problem, we introduce a light-weight type system as displayed in \autoref{fig:types}. 
+To deal with this problem, we formalise a light-weight type system as displayed in \autoref{fig:types}. 
 The type of a set term in this system is just a natural number which we call level.
 Intuitively speaking, the level indicates that the corresponding term \lstinline!t! in Isabelle/HOL has type
 \[
@@ -837,7 +841,7 @@ Note that the constructor $\emptyset$ now receives an additional argument that i
 
 Moreover, the typing judgement extends to set atoms by matching up the levels of its component set terms.
 
-Ultimately, we define \lstinline!$\Gamma$ $\vdash$ $\psi$ $\equiv$ $\forall$a $\in$ atoms $\phi$. $\Gamma$ $\vdash$ a! in order to type formulae.
+Ultimately, we define \lstinline!$\Gamma$ $\vdash$ $\phi$ $\equiv$ $\forall$a $\in$ atoms $\phi$. $\Gamma$ $\vdash$ a! in order to type formulae.
 
 We can now define the urelements with respect to a formula.
 An urelement is a set term whose corresponding type in Isabelle/HOL might not be a set.

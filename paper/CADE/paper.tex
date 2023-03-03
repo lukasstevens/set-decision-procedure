@@ -179,7 +179,7 @@ Like with the aforementioned order solver, this paves the way towards an integra
 We present a formalisation in Isabelle/HOL of a tableau calculus for \MLSS{} due to \citeauthor{new_fast_tableau}~\cite{new_fast_tableau}\cite[Chapter 14]{set_theory}.
 We prove soundness and completeness of the calculus and give an abstract specification of a decision procedure that applies the rules of the calculus exhaustively.
 To obtain total correctness of the procedure, we prove its termination.
-We also formalise a refinement to an executable specification from which Isabelle can generate code.
+In order to obtain an executable procedure, we also give a naive refinement to a more concrete specification from which code can be generated.
 The formalisation initially follows the paper but gives a more thorough account of some important details:
 \begin{itemize}
   \item We deliver the omitted proof of Lemma~2 in the paper~\cite{new_fast_tableau}, which is a key building block for the completeness proof of the calculus.
@@ -516,7 +516,7 @@ The mechanics of the decision procedure are typical for a procedure based on a t
 it decides the satisfiability of a given formula \lstinline!$\phi$! by determining whether the formula has a closed tableau.
 More specifically, it initialises the tableau with the singleton branch \lstinline![$\phi$]! and checks whether this branch can be expanded to a closed tableau.
 
-We abstractly specify the behaviour of the decision procedure, leaving an executable specification from which code can be generated to future work.
+We only discuss the abstract specification here and refer the reader to the formalisation for the executable specification.
 The implementation uses a couple of features of Isabelle/HOL's function package:
 instead of defining the function via pattern matching, we specify the equations of the function as conditional rewrite rules.
 This requires us to prove that the assumptions of the equations are non-overlapping, which is done by automation.
@@ -883,9 +883,10 @@ Conversely, all terms \lstinline!s! with \lstinline!$\Gamma$ s $=$ 0! are urelem
 By closely following a paper by \citeauthor{new_fast_tableau}~\cite{new_fast_tableau}, we developed a formalisation of a tableau calculus for a quantifier-free fragment of set theory called \MLSS{}.
 The formalisation includes an abstract description of a decision procedure that builds on the calculus.
 To make the decision procedure compatible with Isabelle/HOL, we extended the calculus with a light-weight type system while maintaining completeness.
+We also refined the abstract specification to an executable specification from which code can be generated.
 
-The refinement of the abstract description to an executable specification from which code can be exported is left for future work.
-This executable specification should generate certificates that can be replayed through Isabelle's inference kernel in order to facilitate the integration of the procedure into Isabelle.
+In future work, we plan to implement an efficient executable specification in the style of a worklist algorithm. 
+This specification should also generate certificates that can be replayed through Isabelle's inference kernel in order to facilitate the integration of the procedure into Isabelle.
 
 %Challenges in obtaining an executable specification: membership cycle test unnecessary, fast branch membership test, proof reconstruction.
 %Additional constructs such as finiteness and pairs.
@@ -1016,7 +1017,7 @@ This allows us to finish the calculation that justifies the second inequality:
   $\leq$ 4 * 4 * |subterms (last b)|$^\text{4}$.
 \end{lstlisting}
 All in all, we get the following lemma.
-\begin{lstlisting}[label={lst:card_branch}]
+\begin{lstlisting}
 lemma card_wf_branch_ub:
   assumes wf_branch b
   shows |set b|

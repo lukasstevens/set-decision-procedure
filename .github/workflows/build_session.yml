@@ -1,0 +1,30 @@
+name: Build session
+
+on:
+  push:
+    branches: [ "CADE", "CADE_Typing" ]
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: makarius/isabelle:Isabelle2022
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      
+      - name: Checkout AFP
+        uses: actions/checkout@v3
+        with:
+          repository: isabelle-prover/mirror-afp-2022
+          path: afp
+       
+      - name: Build Session
+        run: |
+          session="Set_Proc"
+          if [ "{{ github.branch }}" = "CADE_Typing" ]; then
+            session="Set_Proc_Typing"
+          fi;
+          ~/Isabelle/bin/isabelle build -d src/ -d afp/thys $session

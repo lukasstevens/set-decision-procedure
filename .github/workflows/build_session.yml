@@ -36,5 +36,11 @@ jobs:
         uses: actions/cache@v3
         with:
           path: /home/isabelle/.isabelle/Isabelle2022/heaps
-          key: heap-images-${{ github.ref }}
-          restore-keys: heap-images-${{ github.ref }}
+          key: heap-images-${{ github.ref_name }}
+          restore-keys: heap-images-${{ github.ref_name }}
+
+      - name: Upload browser_info
+        uses: actions/upload-artifcat@v3
+        with:
+          name: browser_info-${{ github.ref_name }}
+          path: ~/.isabelle/browser_info/

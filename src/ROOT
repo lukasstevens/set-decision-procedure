@@ -9,3 +9,4 @@ session Set_Proc = HOL +
     Fresh_Identifiers
   theories
     Set_Proc
+    Set_Proc_Code

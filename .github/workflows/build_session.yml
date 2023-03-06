@@ -23,10 +23,18 @@ jobs:
           repository: isabelle-prover/mirror-afp-2022
           path: afp
 
+      - name: Set Isabelle Home 
+        run: |
+          echo "$(/home/isabelle/Isabelle/bin/isabelle getenv ISABELLE_HOME)" >> $GITHUB_ENV
+
+      - name: Set Isabelle Home User
+        run: |
+          echo "$($ISABELLE_HOME/bin/isabelle getenv ISABELLE_HOME_USER" >> $GITHUB_ENV
+
       - name: Cache Heap Images
         uses: actions/cache@v3
         with:
-          path: ~/.isabelle/heaps/
+          path: $ISABELLE_HOME_USER/heaps/
           key: heap-images-${{ github.ref_name }}
           restore-keys: heap-images-
 
@@ -36,11 +44,11 @@ jobs:
           if [ "$GITHUB_REF_NAME" = "CADE_Typing" ]; then
             session="Set_Proc_Typing"
           fi;
-          /home/isabelle/Isabelle/bin/isabelle build -d src/ -d afp/thys -R $session
-          /home/isabelle/Isabelle/bin/isabelle build -c -d src/ -d afp/thys $session
+          $ISABELLE_HOME/bin/isabelle build -v -d src/ -d afp/thys -R $session
+          $ISABELLE_HOME/bin/isabelle build -v -c -d src/ -d afp/thys $session
 
       - name: Upload browser_info
         uses: actions/upload-artifact@v3
         with:
           name: browser_info-${{ github.ref_name }}
-          path: ~/.isabelle/browser_info/
+          path: $ISABELLE_HOME_USER/browser_info/

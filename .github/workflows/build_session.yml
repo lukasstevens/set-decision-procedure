@@ -26,7 +26,7 @@ jobs:
       - name: Cache Heap Images
         uses: actions/cache@v3
         with:
-          path: ~/.isabelle/Isabelle2022/heaps
+          path: ~/.isabelle/heaps/
           key: heap-images-${{ github.ref_name }}
           restore-keys: heap-images-
 

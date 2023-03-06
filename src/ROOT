@@ -7,4 +7,4 @@ session Set_Proc = HOL +
     Graph_Theory
     HereditarilyFinite
   theories
-    Set_Proc
+    Set_Proc_All

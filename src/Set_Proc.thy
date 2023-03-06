@@ -5,7 +5,7 @@ begin
 chapter \<open>A Decision Procedure for MLSS\<close>
 text \<open>
   This theory proves the soundness and completeness of the
-  tableau calculus defined in \<^theory>\<open>Set_Proc.Set_Calculus\<close>
+  tableau calculus defined in \<^theory>\<open>Set_Proc_Typing.Set_Calculus\<close>
   It then lifts those properties to a recursive procedure
   that applies the rules of the calculus exhaustively.
   To obtain a decision procedure, we also prove termination.

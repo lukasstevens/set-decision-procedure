@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/><link rel="stylesheet" type="text/css" href="isabelle.css"/>
+<title>Theory HF_Extras</title>
+</head>
+
+
+<body>
+<div class="head">
+<h1>Theory HF_Extras</h1>
+</div>
+
+<pre class="source"><span class="keyword1"><span class="command"><span>theory</span></span></span><span> </span><a href="HF_Extras.html"><span>HF_Extras</span></a><span>
+  </span><span class="keyword2"><span class="keyword"><span>imports</span></span></span><span> </span><a href="HereditarilyFinite.Rank.html"><span>HereditarilyFinite.Rank</span></a><span>
+</span><span class="keyword2"><span class="keyword"><span>begin</span></span></span><span>
+
+</span><span class="keyword1"><span class="command"><span>lemma</span></span></span><span> </span><span class="entity_def" id="HF_Extras.hcard_ord_of|fact"><span class="entity_def" id="HF_Extras.hcard_ord_of|thm"><span>hcard_ord_of</span></span></span><span class="main"><span>[</span></span><span class="operator"><span>simp</span></span><span class="main"><span>]</span></span><span class="main"><span>:</span></span><span>
+  </span><span class="quoted"><span class="quoted"><span>"</span><a class="entity_ref" href="HereditarilyFinite.HF.html#HF.hcard|const"><span>hcard</span></a><span> </span><span class="main"><span>(</span></span><a class="entity_ref" href="HereditarilyFinite.Ordinal.html#Ordinal.ord_of|const"><span>ord_of</span></a><span> </span><span class="free"><span>n</span></span><span class="main"><span>)</span></span><span> </span><span class="main"><a class="entity_ref" href="../../HOL/HOL/HOL.html#HOL.eq|const"><span>=</span></a></span><span> </span><span class="free"><span>n</span></span><span>"</span></span></span><span>
+  </span><span class="keyword1"><span class="command"><span>unfolding</span></span></span><span> </span><a class="entity_ref" href="HereditarilyFinite.HF.html#HF.hcard_def|fact"><span>hcard_def</span></a><span> </span><a class="entity_ref" href="HereditarilyFinite.Ordinal.html#Ordinal.hfset_ord_of|fact"><span>hfset_ord_of</span></a><span> </span><a class="entity_ref" href="../../HOL/HOL/Finite_Set.html#Finite_Set.card_image|fact"><span>card_image</span></a><span class="main"><span>[</span></span><span class="operator"><span>OF</span></span><span> </span><a class="entity_ref" href="HereditarilyFinite.Ordinal.html#Ordinal.inj_ord_of|fact"><span>inj_ord_of</span></a><span class="main"><span>]</span></span><span>
+  </span><span class="keyword1"><span class="command"><span>by</span></span></span><span> </span><span class="operator"><span>simp</span></span><span>
+
+</span><span class="keyword1"><span class="command"><span>lemma</span></span></span><span> </span><span class="entity_def" id="HF_Extras.hcard_HF|fact"><span class="entity_def" id="HF_Extras.hcard_HF|thm"><span>hcard_HF</span></span></span><span class="main"><span>:</span></span><span> </span><span class="quoted"><span class="quoted"><span>"</span><a class="entity_ref" href="../../HOL/HOL/Finite_Set.html#Finite_Set.finite|const"><span>finite</span></a><span> </span><span class="free"><span>A</span></span><span> </span><span class="main"><span>⟹</span></span><span> </span><a class="entity_ref" href="HereditarilyFinite.HF.html#HF.hcard|const"><span>hcard</span></a><span> </span><span class="main"><span>(</span></span><a class="entity_ref" href="HereditarilyFinite.HF.html#HF.HF|const"><span>HF</span></a><span> </span><span class="free"><span>A</span></span><span class="main"><span>)</span></span><span> </span><span class="main"><a class="entity_ref" href="../../HOL/HOL/HOL.html#HOL.eq|const"><span>=</span></a></span><span> </span><a class="entity_ref" href="../../HOL/HOL/Finite_Set.html#Finite_Set.card|const"><span>card</span></a><span> </span><span class="free"><span>A</span></span><span>"</span></span></span><span>
+  </span><span class="keyword1"><span class="command"><span>unfolding</span></span></span><span> </span><a class="entity_ref" href="HereditarilyFinite.HF.html#HF.hcard_def|fact"><span>hcard_def</span></a><span> </span><span class="keyword1"><span class="command"><span>using</span></span></span><span> </span><a class="entity_ref" href="HereditarilyFinite.HF.html#HF.hfset_HF|fact"><span>hfset_HF</span></a><span> </span><span class="keyword1"><span class="command"><span>by</span></span></span><span> </span><span class="operator"><span>simp</span></span><span>
+
+</span><span class="keyword2"><span class="keyword"><span>end</span></span></span></pre>
+</body>
+
+</html>

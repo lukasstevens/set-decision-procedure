@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/><link rel="stylesheet" type="text/css" href="isabelle.css"/>
+<title>Theory Set_Proc_All</title>
+</head>
+
+
+<body>
+<div class="head">
+<h1>Theory Set_Proc_All</h1>
+</div>
+
+<pre class="source"><span class="keyword1"><span class="command"><span>theory</span></span></span><span> </span><a href="Set_Proc_All.html"><span>Set_Proc_All</span></a><span>
+  </span><span class="keyword2"><span class="keyword"><span>imports</span></span></span><span> </span><a href="Set_Proc.html"><span>Set_Proc</span></a><span>
+</span><span class="keyword2"><span class="keyword"><span>begin</span></span></span><span>
+
+</span><span class="keyword1"><span class="command"><span>chapter</span></span></span><span> </span><span class="quoted"><span class="plain_text"><span>‹</span><span>Outline of the Formalisation</span><span>›</span></span></span><span>
+
+</span><span class="keyword1"><span class="command"><span>text</span></span></span><span> </span><span class="quoted"><span class="plain_text"><span>‹</span><span>
+  </span><span>We reference the most important aspects of the formalisation here
+</span><span>  and highlight the (mostly syntactic) differences between the paper
+</span><span>  and the formalisation.
+</span><span>  The sections roughly correspond to the sections in the paper.</span><span>
+</span><span>›</span></span></span><span>
+
+</span><span class="keyword1"><span class="command"><span>section</span></span></span><span> </span><span class="quoted"><span class="plain_text"><span>‹</span><span>Syntax and Semantics</span><span>›</span></span></span><span>
+
+</span><span class="keyword1"><span class="command"><span>subsection</span></span></span><span> </span><span class="quoted"><span class="plain_text"><span>‹</span><span>Syntax</span><span>›</span></span></span><span>
+</span><span class="keyword1"><span class="command"><span>text</span></span></span><span> </span><span class="quoted"><span class="plain_text"><span>‹</span><span>
+  </span><span>Datatypes:</span><span>
+</span><span>    </span><span class="antiquoted"><span>▪</span></span><span> </span><span>Propositional formulae: </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>datatype</span></span><span> </span><a class="entity_ref" href="Logic.html#Logic.fm|type"><span>fm</span></a><span class="antiquote"><span>}</span></span></span><span>. The formalisation uses constructors like </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>term</span></span><span> </span><span class="quoted"><a class="entity_ref" href="Logic.html#Logic.fm.And|const"><span>And</span></a></span><span class="antiquote"><span>}</span></span></span><span>
+      </span><span>instead of </span><span class="antiquoted"><span class="raw_text"><span class="operator"><span>‹</span></span><span><span class="hidden">❙</span><b>∧</b>›</span></span></span><span>.</span><span>
+</span><span>    </span><span class="antiquoted"><span>▪</span></span><span> </span><span>Set terms: </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>datatype</span></span><span> </span><a class="entity_ref" href="Set_Semantics.html#Set_Semantics.pset_term|type"><span>pset_term</span></a><span class="antiquote"><span>}</span></span></span><span>
+</span><span>    </span><span class="antiquoted"><span>▪</span></span><span> </span><span>Set atoms: </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>datatype</span></span><span> </span><a class="entity_ref" href="Set_Semantics.html#Set_Semantics.pset_atom|type"><span>pset_atom</span></a><span class="antiquote"><span>}</span></span></span><span>
+</span><span>›</span></span></span><span>
+</span><span class="keyword1"><span class="command"><span>text</span></span></span><span> </span><span class="quoted"><span class="plain_text"><span>‹</span><span>
+  </span><span>Important constants:</span><span>
+</span><span>    </span><span class="antiquoted"><span>▪</span></span><span> </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>const</span></span><span> </span><a class="entity_ref" href="Set_Semantics.html#Set_Semantics.vars|const"><span>vars</span></a><span class="antiquote"><span>}</span></span></span><span>
+</span><span>    </span><span class="antiquoted"><span>▪</span></span><span> </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>const</span></span><span> </span><a class="entity_ref" href="Logic.html#Logic.fm.atoms|const"><span>atoms</span></a><span class="antiquote"><span>}</span></span></span><span>
+</span><span>    </span><span class="antiquoted"><span>▪</span></span><span> </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>const</span></span><span> </span><a class="entity_ref" href="Set_Semantics.html#Set_Semantics.subterms|const"><span>subterms</span></a><span class="antiquote"><span>}</span></span></span><span>
+</span><span>    </span><span class="antiquoted"><span>▪</span></span><span> </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>const</span></span><span> </span><a class="entity_ref" href="Set_Semantics.html#Set_Semantics.subfms|const"><span>subfms</span></a><span class="antiquote"><span>}</span></span></span><span>
+</span><span>    </span><span class="antiquoted"><span>▪</span></span><span> </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>const</span></span><span> </span><a class="entity_ref" href="Set_Proc.html#Set_Proc.is_literal|const"><span>is_literal</span></a><span class="antiquote"><span>}</span></span></span><span>
+</span><span>›</span></span></span><span>
+
+</span><span class="keyword1"><span class="command"><span>subsection</span></span></span><span> </span><span class="quoted"><span class="plain_text"><span>‹</span><span>Semantics</span><span>›</span></span></span><span>
+
+</span><span class="keyword1"><span class="command"><span>text</span></span></span><span> </span><span class="quoted"><span class="plain_text"><span>‹</span><span>
+  </span><span>Interpretation functions:</span><span>
+</span><span>    </span><span class="antiquoted"><span>▪</span></span><span> </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>const</span></span><span> </span><a class="entity_ref" href="Set_Semantics.html#Set_Semantics.I\&lt;^sub&gt;s\&lt;^sub&gt;t|const"><span>I<span class="hidden">⇩</span><sub>s</sub><span class="hidden">⇩</span><sub>t</sub></span></a><span class="antiquote"><span>}</span></span></span><span>
+</span><span>    </span><span class="antiquoted"><span>▪</span></span><span> </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>const</span></span><span> </span><a class="entity_ref" href="Set_Semantics.html#Set_Semantics.I\&lt;^sub&gt;s\&lt;^sub&gt;a|const"><span>I<span class="hidden">⇩</span><sub>s</sub><span class="hidden">⇩</span><sub>a</sub></span></a><span class="antiquote"><span>}</span></span></span><span>
+</span><span>    </span><span class="antiquoted"><span>▪</span></span><span> </span><span class="antiquoted"><span class="raw_text"><span class="operator"><span>‹</span></span><span>⊨›</span></span></span><span> corresponds to </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>term</span></span><span> </span><span class="quoted"><span>‹</span><a class="entity_ref" href="Logic.html#Logic.interp|const"><span>interp</span></a><span> </span><a class="entity_ref" href="Set_Semantics.html#Set_Semantics.I\&lt;^sub&gt;s\&lt;^sub&gt;a|const"><span>I<span class="hidden">⇩</span><sub>s</sub><span class="hidden">⇩</span><sub>a</sub></span></a><span>›</span></span><span class="antiquote"><span>}</span></span></span><span>
+</span><span>›</span></span></span><span>
+
+</span><span class="keyword1"><span class="command"><span>thm</span></span></span><span> </span><a class="entity_ref" href="Set_Semantics.html#Set_Semantics.I\&lt;^sub&gt;s\&lt;^sub&gt;t.simps|fact"><span>I<span class="hidden">⇩</span><sub>s</sub><span class="hidden">⇩</span><sub>t</sub>.simps</span></a><span> </span><a class="entity_ref" href="Set_Semantics.html#Set_Semantics.I\&lt;^sub&gt;s\&lt;^sub&gt;a.simps|fact"><span>I<span class="hidden">⇩</span><sub>s</sub><span class="hidden">⇩</span><sub>a</sub>.simps</span></a><span> </span><a class="entity_ref" href="Logic.html#Logic.interp.simps|fact"><span>interp.simps</span></a><span>
+
+</span><span class="keyword1"><span class="command"><span>section</span></span></span><span> </span><span class="quoted"><span class="plain_text"><span>‹</span><span>Tableau Calculus</span><span>›</span></span></span><span>
+
+</span><span class="keyword1"><span class="command"><span>text</span></span></span><span> </span><span class="quoted"><span class="plain_text"><span>‹</span><span>
+  </span><span>Type of branches </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>typ</span></span><span> </span><span class="quoted"><span>‹</span><span class="tfree"><span>'a</span></span><span> </span><a class="entity_ref" href="Set_Semantics.html#Set_Semantics.branch|type"><span>branch</span></a><span>›</span></span><span class="antiquote"><span>}</span></span></span><span>.
+</span><span>  Closedness </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>const</span></span><span> </span><a class="entity_ref" href="Set_Calculus.html#Set_Calculus.bclosed|const"><span>bclosed</span></a><span class="antiquote"><span>}</span></span></span><span> and Openness </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>const</span></span><span> </span><a class="entity_ref" href="Set_Calculus.html#Set_Calculus.bopen|const"><span>bopen</span></a><span class="antiquote"><span>}</span></span></span><span>.</span><span>
+</span><span>›</span></span></span><span>
+
+</span><span class="keyword1"><span class="command"><span>thm</span></span></span><span> </span><a class="entity_ref" href="Set_Calculus.html#Set_Calculus.bclosed.intros|fact"><span>bclosed.intros</span></a><span>
+
+</span><span class="keyword1"><span class="command"><span>text</span></span></span><span> </span><span class="quoted"><span class="plain_text"><span>‹</span><span>
+  </span><span>Instead of triangles such as </span><span class="antiquoted"><span class="raw_text"><span class="operator"><span>‹</span></span><span>▹›</span></span></span><span>, we use the constant names</span><span>
+  </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>const</span></span><span> </span><a class="entity_ref" href="Set_Calculus.html#Set_Calculus.lexpands|const"><span>lexpands</span></a><span class="antiquote"><span>}</span></span></span><span>, </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>const</span></span><span> </span><a class="entity_ref" href="Set_Calculus.html#Set_Calculus.bexpands|const"><span>bexpands</span></a><span class="antiquote"><span>}</span></span></span><span>, and </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>const</span></span><span> </span><a class="entity_ref" href="Set_Calculus.html#Set_Calculus.expandss|const"><span>expandss</span></a><span class="antiquote"><span>}</span></span></span><span> for</span><span>
+  </span><span>linear expansion, branching expansion, and expansion closure, respectively.</span><span>
+  </span><span>Note that the term-for-term substitution that is denoted by </span><span class="antiquoted"><span class="raw_text"><span class="operator"><span>‹</span></span><span>l{s/t}›</span></span></span><span> in the paper</span><span>
+  </span><span>corresponds to </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>const</span></span><span> </span><a class="entity_ref" href="Set_Calculus.html#Set_Calculus.subst_tlvl|const"><span>subst_tlvl</span></a><span class="antiquote"><span>}</span></span></span><span>.</span><span>
+  
+  </span><span>Further important constants:</span><span>
+</span><span>    </span><span class="antiquoted"><span>▪</span></span><span> </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>const</span></span><span> </span><a class="entity_ref" href="Set_Proc.html#Set_Proc.lin_sat|const"><span>lin_sat</span></a><span class="antiquote"><span>}</span></span></span><span>
+</span><span>    </span><span class="antiquoted"><span>▪</span></span><span> </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>const</span></span><span> </span><a class="entity_ref" href="Set_Proc.html#Set_Proc.sat|const"><span>sat</span></a><span class="antiquote"><span>}</span></span></span><span>
+</span><span>    </span><span class="antiquoted"><span>▪</span></span><span> </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>const</span></span><span> </span><a class="entity_ref" href="Set_Proc.html#Set_Proc.wits|const"><span>wits</span></a><span class="antiquote"><span>}</span></span></span><span>
+</span><span>    </span><span class="antiquoted"><span>▪</span></span><span> </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>const</span></span><span> </span><a class="entity_ref" href="Set_Calculus.html#Set_Calculus.wf_branch|const"><span>wf_branch</span></a><span class="antiquote"><span>}</span></span></span><span>
+</span><span>›</span></span></span><span>
+
+</span><span class="keyword1"><span class="command"><span>thm</span></span></span><span> </span><a class="entity_ref" href="Set_Proc.html#Set_Proc.lin_sat_def|fact"><span>lin_sat_def</span></a><span> </span><a class="entity_ref" href="Set_Proc.html#Set_Proc.sat_def|fact"><span>sat_def</span></a><span> </span><a class="entity_ref" href="Set_Proc.html#Set_Proc.wits_def|fact"><span>wits_def</span></a><span> </span><a class="entity_ref" href="Set_Calculus.html#Set_Calculus.wf_branch_def|fact"><span>wf_branch_def</span></a><span>
+</span><span class="keyword1"><span class="command"><span>thm</span></span></span><span> </span><a class="entity_ref" href="Set_Calculus.html#Set_Calculus.subst_tlvl.simps|fact"><span>subst_tlvl.simps</span></a><span>
+
+</span><span class="keyword1"><span class="command"><span>section</span></span></span><span> </span><span class="quoted"><span class="plain_text"><span>‹</span><span>Abstract Specification of the Decision Procedure</span><span>›</span></span></span><span>
+
+</span><span class="keyword1"><span class="command"><span>text</span></span></span><span> </span><span class="quoted"><span class="plain_text"><span>‹</span><span>
+  </span><span>Since Hilbert choice (such as </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>term</span></span><span> </span><span class="quoted"><span>‹</span><span class="keyword1"><span>SOME</span></span><span> </span><span class="bound"><span>x</span></span><span class="main"><span>.</span></span><span> </span><span class="free"><span>P</span></span><span>›</span></span><span class="antiquote"><span>}</span></span></span><span>) does not allow for refinement,
+</span><span>  we parametrise the abstract specification </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>const</span></span><span> </span><a class="entity_ref" href="Set_Proc.html#Set_Proc.mlss_proc.mlss_proc_branch|const"><span>mlss_proc.mlss_proc_branch</span></a><span class="antiquote"><span>}</span></span></span><span> of the
+</span><span>  decision procedure by two choice functions </span><span class="antiquoted"><span class="raw_text"><span class="operator"><span>‹</span></span><span>lexpand›</span></span></span><span> and </span><span class="antiquoted"><span class="raw_text"><span class="operator"><span>‹</span></span><span>bexpand›</span></span></span><span>.
+</span><span>  This parametrisation is realised by the locale </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>locale</span></span><span> </span><a class="entity_ref" href="Set_Proc.html#Set_Proc.mlss_proc|locale"><span>mlss_proc</span></a><span class="antiquote"><span>}</span></span></span><span>.
+</span><span>  
+</span><span>  See also: </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>const</span></span><span> </span><a class="entity_ref" href="Set_Proc.html#Set_Proc.mlss_proc.mlss_proc|const"><span>mlss_proc.mlss_proc</span></a><span class="antiquote"><span>}</span></span></span><span>.</span><span>
+</span><span>›</span></span></span><span>
+
+</span><span class="keyword1"><span class="command"><span>section</span></span></span><span> </span><span class="quoted"><span class="plain_text"><span>‹</span><span>Completeness</span><span>›</span></span></span><span>
+
+</span><span class="keyword1"><span class="command"><span>text</span></span></span><span> </span><span class="quoted"><span class="plain_text"><span>‹</span><span>
+  </span><span>Constants needed for the realisation function:</span><span>
+</span><span>    </span><span class="antiquoted"><span>▪</span></span><span> </span><span>The terms defined by </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>const</span></span><span> </span><a class="entity_ref" href="Set_Proc.html#Set_Proc.base_vars|const"><span>base_vars</span></a><span class="antiquote"><span>}</span></span></span><span> receive special treatment from the realisation function.</span><span>
+      </span><span>Without typing </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>const</span></span><span> </span><a class="entity_ref" href="Set_Proc.html#Set_Proc.base_vars|const"><span>base_vars</span></a><span class="antiquote"><span>}</span></span></span><span> is equal to the pure witnesses </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>const</span></span><span> </span><a class="entity_ref" href="Set_Proc.html#Set_Proc.pwits|const"><span>pwits</span></a><span class="antiquote"><span>}</span></span></span><span>.</span><span>
+</span><span>    </span><span class="antiquoted"><span>▪</span></span><span> </span><span>Rest of the subterms </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>const</span></span><span> </span><a class="entity_ref" href="Set_Proc.html#Set_Proc.subterms&apos;|const"><span>subterms'</span></a><span class="antiquote"><span>}</span></span></span><span>
+</span><span>    </span><span class="antiquoted"><span>▪</span></span><span> </span><span>Realisation graph </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>const</span></span><span> </span><a class="entity_ref" href="Set_Proc.html#Set_Proc.bgraph|const"><span>bgraph</span></a><span class="antiquote"><span>}</span></span></span><span>
+  </span><span>In contrast to the paper, we put the the realisation function </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>const</span></span><span> </span><a class="entity_ref" href="Realisation.html#Realisation.realisation.realise|const"><span>realisation.realise</span></a><span class="antiquote"><span>}</span></span></span><span> into</span><span>
+  </span><span>a locale </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>locale</span></span><span> </span><a class="entity_ref" href="Realisation.html#Realisation.realisation|locale"><span>realisation</span></a><span class="antiquote"><span>}</span></span></span><span> and prove its properties abstractly.</span><span>
+  </span><span>Then, we instantiate the locale with the above constants. Since this takes place in the context,</span><span>
+  </span><span>we put this into the locale </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>locale</span></span><span> </span><a class="entity_ref" href="Set_Proc.html#Set_Proc.open_branch|locale"><span>open_branch</span></a><span class="antiquote"><span>}</span></span></span><span>.</span><span>
+</span><span>›</span></span></span><span>
+
+</span><span class="keyword1"><span class="command"><span>thm</span></span></span><span> </span><a class="entity_ref" href="Set_Proc.html#Set_Proc.base_vars_def|fact"><span>base_vars_def</span></a><span> </span><a class="entity_ref" href="Set_Proc.html#Set_Proc.pwits_def|fact"><span>pwits_def</span></a><span> </span><a class="entity_ref" href="Set_Proc.html#Set_Proc.subterms&apos;_def|fact"><span>subterms'_def</span></a><span>
+</span><span class="keyword1"><span class="command"><span>thm</span></span></span><span> </span><a class="entity_ref" href="Realisation.html#Realisation.realisation.realise.simps|fact"><span>realisation.realise.simps</span></a><span>
+
+</span><span class="keyword1"><span class="command"><span>subsection</span></span></span><span> </span><span class="quoted"><span class="plain_text"><span>‹</span><span>Characterisation of the Pure Witnesses</span><span>›</span></span></span><span>
+
+</span><span class="keyword1"><span class="command"><span>thm</span></span></span><span> </span><a class="entity_ref" href="Set_Proc.html#Set_Proc.lemma_2|fact"><span>lemma_2</span></a><span>
+
+</span><span class="keyword1"><span class="command"><span>subsection</span></span></span><span> </span><span class="quoted"><span class="plain_text"><span>‹</span><span>Realisation of an Open Branch</span><span>›</span></span></span><span>
+</span><span class="keyword1"><span class="command"><span>text</span></span></span><span> </span><span class="quoted"><span class="plain_text"><span>‹</span><span>
+  </span><span>The assumption that the branch is open is captured by the locale </span><span class="antiquoted"><span class="antiquote"><span>@{</span></span><span class="operator"><span>locale</span></span><span> </span><a class="entity_ref" href="Set_Proc.html#Set_Proc.open_branch|locale"><span>open_branch</span></a><span class="antiquote"><span>}</span></span></span><span>.
+</span><span>  Important theorems:</span><span>
+</span><span>›</span></span></span><span>
+</span><span class="keyword1"><span class="command"><span class="entity_def" id="offset_3029..3036">context</span></span></span><span> </span><a class="entity_ref" href="Set_Proc.html#Set_Proc.open_branch|locale"><span>open_branch</span></a><span>
+</span><span class="keyword2"><span class="keyword"><span>begin</span></span></span><span>
+</span><span class="keyword1"><span class="command"><span>thm</span></span></span><span> </span><a class="entity_ref" href="Set_Proc_All.html#offset_3029..3036"><span>realise.simps</span></a><span>
+
+</span><span class="keyword1"><span class="command"><span>thm</span></span></span><span> </span><span>realisation_if_AT_mem</span><span> </span><span>realisation_if_AT_eq</span><span>
+    </span><span>realisation_if_AF_eq</span><span> </span><span>realisation_if_AF_mem</span><span>
+</span><span class="keyword1"><span class="command"><span>thm</span></span></span><span> </span><span>realisation_simps</span><span>
+</span><span class="keyword1"><span class="command"><span>thm</span></span></span><span> </span><span>I<span class="hidden">⇩</span><sub>s</sub><span class="hidden">⇩</span><sub>t</sub>_realisation_eq_realisation</span><span> </span><span>coherence</span><span>
+</span><span class="keyword2"><span class="keyword"><span>end</span></span></span><span>
+
+
+</span><span class="keyword1"><span class="command"><span>section</span></span></span><span> </span><span class="quoted"><span class="plain_text"><span>‹</span><span>Soundness of the Calculus</span><span>›</span></span></span><span>
+
+</span><span class="keyword1"><span class="command"><span>thm</span></span></span><span> </span><a class="entity_ref" href="Set_Proc.html#Set_Proc.bclosed_sound|fact"><span>bclosed_sound</span></a><span> </span><a class="entity_ref" href="Set_Proc.html#Set_Proc.lexpands_sound|fact"><span>lexpands_sound</span></a><span> </span><a class="entity_ref" href="Set_Proc.html#Set_Proc.bexpands_sound|fact"><span>bexpands_sound</span></a><span>
+
+
+</span><span class="keyword1"><span class="command"><span>section</span></span></span><span> </span><span class="quoted"><span class="plain_text"><span>‹</span><span>Total Correctness of the Procedure</span><span>›</span></span></span><span>
+
+</span><span class="keyword1"><span class="command"><span>subsection</span></span></span><span> </span><span class="quoted"><span class="plain_text"><span>‹</span><span>Abstract Specification</span><span>›</span></span></span><span>
+</span><span class="keyword1"><span class="command"><span>thm</span></span></span><span> </span><a class="entity_ref" href="Set_Proc.html#Set_Proc.card_wf_branch_ub|fact"><span>card_wf_branch_ub</span></a><span>
+
+</span><span class="keyword1"><span class="command"><span>context</span></span></span><span> </span><a class="entity_ref" href="Set_Proc.html#Set_Proc.mlss_proc|locale"><span>mlss_proc</span></a><span>
+</span><span class="keyword2"><span class="keyword"><span>begin</span></span></span><span>
+</span><span class="keyword1"><span class="command"><span>thm</span></span></span><span> </span><span>mlss_proc_branch_dom_if_wf_branch</span><span>
+
+</span><span class="keyword1"><span class="command"><span>thm</span></span></span><span> </span><span>mlss_proc_branch_complete</span><span> </span><span>mlss_proc_branch_sound</span><span>
+
+</span><span class="keyword1"><span class="command"><span>thm</span></span></span><span> </span><span>mlss_proc_complete</span><span> </span><span>mlss_proc_sound</span><span>
+</span><span class="keyword2"><span class="keyword"><span>end</span></span></span><span>
+
+</span><span class="keyword2"><span class="keyword"><span>end</span></span></span></pre>
+</body>
+
+</html>

@@ -9,5 +9,4 @@ session Set_Proc = HOL +
     Fresh_Identifiers
     "List-Index"
   theories
-    Set_Proc
-    Set_Proc_Code
+    Set_Proc_All

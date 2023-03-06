@@ -874,7 +874,7 @@ it generates constraints using syntax directed rules and then passes them to a c
 
 Since we are only interested in the level of a term, we can encode all constraints into the theory consisting of $0$, the successor function \lstinline!S!, and equality (but no disequality).
 Note that constraints of the form \lstinline!l $\neq$ 0! can be replaced by \lstinline!l $=$ S i! with \lstinline!i! being a fresh variable.
-A solver for this theory is straightforward to implement;
+A solver for this theory is straightforward to implement and verify;
 nevertheless, we have to be careful that it computes the minimum assignment $\Gamma$ from variables to levels that fulfils the constraints. 
 This is to guarantee that a set term \lstinline!t! is not an urelement \textbf{iff} \lstinline!$\Gamma$ t $>$ 0!.
 Conversely, all terms \lstinline!s! with \lstinline!$\Gamma$ s $=$ 0! are urelements.

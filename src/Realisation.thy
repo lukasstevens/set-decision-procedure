@@ -73,7 +73,6 @@ text \<open>
 locale realisation = dag G for G +
   fixes B T :: "'a set"
   fixes I :: "'a \<Rightarrow> hf"
-  fixes eq :: "'a rel"
   assumes B_T_partition_verts: "B \<inter> T = {}" "verts G = B \<union> T"
   assumes P_urelems: "\<And>p t. p \<in> B \<Longrightarrow> \<not> t \<rightarrow>\<^bsub>G\<^esub> p"
 begin
@@ -84,10 +83,8 @@ lemma
     and finite_B_un_T: "finite (B \<union> T)"
   using finite_verts B_T_partition_verts by auto
 
-abbreviation "eq_class x \<equiv> eq `` {x}"
-
 function realise :: "'a \<Rightarrow> hf" where
-  "x \<in> B \<Longrightarrow> realise x = HF (realise ` parents G x) \<squnion> HF (I ` eq_class x)"
+  "x \<in> B \<Longrightarrow> realise x = HF (realise ` parents G x) \<squnion> HF {I x}"
 | "t \<in> T \<Longrightarrow> realise t = HF (realise ` parents G t)"
 | "x \<notin> B \<union> T \<Longrightarrow> realise x = 0"
   using B_T_partition_verts by auto

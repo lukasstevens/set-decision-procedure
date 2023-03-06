@@ -1,5 +1,5 @@
 theory Set_Proc                
-  imports Realisation HF_Extras Set_Semantics Typing
+  imports Realisation HF_Extras Set_Calculus
 begin
 
 chapter \<open>A Decision Procedure for MLSS\<close>
@@ -762,185 +762,13 @@ proof -
     by safe
 qed
 
-subsection \<open>Urelements\<close>
-  
-definition "urelems b \<equiv> {x \<in> subterms b. \<exists>v. \<forall>\<phi> \<in> set b. urelem' v \<phi> x}"
-
-lemma finite_urelems: "finite (urelems b)"
-proof -
-  have "urelems b \<subseteq> subterms b"
-    unfolding urelems_def urelem_def by blast
-  with finite_subset finite_subterms_branch show ?thesis
-    by blast
-qed
-
-lemma urelems_subs_subterms: "urelems b \<subseteq> subterms b"
-  unfolding urelems_def by blast
-
-lemma is_Var_if_mem_urelems: "t \<in> urelems b \<Longrightarrow> is_Var t"
-  unfolding urelems_def subterms_branch_def
-  using is_Var_if_urelem' by auto
-
-lemma urelems_subs_vars: "urelems b \<subseteq> Var ` vars b"
-proof
-  fix t assume "t \<in> urelems b"
-  with urelems_subs_subterms have "t \<in> subterms b"
-    by blast
-  moreover note is_Var_if_mem_urelems[OF \<open>t \<in> urelems b\<close>]
-  then obtain x where "t = Var x"
-    by (meson is_Var_def)
-  ultimately have "x \<in> vars b"
-    unfolding Un_vars_term_subterms_branch_eq_vars_branch[symmetric]
-    by force
-  with \<open>t = Var x\<close> show "t \<in> Var ` vars b"
-    by blast
-qed
-
-lemma types_term_inf:
-  assumes "v1 \<turnstile> t : l1" "v2 \<turnstile> t : l2"
-  shows "inf v1 v2 \<turnstile> t : inf l1 l2"
-  using assms
-  apply(induction t arbitrary: l1 l2)
-       apply(auto simp: inf_min elim!: types_pset_term_cases
-                  intro: types_pset_term_intros' types_pset_term.intros(4-))
-  done
-
-lemma types_pset_atom_inf:
-  fixes a :: "'a pset_atom"
-  assumes "v1 \<turnstile> a" "v2 \<turnstile> a"
-  shows "inf v1 v2 \<turnstile> a"
-  using assms
-  by (auto simp: types_pset_atom.simps) (metis inf_min min_Suc_Suc types_term_inf)+
-
-lemma types_pset_fm_inf:
-  fixes \<phi> :: "'a pset_fm"
-  assumes "v1 \<turnstile> \<phi>" "v2 \<turnstile> \<phi>"
-  shows "inf v1 v2 \<turnstile> \<phi>"
-  using assms types_pset_atom_inf
-  unfolding types_pset_fm_def by blast
-
-lemma types_urelems:
-  fixes b :: "'a branch"
-  assumes "wf_branch b" "v \<turnstile> last b"
-  obtains v' where "\<forall>\<phi> \<in> set b. v' \<turnstile> \<phi>" "\<forall>u \<in> urelems b. v' \<turnstile> u : 0"
-proof -
-  from assms have "expandss b [last b]"
-    unfolding wf_branch_def by force
-
-  define V where "V \<equiv> {v. (\<forall>\<phi> \<in> set b. v \<turnstile> \<phi>) \<and> (\<forall>x. x \<notin> vars b \<longrightarrow> v x = 0)}"
-  have "V \<noteq> {}"
-  proof -
-    from types_expandss[OF \<open>expandss b [last b]\<close>, simplified] \<open>v \<turnstile> last b\<close>
-    obtain v where v: "\<forall>\<phi> \<in> set b. v \<turnstile> \<phi>"
-      unfolding vars_branch_simps by metis
-    define v' where "v' \<equiv> \<lambda>x. if x \<in> vars b then v x else 0"
-    have "v' \<turnstile> \<phi> \<longleftrightarrow> v \<turnstile> \<phi>" if "\<phi> \<in> set b" for \<phi> :: "'a pset_fm"
-      apply(intro types_pset_fm_if_on_vars_eq)
-      using that vars_fm_vars_branchI unfolding v'_def by metis
-    with v have "\<forall>\<phi> \<in> set b. v' \<turnstile> \<phi>"
-      by blast
-    then have "v' \<in> V"
-      unfolding V_def v'_def by simp
-    then show ?thesis
-      by blast
-  qed
-    
-  define m_x where "m_x \<equiv> \<lambda>x. ARG_MIN (\<lambda>v. v x) v. v \<in> V"
-  with \<open>V \<noteq> {}\<close> have m_x: "\<forall>v \<in> V. m_x x x \<le> v x" "m_x x \<in> V" for x
-    using arg_min_nat_le arg_min_natI by (metis ex_in_conv)+
-
-  define M where "M \<equiv> Finite_Set.fold inf (SOME v. v \<in> V) (m_x ` vars b)"
-  note finite_imageI[where ?h=m_x, OF finite_vars_branch[of b]]
-  note M_inf_eq = Inf_fin.eq_fold[symmetric, OF this, of "SOME v. v \<in> V"]
-  have M_leq: "M x \<le> v x" if "x \<in> vars b" "v \<in> V" for x v
-  proof -
-    from that have "m_x x \<in> m_x ` vars b"
-      by blast
-    then have "M = inf (m_x x) (\<Sqinter>\<^sub>f\<^sub>i\<^sub>n insert (SOME v. v \<in> V) (m_x ` vars b))"
-      unfolding M_def M_inf_eq
-      by (simp add: Inf_fin.in_idem finite_vars_branch)
-    with m_x that show ?thesis
-      by (simp add: inf.coboundedI1)
-  qed
-  moreover have "M \<in> V"
-    unfolding M_def M_inf_eq using finite_vars_branch[of b]
-  proof(induction rule: finite_induct)
-    case empty
-    with \<open>V \<noteq> {}\<close> show ?case
-      by (simp add: some_in_eq)
-  next
-    case (insert x F)
-    then have M'_eq: "\<Sqinter>\<^sub>f\<^sub>i\<^sub>n insert (SOME v. v \<in> V) (m_x ` insert x F)
-      = inf (m_x x) (\<Sqinter>\<^sub>f\<^sub>i\<^sub>n insert (SOME v. v \<in> V) (m_x ` F))" (is "_ = ?M'")
-      by (simp add: insert_commute)
-    from types_pset_fm_inf insert have "\<forall>\<phi> \<in> set b. ?M' \<turnstile> \<phi>"
-      using V_def m_x(2) by blast
-    moreover have "(inf w v) x = 0" if "x \<notin> vars b" "w \<in> V" "v \<in> V" for w v
-      using that by (simp add: V_def)
-    with "insert.IH" m_x(2) have "\<forall>x. x \<notin> vars b \<longrightarrow> ?M' x = 0"
-      by (simp add: V_def)
-    ultimately have "?M' \<in> V"
-      using V_def by blast
-    with M'_eq show ?case
-      by metis
-  qed
-  moreover have "M \<turnstile> u : 0" if "u \<in> urelems b" for u
-  proof -
-    from that obtain v where v: "\<forall>\<phi> \<in> set b. urelem' v \<phi> u"
-      unfolding urelems_def by blast
-    define v' where "v' \<equiv> \<lambda>x. if x \<in> vars b then v x else 0"
-    have "v' \<turnstile> \<phi> \<longleftrightarrow> v \<turnstile> \<phi>" if "\<phi> \<in> set b" for \<phi> :: "'a pset_fm"
-      apply(intro types_pset_fm_if_on_vars_eq)
-      using that vars_fm_vars_branchI unfolding v'_def by metis
-    with v have "\<forall>\<phi> \<in> set b. v' \<turnstile> \<phi>"
-      by blast
-    then have "v' \<in> V"
-      unfolding V_def v'_def by auto
-    moreover obtain uv where uv: "u = Var uv"
-      using v is_Var_if_urelem' wf_branch_not_Nil[OF \<open>wf_branch b\<close>]
-      by (metis is_Var_def last_in_set)
-    then have "v' \<turnstile> u : 0"
-      using v  wf_branch_not_Nil[OF \<open>wf_branch b\<close>, THEN last_in_set]
-      unfolding v'_def
-      by (auto elim!: types_pset_term_cases(2) intro!: types_pset_term_intros'(2))
-    ultimately show "M \<turnstile> u : 0"
-      using M_leq[where ?v=v'] \<open>M \<in> V\<close>[unfolded V_def] unfolding uv
-      by (fastforce elim!: types_pset_term_cases(2) intro!: types_pset_term_intros'(2))
-  qed
-  ultimately show ?thesis
-    using that unfolding V_def by auto
-qed
-
-lemma mem_urelems_if_urelem_last:
-  assumes "wf_branch b"
-  assumes "urelem (last b) x" "x \<in> subterms (last b)"
-  shows "x \<in> urelems b"
-proof -
-  from assms have "x \<in> subterms b"
-    unfolding subterms_branch_def by auto
-  moreover note urelem_invar_if_wf_branch[OF assms]
-  ultimately show ?thesis
-    unfolding urelems_def urelem_def by blast
-qed
-
-lemma not_urelem_comps_if_compound:
-  assumes "f t1 t2 \<in> subterms b" "f \<in> {(\<sqinter>\<^sub>s), (\<squnion>\<^sub>s), (-\<^sub>s)}"
-  shows "t1 \<notin> urelems b" "t2 \<notin> urelems b"
-proof -
-  from assms obtain \<phi> where "\<phi> \<in> set b" "f t1 t2 \<in> subterms \<phi>"
-    unfolding subterms_branch_def by auto
-  note not_urelem_comps_if_compound[of f t1 t2, OF this(2) assms(2)]
-  with \<open>\<phi> \<in> set b\<close> show "t1 \<notin> urelems b" "t2 \<notin> urelems b"
-    unfolding urelems_def urelem_def by auto
-qed
-
 subsection \<open>Realization of an Open Branch\<close>
 
-definition "base_vars b \<equiv> Var ` pwits b \<union> urelems b"
+definition "base_vars b \<equiv> Var ` pwits b"
 
 lemma finite_base_vars: "finite (base_vars b)"
   unfolding base_vars_def finite_Un
-  using finite_pwits[THEN finite_imageI] finite_urelems by blast
+  using finite_pwits[THEN finite_imageI] by blast
 
 lemma pwits_subs_base_vars:
   shows "Var ` pwits b \<subseteq> base_vars b"
@@ -948,8 +776,7 @@ lemma pwits_subs_base_vars:
   by blast
 
 lemma base_vars_subs_vars: "base_vars b \<subseteq> Var ` vars b"
-  unfolding base_vars_def pwits_def wits_def
-  using urelems_subs_vars by blast
+  unfolding base_vars_def pwits_def wits_def by blast
 
 definition subterms' :: "'a branch \<Rightarrow> 'a pset_term set" where
   "subterms' b \<equiv> subterms b - base_vars b"
@@ -1043,7 +870,7 @@ lemma mem_subterms_fm_last_if_mem_subterms_branch:
 
 locale open_branch =
   fixes b :: "'a branch"
-  assumes wf_branch: "wf_branch b" and bopen: "bopen b" and types: "\<exists>v. v \<turnstile> last b"
+  assumes wf_branch: "wf_branch b" and bopen: "bopen b"
       and infinite_vars: "infinite (UNIV :: 'a set)"
 begin
 
@@ -1154,39 +981,6 @@ proof -
     unfolding inj_on_def by blast+
 qed
 
-definition "eq \<equiv> symcl ({(s, t). AT (s =\<^sub>s t) \<in> set b}\<^sup>=)"
-
-lemma refl_eq: "refl eq"
-  unfolding eq_def symcl_def refl_on_def by auto
-
-lemma trans_eq:
-  assumes "lin_sat b" shows "trans eq"
-proof
-  fix s t u assume assms: "(s, t) \<in> eq" "(t, u) \<in> eq"
-  have "(s, u) \<in> eq" if "s \<noteq> t" "t \<noteq> u"
-  proof -
-    from that assms have
-      s_t: "AT (s =\<^sub>s t) \<in> set b \<or> AT (t =\<^sub>s s) \<in> set b" and
-      t_u: "AT (t =\<^sub>s u) \<in> set b \<or> AT (u =\<^sub>s t) \<in> set b"
-      unfolding eq_def symcl_def by fastforce+
-    note intros = lexpands_eq.intros(1,3)[
-        THEN lexpands.intros(6), THEN \<open>lin_sat b\<close>[THEN lin_satD]]
-    note intros' = intros[where ?x="AT (s =\<^sub>s u)"] intros[where ?x="AT (u =\<^sub>s s)"]
-    from s_t t_u that have "AT (s =\<^sub>s u) \<in> set b \<or> AT (u =\<^sub>s s) \<in> set b"
-      by safe (simp_all add: intros')
-    then show ?thesis
-      unfolding eq_def symcl_def by auto
-  qed
-  with assms show "(s, u) \<in> eq"
-    by (cases "s \<noteq> t \<and> t \<noteq> u") (auto simp: eq_def)
-qed
-
-lemma sym_eq: "sym eq"
-  unfolding eq_def symcl_def sym_def by auto
-
-lemma equiv_eq: "lin_sat b \<Longrightarrow> equiv UNIV eq"
-  by (rule equivI) (use refl_eq trans_eq sym_eq in safe)
-
 lemma not_dominated_if_pwits:
   assumes "x \<in> Var ` pwits b" shows "\<not> s \<rightarrow>\<^bsub>bgraph b\<^esub> x"
 proof -
@@ -1200,32 +994,10 @@ lemma parents_empty_if_pwits:
   assumes "x \<in> Var ` pwits b" shows "parents (bgraph b) x = {}"
   using not_dominated_if_pwits[OF assms] unfolding bgraph_def by simp
 
-lemma not_AT_mem_if_urelem:
-  assumes "t \<in> urelems b"
-  shows "AT (s \<in>\<^sub>s t) \<notin> set b"
-proof
-  assume "AT (s \<in>\<^sub>s t) \<in> set b"
-  with assms urelem_invar_if_wf_branch[OF wf_branch] have "urelem (AT (s \<in>\<^sub>s t)) t"
-    by (meson types types_urelems urelem_def wf_branch)
-  then show False
-    unfolding urelem_def
-    by (auto dest!: types_fmD simp: types_pset_atom.simps dest: types_term_unique)
-qed
-
-lemma not_dominated_if_urelems:
-  assumes "t \<in> urelems b"
-  shows "\<not> s \<rightarrow>\<^bsub>bgraph b\<^esub> t"
-  using not_AT_mem_if_urelem[OF assms] unfolding bgraph_def by auto
-
-lemma parents_empty_if_urelems:
-  assumes "t \<in> urelems b"
-  shows "parents (bgraph b) t = {}"
-  using not_dominated_if_urelems[OF assms] by simp
-
 lemma not_dominated_if_base_vars:
   assumes "x \<in> base_vars b"
   shows "\<not> s \<rightarrow>\<^bsub>bgraph b\<^esub> x"
-  using assms not_dominated_if_urelems not_dominated_if_pwits
+  using assms not_dominated_if_pwits
   unfolding base_vars_def by blast
 
 lemma parents_empty_if_base_vars:
@@ -1233,25 +1005,10 @@ lemma parents_empty_if_base_vars:
   shows "parents (bgraph b) x = {}"
   using not_dominated_if_base_vars[OF assms] by blast
 
-lemma eq_class_subs_subterms: "eq `` {t} \<subseteq> {t} \<union> subterms b"
-proof -
-  have "eq - Id \<subseteq> subterms b \<times> subterms b"
-    by (auto simp: AT_eq_subterms_branchD eq_def symcl_def)
-  then show "eq `` {t} \<subseteq> {t} \<union> subterms b"
-    by blast
-qed
-
-lemma finite_eq_class: "finite (eq `` {x})"
-  using eq_class_subs_subterms finite_subterms_branch
-  using finite_subset by fastforce
-
-lemma finite_I_image_eq_class: "finite (I ` eq `` {x})"
-  using finite_eq_class by blast
-
 context
 begin
 
-interpretation realisation "bgraph b" "base_vars b" "subterms' b" I eq
+interpretation realisation "bgraph b" "base_vars b" "subterms' b" I
 proof(unfold_locales)
   from base_vars_subterms'_disjnt show "base_vars b \<inter> subterms' b = {}" .
 
@@ -1267,22 +1024,20 @@ lemma card_realisation:
   "hcard (realise t) \<le> 2 * card (subterms b)"
 proof(induction t rule: realise.induct)
   case (1 x)
-  then have "hcard (realise x) = card (realise ` parents (bgraph b) x \<union> I ` eq_class x)"
-    using hcard_HF Zero_hf_def parents_empty_if_base_vars
-    using finite_I_image_eq_class by force
-  also have "\<dots> \<le> card (realise ` parents (bgraph b) x) + card (I ` eq_class x)"
+  then have "hcard (realise x) = card (realise ` parents (bgraph b) x \<union> {I x})"
+    using hcard_HF Zero_hf_def parents_empty_if_base_vars by simp
+  also have "\<dots> \<le> card (realise ` parents (bgraph b) x) + card {I x}"
     using card_Un_le by blast
-  also have "\<dots> \<le> card (parents (bgraph b) x) + card (eq_class x)"
+  also have "\<dots> \<le> card (parents (bgraph b) x) + 1"
     using card_image_le[OF fin_digraph_bgraph.finite_parents]
-    using card_image_le[OF finite_eq_class]
-    by (metis add_le_mono)
-  also have "\<dots> \<le> card (subterms b) + card (eq_class x)"
+    by auto
+  also have "\<dots> \<le> card (subterms b) + card {x}"
     using fin_digraph_bgraph.parents_subs_verts[unfolded verts_bgraph_eq_subterms]
     using card_mono[OF finite_subterms_branch]
     by (simp add: "1.hyps" not_dominated_if_base_vars)
   also have "\<dots> \<le> card (subterms b) + card ({x} \<union> subterms b)"
     apply (intro add_le_mono card_mono[where ?B="{x} \<union> subterms b"])
-    using eq_class_subs_subterms finite_subterms_branch by auto
+    using finite_subterms_branch by auto
   also have "\<dots> \<le> 2 * card (subterms b)"
   proof -
     from 1 have "x \<in> subterms b"
@@ -1321,39 +1076,20 @@ qed
 
 end
 
-sublocale realisation "bgraph b" "base_vars b" "subterms' b" I eq
+sublocale realisation "bgraph b" "base_vars b" "subterms' b" I
   rewrites "(\<And>x y. I x \<noteq> realise y) \<equiv> Trueprop True"
        and "\<And>P. (True \<Longrightarrow> P) \<equiv> Trueprop P"
        and "\<And>P Q. (True \<Longrightarrow> PROP P \<Longrightarrow> PROP Q) \<equiv> (PROP P \<Longrightarrow> True \<Longrightarrow> PROP Q)"
   using realisation I_neq_realise by simp_all
 
-lemma eq_class_singleton_if_pwits:
-  assumes "x \<in> Var ` pwits b" shows "eq_class x = {x}"
-proof -
-  from assms obtain x' where "x = Var x'" "x' \<in> pwits b"
-    by blast
-  have False if "eq_class x \<noteq> {x}"
-  proof -
-    have "x \<in> eq_class x"
-      by (simp add: eq_def symcl_def)
-    with that obtain y where "y \<in> eq_class x" "y \<noteq> x"
-      by auto
-    then have "AT (y =\<^sub>s x) \<in> set b \<or> AT (x =\<^sub>s y) \<in> set b"
-      unfolding eq_def symcl_def by auto
-    with lemma_2(1,2)[OF wf_branch \<open>x' \<in> pwits b\<close>] \<open>x = Var x'\<close> show False
-      by blast
-  qed
-  with assms show ?thesis by blast
-qed
-
 lemma realise_pwits:
   "x \<in> Var ` pwits b \<Longrightarrow> realise x = HF {I x}"
   unfolding realise.simps(1)[OF pwits_subs_base_vars[THEN subsetD]]
-  by (auto simp: eq_class_singleton_if_pwits parents_empty_if_pwits)
+  by (auto simp: parents_empty_if_pwits)
 
 lemma I_in_realise_if_base_vars[simp]:
   "s \<in> base_vars b \<Longrightarrow> I s \<^bold>\<in> realise s"
-  using refl_eq by (simp add: finite_I_image_eq_class refl_on_def)
+  by (simp add: refl_on_def)
 
 lemma realise_neq_if_base_vars_and_subterms':
   assumes "s \<in> base_vars b" "t \<in> subterms' b"
@@ -1399,38 +1135,9 @@ qed
 
 lemma AT_eq_urelems_subterms'_cases:
   assumes "AT (s =\<^sub>s t) \<in> set b"
-  obtains (urelems) "s \<in> urelems b" "t \<in> urelems b" |
-          (subterms') "s \<in> subterms' b" "t \<in> subterms' b"
-proof -
-  from types obtain v where "v \<turnstile> last b"
-    by blast
-  with types_urelems wf_branch obtain v'
-    where v': "\<forall>\<phi> \<in> set b. v' \<turnstile> \<phi>" "\<forall>u \<in> urelems b. v' \<turnstile> u : 0"
-    by blast
-  with assms have "v' \<turnstile> AT (s =\<^sub>s t)"
-    by blast
-  then obtain lst where lst: "v' \<turnstile> s : lst" "v' \<turnstile> t : lst"
-    by (auto dest!: types_fmD(6) simp: types_pset_atom.simps)
-  note mem_subterms = AT_eq_subterms_branchD[OF assms]
-  with v' have "t \<in> urelems b" if "s \<in> urelems b"
-    using that lst types_term_unique urelems_def by fastforce
-  moreover from assms have "s \<notin> Var ` pwits b" "t \<notin> Var ` pwits b"
-    using lemma_2(1,2)[OF wf_branch] by blast+
-  moreover have "t \<in> subterms' b" if "s \<in> subterms' b"
-  proof -
-    have "s \<notin> urelems b"
-      using that B_T_partition_verts(1) unfolding base_vars_def by blast
-    with v'(1) mem_subterms(1) have "\<not> v' \<turnstile> s : 0"
-      using urelems_def by blast
-    with lst v'(2) have "t \<notin> urelems b"
-      using types_term_unique by metis
-    with \<open>t \<notin> Var ` pwits b\<close> \<open>t \<in> subterms b\<close> show "t \<in> subterms' b"
-      by (simp add: base_vars_def subterms'_def)
-  qed
-  ultimately show ?thesis
-    using that mem_subterms
-    by (cases "s \<in> subterms' b") (auto simp: base_vars_def subterms'_def)
-qed
+  obtains (subterms') "s \<in> subterms' b" "t \<in> subterms' b"
+  using assms AT_eq_subterms_branchD[OF assms] lemma_2[OF wf_branch]
+  unfolding subterms'_def base_vars_def by auto
 
 lemma realisation_if_AT_eq:
   assumes "lin_sat b"
@@ -1439,16 +1146,6 @@ lemma realisation_if_AT_eq:
 proof -
   from assms(2) show ?thesis
   proof(cases rule: AT_eq_urelems_subterms'_cases)
-    case urelems
-    then have "s \<in> base_vars b" "t \<in> base_vars b"
-      by (simp_all add: base_vars_def)
-    moreover from assms have "(s, t) \<in> eq"
-      unfolding eq_def symcl_def by blast
-    then have "I ` eq_class s = I ` eq_class t"
-      using equiv_eq[OF assms(1)] by (simp add: equiv_class_eq_iff)
-    ultimately show ?thesis 
-      using urelems by (simp add: parents_empty_if_urelems)
-  next
     case subterms'
     have "False" if "realise s \<noteq> realise t"
     proof -
@@ -1493,33 +1190,11 @@ next
   case True
   from assms bopen have "x \<noteq> y"
     using neqSelf by blast
-  moreover from assms bopen have "AT (x =\<^sub>s y) \<notin> set b"
-    using contr by blast
-  moreover have "AT (y =\<^sub>s x) \<notin> set b"
-  proof 
-    assume "AT (y =\<^sub>s x) \<in> set b"
-    note lexpands_eq.intros(2)[OF this assms(2), THEN lexpands.intros(6)]
-    with \<open>sat b\<close>[THEN satD(1), THEN lin_satD] have "AF (x =\<^sub>s x) \<in> set b"
-      by auto
-    with bopen neqSelf show False
-      by blast
-  qed
-  ultimately have "(x, y) \<notin> eq"
-    unfolding eq_def symcl_def by auto
-
-  then have "x \<notin> eq_class y"
-    by (meson Image_singleton_iff symE sym_eq)
-  then have "I x \<notin> I ` eq_class y"
-    using inj_on_I AF_eq_subterms_branchD[OF assms(2)]
-    using eq_class_subs_subterms inj_onD by fastforce
-  then have "I ` eq_class x \<noteq> I ` eq_class y"
-    using refl_eq
-    by (metis Image_singleton_iff UNIV_I imageI refl_onD)
-
-  with \<open>x \<in> base_vars b \<and> y \<in> base_vars b\<close> show "realise x \<noteq> realise y"
-    using hunion_hempty_left[unfolded Zero_hf_def]
-    using inj_on_HF[THEN inj_onD] finite_I_image_eq_class
-    by (force simp: parents_empty_if_base_vars)
+  with True have "HF {I x} \<noteq> HF {I y}"
+    using inj_onD[OF inj_on_base_vars_I]
+    by (metis finite.emptyI finite_insert hfset_HF the_elem_eq)
+  with True show ?thesis
+    by (metis realise_pwits base_vars_def)
 qed
 
 lemma Ex_AT_eq_mem_subterms_last_if_subterms':
@@ -1544,7 +1219,7 @@ proof(cases "t \<in> subterms (last b) - base_vars b")
       unfolding pwits_def by blast
     with \<open>t \<in> subterms' b\<close> have "t' \<notin> base_vars b"
       using AT_eq_urelems_subterms'_cases B_T_partition_verts(1)
-      by (metis Un_iff base_vars_def disjoint_iff)
+      by (metis disjoint_iff)
     with t' that show ?thesis
       by blast
   qed (use assms[unfolded subterms'_def] in blast)
@@ -1649,12 +1324,9 @@ proof -
       from t1'_t2' lemma1_2 "*"(3) have "?h (t1', t2') = ?h (t1, t2)"
         by (metis in_subterms'_if_AF_eq_in_branch(1,2)[OF wf_branch] case_prod_conv)
 
-      from mem_urelems_if_urelem_last[OF wf_branch] t1'_t2'(1,2)
-      have not_urelem: "\<not> urelem (last b) t1'" "\<not> urelem (last b) t2'"
-        unfolding base_vars_def by auto
       from finite_vars_branch infinite_vars obtain x where "x \<notin> vars b"
         using ex_new_if_finite by blast
-      from bexpands_wit.intros[OF t1'_t2'(3) _ _ _ _ this not_urelem]
+      from bexpands_wit.intros[OF t1'_t2'(3) _ _ _ _ this]
            t1'_t2'(1,2) \<open>sat b\<close>[unfolded sat_def] consider
         s1 where "AT (s1 \<in>\<^sub>s t1') \<in> set b" "AF (s1 \<in>\<^sub>s t2') \<in> set b" |
         s2 where "AF (s2 \<in>\<^sub>s t1') \<in> set b" "AT (s2 \<in>\<^sub>s t2') \<in> set b"
@@ -1768,10 +1440,7 @@ proof -
   proof -
     have "(\<emptyset> n) \<notin> Var ` pwits b"
       using pwits_def wits_def by blast
-    moreover have "(\<emptyset> n) \<notin> urelems b"
-      unfolding urelems_def using wf_branch[THEN wf_branch_not_Nil] last_in_set
-      using is_Var_if_urelem' by fastforce
-    ultimately show ?thesis
+    then show ?thesis
       unfolding base_vars_def by blast
   qed
   then have "(\<emptyset> n) \<in> subterms' b \<or> (\<emptyset> n) \<notin> verts (bgraph b)"
@@ -1789,12 +1458,11 @@ proof -
   from assms have mem_subterms_last: "t1 \<squnion>\<^sub>s t2 \<in> subterms (last b)"
     using mem_subterms_fm_last_if_mem_subterms_branch[OF wf_branch]
     by simp
-  note not_urelem_comps_if_compound[where ?f="(\<squnion>\<^sub>s)", OF assms(2), simplified]
-  moreover note subterms_fmD(1,2)[OF mem_subterms_last]
+  note subterms_fmD(1,2)[OF mem_subterms_last]
   then have "t1 \<notin> Var ` pwits b" "t2 \<notin> Var ` pwits b"
     unfolding pwits_def wits_def 
     using pset_term.set_intros(1) mem_vars_fm_if_mem_subterms_fm by fastforce+
-  ultimately have "t1 \<in> subterms' b" "t2 \<in> subterms' b"
+  then have "t1 \<in> subterms' b" "t2 \<in> subterms' b"
     unfolding subterms'_def base_vars_def
     using assms(2) by (auto dest: subterms_branchD)
 
@@ -1864,12 +1532,11 @@ proof -
   from assms have mem_subterms_last: "t1 \<sqinter>\<^sub>s t2 \<in> subterms (last b)"
     using mem_subterms_fm_last_if_mem_subterms_branch[OF wf_branch]
     by simp
-  note not_urelem_comps_if_compound[where ?f="(\<sqinter>\<^sub>s)", OF assms(2), simplified]
-  moreover note subterms_fmD(3,4)[OF mem_subterms_last]
+  note subterms_fmD(3,4)[OF mem_subterms_last]
   then have "t1 \<notin> Var ` pwits b" "t2 \<notin> Var ` pwits b"
     unfolding pwits_def wits_def 
     using pset_term.set_intros(1) mem_vars_fm_if_mem_subterms_fm by fastforce+
-  ultimately have t1_t2_subterms': "t1 \<in> subterms' b" "t2 \<in> subterms' b"
+  then have t1_t2_subterms': "t1 \<in> subterms' b" "t2 \<in> subterms' b"
     unfolding subterms'_def base_vars_def
     using assms(2) by (auto dest: subterms_branchD)
 
@@ -1933,12 +1600,11 @@ proof -
   from assms have mem_subterms_last: "s -\<^sub>s t \<in> subterms (last b)"
     using mem_subterms_fm_last_if_mem_subterms_branch[OF wf_branch]
     by simp
-  note not_urelem_comps_if_compound[where ?f="(-\<^sub>s)", OF assms(2), simplified]
-  moreover note subterms_fmD(5,6)[OF mem_subterms_last]
+  note subterms_fmD(5,6)[OF mem_subterms_last]
   then have "s \<notin> Var ` pwits b" "t \<notin> Var ` pwits b"
     unfolding pwits_def wits_def 
     using pset_term.set_intros(1) mem_vars_fm_if_mem_subterms_fm by fastforce+
-  ultimately have "s \<in> subterms' b" "t \<in> subterms' b"
+  then have "s \<in> subterms' b" "t \<in> subterms' b"
     unfolding subterms'_def base_vars_def
     using assms(2) by (auto dest: subterms_branchD)
 
@@ -1998,7 +1664,7 @@ proof -
     by simp
   have "Single t \<in> subterms' b"
     proof -
-    from urelems_subs_vars have "Single t \<notin> base_vars b"
+    have "Single t \<notin> base_vars b"
       unfolding base_vars_def by blast
     then show ?thesis
       by (simp add: assms(2) subterms'_def)
@@ -2183,43 +1849,6 @@ proof -
     by blast
 qed
 
-lemma types_term_lt_if_member_seq:
-  fixes cs :: "'a pset_atom list"
-  assumes "\<forall>a \<in> set cs. v \<turnstile> a"
-  assumes "member_seq s cs t" "cs \<noteq> []"
-  shows "\<exists>ls lt. v \<turnstile> s : ls \<and> v \<turnstile> t : lt \<and> ls < lt"
-  using assms
-proof(induction s cs t rule: member_seq.induct)
-  case (2 s s' u cs t)
-  then show ?case
-  proof(cases cs)
-    case (Cons c cs')
-    with 2 obtain lu lt where "v \<turnstile> u : lu" "v \<turnstile> t : lt" "lu < lt"
-      by auto
-    moreover from 2 obtain ls where "v \<turnstile> s : ls" "ls < lu"
-      using \<open>v \<turnstile> u : lu\<close> by (auto simp: types_pset_atom.simps dest: types_term_unique)
-    ultimately show ?thesis
-      by fastforce
-  qed (fastforce simp: types_pset_atom.simps)
-qed auto
-
-lemma no_member_cycle_if_types_last:
-  fixes b :: "'a branch"
-  assumes "wf_branch b"
-  assumes "\<exists>v. v \<turnstile> last b"
-  shows "\<not> (member_cycle cs \<and> set cs \<subseteq> Atoms (set b))"
-proof
-  presume "member_cycle cs" "set cs \<subseteq> Atoms (set b)"
-  then obtain s where "member_seq s cs s" "cs \<noteq> []"
-    using member_cycle.elims(2) by blast
-  moreover from assms obtain v where "\<forall>\<phi> \<in> set b. v \<turnstile> \<phi>"
-    using types_urelems by blast
-  with \<open>set cs \<subseteq> Atoms (set b)\<close> have "\<forall>a \<in> set cs. v \<turnstile> a"
-    unfolding Atoms_def by (auto dest!: types_fmD(6))
-  ultimately show False
-    using types_term_lt_if_member_seq types_term_unique by blast
-qed simp_all
-
 subsection \<open>Soundness of the Expansion Rules\<close>
 
 lemma lexpands_sound:
@@ -2317,7 +1946,7 @@ proof (induction rule: bexpands_wit.induct)
   let ?bs'="{[AT (Var x \<in>\<^sub>s s), AF (Var x \<in>\<^sub>s t)],
              [AT (Var x \<in>\<^sub>s t), AF (Var x \<in>\<^sub>s s)]}"
   case (1 b)
-  with this(1)[THEN this(9)] have "I\<^sub>s\<^sub>t M s \<noteq> I\<^sub>s\<^sub>t M t"
+  with this(1)[THEN this(7)] have "I\<^sub>s\<^sub>t M s \<noteq> I\<^sub>s\<^sub>t M t"
     by auto
   then obtain y where y:
     "y \<^bold>\<in> I\<^sub>s\<^sub>t M s \<and> y \<^bold>\<notin> I\<^sub>s\<^sub>t M t \<or>
@@ -2330,7 +1959,7 @@ proof (induction rule: bexpands_wit.induct)
   then have "\<exists>b' \<in> ?bs'. \<forall>\<psi> \<in> set b'. interp I\<^sub>s\<^sub>a (M(x := y)) \<psi>"
     using 1 y by auto
   moreover have "\<forall>\<psi> \<in> set b. interp I\<^sub>s\<^sub>a (M(x := y)) \<psi>"
-    using "1"(9) \<open>x \<notin> vars b\<close> interp_upd_eq_if_not_mem_vars_fm
+    using "1"(7) \<open>x \<notin> vars b\<close> interp_upd_eq_if_not_mem_vars_fm
     by (metis vars_fm_vars_branchI)
   ultimately show ?case
     by auto (metis fun_upd_same)+
@@ -2725,7 +2354,7 @@ definition mlss_proc :: "'a pset_fm \<Rightarrow> bool" where
 
 lemma mlss_proc_branch_complete:
   fixes b :: "'a branch"
-  assumes "wf_branch b" "\<exists>v. v \<turnstile> last b"
+  assumes "wf_branch b"
   assumes "\<not> mlss_proc_branch b"
   assumes "infinite (UNIV :: 'a set)"
   shows "\<exists>M. interp I\<^sub>s\<^sub>a M (last b)"
@@ -2763,7 +2392,7 @@ proof -
     then have "bopen b"
       by (simp add: mlss_proc_branch.psimps)
     interpret open_branch b
-      using \<open>wf_branch b\<close> \<open>\<exists>v. v \<turnstile> last b\<close> \<open>bopen b\<close> \<open>infinite UNIV\<close>
+      using \<open>wf_branch b\<close> \<open>bopen b\<close> \<open>infinite UNIV\<close>
       by unfold_locales assumption+
     from coherence[OF \<open>sat b\<close> last_in_set] show ?case
       using wf_branch wf_branch_not_Nil by blast
@@ -2811,7 +2440,6 @@ qed
 theorem mlss_proc_complete:
   fixes \<phi> :: "'a pset_fm"
   assumes "\<not> mlss_proc \<phi>"
-  assumes "\<exists>v. v \<turnstile> \<phi>"
   assumes "infinite (UNIV :: 'a set)"
   shows "\<exists>M. interp I\<^sub>s\<^sub>a M \<phi>"
   using assms mlss_proc_branch_complete[of "[\<phi>]"]

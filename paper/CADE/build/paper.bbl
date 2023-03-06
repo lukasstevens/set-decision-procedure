@@ -1,0 +1,161 @@
+\begin{thebibliography}{26}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\providecommand{\urlprefix}{URL }
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi:\discretionary{}{}{}#1}\else
+  \providecommand{\doi}{doi:\discretionary{}{}{}\begingroup
+  \urlstyle{rm}\Url}\fi
+
+\bibitem[{Beckert and Hartmer(1998)}]{tableau_quantifier_free}
+Beckert, B., Hartmer, U.: A tableau calculus for quantifier-free set theoretic
+  formulae. Automated Reasoning with Analytic Tableaux and Related Methods p.
+  93–107 (1998), \doi{10.1007/3-540-69778-0_16}
+
+\bibitem[{Bentzen(2021)}]{lean_modal_logic}
+Bentzen, B.: A {Henkin}-style completeness proof for the modal logic {S5}. In:
+  Baroni, P., Benzm{\"{u}}ller, C., W{\'{a}}ng, Y.N. (eds.) Logic and
+  Argumentation - 4th International Conference, Lecture Notes in Computer
+  Science, vol. 13040, pp. 459--467, Springer (2021),
+  \doi{10.1007/978-3-030-89391-0\_25}
+
+\bibitem[{Blanchette et~al.(2017)Blanchette, Popescu, and
+  Traytel}]{completeness_coinductive}
+Blanchette, J.C., Popescu, A., Traytel, D.: Soundness and completeness proofs
+  by coinductive methods. Journal of Automated Reasoning \textbf{58}(1),
+  149--179 (2017), \doi{10.1007/s10817-016-9391-3}
+
+\bibitem[{Cantone(1997)}]{mlss_first_tableau}
+Cantone, D.: A fast saturation strategy for set-theoretic tableaux. In:
+  Galmiche, D. (ed.) Automated Reasoning with Analytic Tableaux and Related
+  Methods, pp. 122--137, Springer (1997), \doi{10.1007/BFb0027409}
+
+\bibitem[{Cantone et~al.(2010)Cantone, Longo, and Asmundo}]{mlss_cartesian_map}
+Cantone, D., Longo, C., Asmundo, M.N.: A decision procedure for a two-sorted
+  extension of multi-level syllogistic with the cartesian product and some map
+  constructs. In: Faber, W., Leone, N. (eds.) Italian Conference on
+  Computational Logic, {CEUR} Workshop Proceedings, vol. 598, CEUR-WS.org
+  (2010), \urlprefix\url{http://ceur-ws.org/Vol-598/paper11.pdf}
+
+\bibitem[{Cantone et~al.(1990)Cantone, Omodeo, and Policriti}]{mlss_np}
+Cantone, D., Omodeo, E.G., Policriti, A.: The automation of syllogistic. ii.
+  optimization and complexity issues. Journal of Automated Reasoning
+  \textbf{6}(2), 173–187 (1990), ISSN 0168-7433, \doi{10.1007/BF00245817}
+
+\bibitem[{Cantone et~al.(2001)Cantone, Omodeo, and Policriti}]{set_theory}
+Cantone, D., Omodeo, E.G., Policriti, A.: Set Theory for Computing - From
+  Decision Procedures to Declarative Programming with Sets. Monographs in
+  Computer Science, Springer (2001), \doi{10.1007/978-1-4757-3452-2}
+
+\bibitem[{Cantone et~al.(2003)Cantone, Schwartz, and
+  Zarba}]{mlss_monotone_functions}
+Cantone, D., Schwartz, J.T., Zarba, C.G.: A decision procedure for a
+  sublanguage of set theory involving monotone, additive, and multiplicative
+  functions. Electronic Notes in Theoretical Computer Science \textbf{86}(1),
+  49--60 (2003), \doi{10.1016/S1571-0661(04)80652-2}, international Workshop on
+  First-Order Theorem Proving
+
+\bibitem[{Cantone and Zarba(1998)}]{new_fast_tableau}
+Cantone, D., Zarba, C.G.: A new fast tableau-based decision procedure for an
+  unquantified fragment of set theory. In: Caferra, R., Salzer, G. (eds.)
+  Automated Deduction in Classical and Non-Classical Logics, Selected Papers,
+  Lecture Notes in Computer Science, vol. 1761, pp. 126--136, Springer (1998),
+  \doi{10.1007/3-540-46508-1\_8}
+
+\bibitem[{Cantone and Zarba(1999)}]{mlss_quantification}
+Cantone, D., Zarba, C.G.: A tableau-based decision procedure for a fragment of
+  set theory involving a restricted form of quantification. In: Murray, N.V.
+  (ed.) Automated Reasoning with Analytic Tableaux and Related Methods, Lecture
+  Notes in Computer Science, vol. 1617, pp. 97--112, Springer (1999),
+  \doi{10.1007/3-540-48754-9\_12}
+
+\bibitem[{Chaieb(2006)}]{arithmetic}
+Chaieb, A.: Verifying mixed real-integer quantifier elimination. In: Furbach,
+  U., Shankar, N. (eds.) International Joint Conference on Automated Reasoning,
+  Lecture Notes in Computer Science, vol. 4130, pp. 528--540, Springer (2006),
+  \doi{10.1007/11814771\_43}
+
+\bibitem[{Chaieb and Nipkow(2005)}]{presburger}
+Chaieb, A., Nipkow, T.: Verifying and reflecting quantifier elimination for
+  presburger arithmetic. In: Sutcliffe, G., Voronkov, A. (eds.) Logic for
+  Programming, Artificial Intelligence, and Reasoning, Lecture Notes in
+  Computer Science, vol. 3835, pp. 367--380, Springer (2005),
+  \doi{10.1007/11591191\_26}
+
+\bibitem[{Doczkal and Smolka(2014)}]{ctl_tableau}
+Doczkal, C., Smolka, G.: Completeness and decidability results for ctl in coq.
+  In: Klein, G., Gamboa, R. (eds.) Interactive Theorem Proving, pp. 226--241,
+  Springer International Publishing (2014), \doi{10.1007/978-3-319-08970-6_15}
+
+\bibitem[{Ferro et~al.(1980)Ferro, Omodeo, and Schwartz}]{mlss_first}
+Ferro, A., Omodeo, E.G., Schwartz, J.T.: Decision procedures for elementary
+  sublanguages of set theory. i. multi-level syllogistic and some extensions.
+  Communications on Pure and Applied Mathematics \textbf{33}(5), 599--608
+  (1980), \doi{10.1002/cpa.3160330503}
+
+\bibitem[{Fitting(1996)}]{tableau}
+Fitting, M.: Semantic Tableaux and Resolution. Springer New York, New York, NY
+  (1996), \doi{10.1007/978-1-4612-2360-3_3}
+
+\bibitem[{From(2019)}]{hybrid_logic_afp}
+From, A.H.: Formalizing a {Seligman}-style tableau system for hybrid logic.
+  Archive of Formal Proofs  (December 2019), ISSN 2150-914x,
+  \url{https://isa-afp.org/entries/Hybrid_Logic.html}, Formal proof development
+
+\bibitem[{From(2023)}]{synthetic_completeness_afp}
+From, A.H.: Synthetic completeness. Archive of Formal Proofs  (January 2023),
+  ISSN 2150-914x,
+  \url{https://isa-afp.org/entries/Synthetic_Completeness.html}, Formal proof
+  development
+
+\bibitem[{From et~al.(2020)From, Blackburn, and Villadsen}]{hybrid_logic}
+From, A.H., Blackburn, P., Villadsen, J.: Formalizing a {Seligman}-style
+  tableau system for hybrid logic. In: Peltier, N., Sofronie-Stokkermans, V.
+  (eds.) Automated Reasoning, pp. 474--481, Springer International Publishing,
+  Cham (2020), \doi{10.1007/978-3-030-51074-9_27}
+
+\bibitem[{From et~al.(2021)From, Schlichtkrull, and
+  Villadsen}]{sequent_first_order}
+From, A.H., Schlichtkrull, A., Villadsen, J.: A sequent calculus for
+  first-order logic formalized in {Isabelle/HOL}. In: Monica, S., Bergenti, F.
+  (eds.) Proceedings of the 36th Italian Conference on Computational Logic,
+  {CEUR} Workshop Proceedings, vol. 3002, pp. 107--121, CEUR-WS.org (2021),
+  \urlprefix\url{http://ceur-ws.org/Vol-3002/paper7.pdf}
+
+\bibitem[{Nipkow(2008)}]{lqe}
+Nipkow, T.: Linear quantifier elimination. In: Armando, A., Baumgartner, P.,
+  Dowek, G. (eds.) {Automated Reasoning}, pp. 18--33, {Springer} (2008),
+  \doi{10.1007/978-3-540-71070-7_3}
+
+\bibitem[{Nipkow et~al.(2002)Nipkow, Paulson, and Wenzel}]{isabelle}
+Nipkow, T., Paulson, L.C., Wenzel, M.: {Isabelle/HOL --- A Proof Assistant for
+  Higher-Order Logic}, LNCS, vol. 2283. Springer (2002)
+
+\bibitem[{Noschinski(2013)}]{graph_theory_afp}
+Noschinski, L.: Graph theory. Archive of Formal Proofs  (April 2013), ISSN
+  2150-914x, \url{https://isa-afp.org/entries/Graph_Theory.html}, Formal proof
+  development
+
+\bibitem[{Paulson(2013)}]{hf_AFP}
+Paulson, L.C.: The hereditarily finite sets. Archive of Formal Proofs
+  (November 2013), ISSN 2150-914x,
+  \url{https://isa-afp.org/entries/HereditarilyFinite.html}, Formal proof
+  development
+
+\bibitem[{Paulson(2019)}]{zfc_in_hol_afp}
+Paulson, L.C.: Zermelo fraenkel set theory in higher-order logic. Archive of
+  Formal Proofs  (October 2019), ISSN 2150-914x,
+  \url{https://isa-afp.org/entries/ZFC_in_HOL.html}, Formal proof development
+
+\bibitem[{Stevens(2023)}]{formalisation}
+Stevens, L.: Formalisation of a decision procedure for {MLSS} (2023),
+  \urlprefix\url{https://github.com/lukasstevens/set-decision-procedure/tree/CADE},
+  {Formal} proof development
+
+\bibitem[{Stevens and Nipkow(2021)}]{orders}
+Stevens, L., Nipkow, T.: A verified decision procedure for orders in
+  {Isabelle/HOL}. In: Hou, Z., Ganesh, V. (eds.) Automated Technology for
+  Verification and Analysis, pp. 127--143, Springer International Publishing
+  (2021), \doi{10.1007/978-3-030-88885-5_9}
+
+\end{thebibliography}

@@ -50,6 +50,21 @@ jobs:
           $ISABELLE_HOME/bin/isabelle build -v -d src/ -d afp/thys -R $session
           $ISABELLE_HOME/bin/isabelle build -P browser_info -v -c -d src/ -d afp/thys $session
 
+      - name: Upload browser_info artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: browser_info-${{ github.ref_name }}
+          path: browser_info/
+
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download browser_info artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: browser_info-${{ github.ref_name }}
+          path: browser_info
+
       - name: Upload browser_info to gh-pages
         uses: JamesIves/github-pages-deploy-action@v4.4.1
         with:

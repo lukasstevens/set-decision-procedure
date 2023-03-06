@@ -37,9 +37,8 @@ jobs:
       - name: Cache Heap Images
         uses: actions/cache@v3
         with:
-          path: $ISABELLE_HOME_USER/heaps/
+          path: ${{ env.ISABELLE_HOME_USER }}/heaps/
           key: heap-images-${{ github.ref_name }}
-          restore-keys: heap-images-
 
       - name: Build Session
         run: |
@@ -48,18 +47,21 @@ jobs:
             session="Set_Proc_Typing"
           fi;
           $ISABELLE_HOME/bin/isabelle build -v -d src/ -d afp/thys -R $session
-          $ISABELLE_HOME/bin/isabelle build -P browser_info -v -c -d src/ -d afp/thys $session
+          $ISABELLE_HOME/bin/isabelle build -v -c -d src/ -d afp/thys $session
 
       - name: Upload browser_info artifact
         uses: actions/upload-artifact@v3
         with:
           name: browser_info-${{ github.ref_name }}
-          path: browser_info/
+          path: ${{ env.ISABELLE_HOME_USER}}/browser_info/
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
     steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
       - name: Download browser_info artifact
         uses: actions/download-artifact@v3
         with:

@@ -23,5 +23,8 @@ The session can be opened interactively by running
 isabelle jedit -d $AFP -d src/ -R Set_Proc
 ```
 
-## Browsing the theory files without Isabelle
-Links here.
+## Browsing the Theory Files without Isabelle
+If you don't want to install Isabelle, you can still browse the HTML presentation of the theories.
+To get started, look at the overview theories of the branches:
+  * [`Set_Proc_All.thy`](https://lukasstevens.github.io/set-decision-procedure/CADE/Set_Proc/Set_Proc/Set_Proc_All.html) on the `CADE` branch or
+  * [`Set_Proc_All.thy`](https://lukasstevens.github.io/set-decision-procedure/CADE_Typing/Set_Proc/Set_Proc_Typing/Set_Proc_All.html) on the `CADE_Typing` branch.

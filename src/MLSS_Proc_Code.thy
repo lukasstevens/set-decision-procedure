@@ -1,6 +1,8 @@
-theory Set_Proc_Code
-  imports Set_Proc Typing_Urelems "Fresh_Identifiers.Fresh_Nat" "List-Index.List_Index"
+theory MLSS_Proc_Code
+  imports MLSS_Proc MLSS_Typing_Urelems "Fresh_Identifiers.Fresh_Nat" "List-Index.List_Index"
 begin
+
+section \<open>An Executable Specification of the Procedure\<close>
 
 instantiation nat :: default
 begin
@@ -302,11 +304,11 @@ lemma inj_on_name_subterm_subterms:
   by (intro inj_on_index2) simp
 
 abbreviation "solve_constraints \<phi> \<equiv>
-  Suc_Theory.solve (Suc_Theory.elim_NEq_Zero (constrs_fm (name_subterm \<phi>) \<phi>))"
+  MLSS_Suc_Theory.solve (MLSS_Suc_Theory.elim_NEq_Zero (constrs_fm (name_subterm \<phi>) \<phi>))"
 
 definition "urelem_code \<phi> t \<equiv>
   (case solve_constraints \<phi> of
-    Some ss \<Rightarrow> Suc_Theory.assign ss (name_subterm \<phi> t) = 0
+    Some ss \<Rightarrow> MLSS_Suc_Theory.assign ss (name_subterm \<phi> t) = 0
   | None \<Rightarrow> False)"
 
 lemma urelem_code_if_mem_subterms:
@@ -647,40 +649,8 @@ qed
 declare lin_sat_code[code] sat_code[code]
 declare mlss_proc_branch_partial.simps[code]
 code_identifier
-    code_module Set_Calculus \<rightharpoonup> (SML) Set_Proc_Code
-  | code_module Set_Proc \<rightharpoonup> (SML) Set_Proc_Code
+    code_module MLSS_Calculus \<rightharpoonup> (SML) MLSS_Proc_Code
+  | code_module MLSS_Proc \<rightharpoonup> (SML) MLSS_Proc_Code
 export_code mlss_proc_partial in SML
-
-context
-begin
-
-private definition "x \<equiv> Var 0"
-private definition "y \<equiv> Var 1"
-private definition "z \<equiv> Var 2"
-private definition "A \<equiv> Var 3"
-private definition "B \<equiv> Var 4"
-
-
-private definition Imp where "Imp P Q \<equiv> Or (Neg P) Q"
-private definition Subs_pset (infix "\<subseteq>\<^sub>s" 55) where "Subs_pset s t \<equiv> s \<squnion>\<^sub>s t =\<^sub>s t"
-
-notation Imp (infixr "\<longrightarrow>\<^sub>f" 47)
-notation And (infixr "\<and>\<^sub>f" 49)
-notation Or (infixr "\<or>\<^sub>f" 48)
-
-private definition "subset_trans_fm \<equiv>
-  Neg (AT (x \<subseteq>\<^sub>s y) \<and>\<^sub>f AT (y \<subseteq>\<^sub>s z) \<longrightarrow>\<^sub>f AT (x \<subseteq>\<^sub>s z))"
-
-private definition "subset_dest_fm \<equiv>
-  Neg (AT (A \<subseteq>\<^sub>s B) \<and>\<^sub>f AT (x \<in>\<^sub>s A) \<longrightarrow>\<^sub>f AT (x \<in>\<^sub>s B))"
-
-value "mlss_proc_partial subset_trans_fm"
-value "mlss_proc_partial subset_dest_fm"
-
-no_notation Subs_pset (infix "\<subseteq>\<^sub>s" 55)
-no_notation Imp (infixr "\<longrightarrow>\<^sub>f" 47)
-no_notation And (infixr "\<and>\<^sub>f" 49)
-no_notation Or (infixr "\<or>\<^sub>f" 48)
-end
 
 end

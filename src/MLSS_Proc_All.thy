@@ -1,8 +1,8 @@
-theory Set_Proc_All
-  imports Set_Proc Set_Proc_Code
+theory MLSS_Proc_All
+  imports MLSS_Proc MLSS_Proc_Code
 begin
 
-chapter \<open>Outline of the Formalisation\<close>
+section \<open>Outline of the Formalisation\<close>
 
 text \<open>
   We reference the most important aspects of the formalisation here
@@ -11,9 +11,9 @@ text \<open>
   The sections roughly correspond to the sections in the paper.
 \<close>
 
-section \<open>Syntax and Semantics\<close>
+subsection \<open>Syntax and Semantics\<close>
 
-subsection \<open>Syntax\<close>
+subsubsection \<open>Syntax\<close>
 text \<open>
   Datatypes:
     \<^item> Propositional formulae: @{datatype fm}. The formalisation uses constructors like @{term And}
@@ -30,7 +30,7 @@ text \<open>
     \<^item> @{const is_literal}
 \<close>
 
-subsection \<open>Semantics\<close>
+subsubsection \<open>Semantics\<close>
 
 text \<open>
   Interpretation functions:
@@ -41,7 +41,7 @@ text \<open>
 
 thm I\<^sub>s\<^sub>t.simps I\<^sub>s\<^sub>a.simps interp.simps
 
-section \<open>Tableau Calculus\<close>
+subsection \<open>Tableau Calculus\<close>
 
 text \<open>
   Type of branches @{typ \<open>'a branch\<close>}.
@@ -67,7 +67,7 @@ text \<open>
 thm lin_sat_def sat_def wits_def wf_branch_def
 thm subst_tlvl.simps
 
-section \<open>Abstract Specification of the Decision Procedure\<close>
+subsection \<open>Abstract Specification of the Decision Procedure\<close>
 
 text \<open>
   Since Hilbert choice (such as @{term \<open>SOME x. P\<close>}) does not allow for refinement,
@@ -79,7 +79,7 @@ text \<open>
   See also: @{const mlss_proc.mlss_proc} and @{const mlss_proc_partial}.
 \<close>
 
-section \<open>Completeness\<close>
+subsection \<open>Completeness\<close>
 
 text \<open>
   Constants needed for the realisation function:
@@ -97,11 +97,11 @@ text \<open>
 thm base_vars_def pwits_def subterms'_def
 thm realisation.realise.simps
 
-subsection \<open>Characterisation of the Pure Witnesses\<close>
+subsubsection \<open>Characterisation of the Pure Witnesses\<close>
 
 thm lemma_2
 
-subsection \<open>Realisation of an Open Branch\<close>
+subsubsection \<open>Realisation of an Open Branch\<close>
 text \<open>
   The assumption that the branch is open is captured by the locale @{locale open_branch}.
   Important theorems:
@@ -117,14 +117,14 @@ thm I\<^sub>s\<^sub>t_realisation_eq_realisation coherence
 end
 
 
-section \<open>Soundness of the Calculus\<close>
+subsection \<open>Soundness of the Calculus\<close>
 
 thm bclosed_sound lexpands_sound bexpands_sound
 
 
-section \<open>Total Correctness of the Procedure\<close>
+subsection \<open>Total Correctness of the Procedure\<close>
 
-subsection \<open>Abstract Specification\<close>
+subsubsection \<open>Abstract Specification\<close>
 thm card_wf_branch_ub
 
 context mlss_proc
@@ -136,12 +136,12 @@ thm mlss_proc_branch_complete mlss_proc_branch_sound
 thm mlss_proc_complete mlss_proc_sound
 end
 
-subsection \<open>Executable Specification\<close>
+subsubsection \<open>Executable Specification\<close>
 
 thm mlss_proc_partial_eq_None
 thm mlss_proc_partial_complete mlss_proc_partial_sound
 
-section \<open>Urelements\<close>
+subsection \<open>Urelements\<close>
 text \<open>
   Typing for set terms, atoms, and formulae:
     \<^item> @{const types_pset_term}
@@ -162,8 +162,8 @@ thm constrs_atom.simps
 thm constrs_fm.simps
 
 text \<open>Solving of constraints\<close>
-thm Suc_Theory.solve.simps
-thm Suc_Theory.assign.simps
+thm MLSS_Suc_Theory.solve.simps
+thm MLSS_Suc_Theory.assign.simps
 
 text \<open>Urelems are those terms that receive an assignment of 0 after solving the constraints.\<close>
 thm urelem_iff_assign_eq_0

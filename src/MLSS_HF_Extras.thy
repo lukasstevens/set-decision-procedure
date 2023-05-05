@@ -1,4 +1,4 @@
-theory HF_Extras
+theory MLSS_HF_Extras
   imports HereditarilyFinite.Rank
 begin
 

@@ -1,5 +1,5 @@
-theory Typing
-  imports Set_Calculus
+theory MLSS_Typing
+  imports MLSS_Calculus
 begin
 
 section \<open>Typing and Branch Expansion\<close>
@@ -8,15 +8,17 @@ text \<open>
   preserve well-typedness.
 \<close>
 
-no_notation Set.member  ("(_/ : _)" [51, 51] 50)
+context includes Set_member_no_ascii_notation
+begin
 
-lemma types_term_unique: "v \<turnstile> t : l1 \<Longrightarrow> v \<turnstile> t : l2 \<Longrightarrow> l2 = l1"
+lemma types_term_unique:
+  shows "v \<turnstile> t : l1 \<Longrightarrow> v \<turnstile> t : l2 \<Longrightarrow> l2 = l1"
   apply(induction arbitrary: l2 rule: types_pset_term.induct)
-  apply (metis types_pset_term_cases)+
+       apply (metis types_pset_term_cases)+
   done
 
 lemma type_of_term_if_types_term:
-  "v \<turnstile> t : l \<Longrightarrow> type_of_term v t = l"
+  shows "v \<turnstile> t : l \<Longrightarrow> type_of_term v t = l"
   using types_term_unique unfolding type_of_term_def by blast
 
 lemma types_term_if_mem_subterms_term:
@@ -26,7 +28,8 @@ lemma types_term_if_mem_subterms_term:
   using assms
   by (induction t arbitrary: s lt) (auto elim: types_pset_term_cases)
 
-lemma is_Var_if_types_term_0: "v \<turnstile> t : 0 \<Longrightarrow> is_Var t"
+lemma is_Var_if_types_term_0:
+  shows "v \<turnstile> t : 0 \<Longrightarrow> is_Var t"
   by (induction t) (auto elim: types_pset_term_cases)
 
 lemma is_Var_if_urelem': "urelem' v \<phi> t \<Longrightarrow> is_Var t"
@@ -52,6 +55,7 @@ lemma types_fmI:
   unfolding types_pset_fm_def using fm.set_intros by auto
 
 lemma types_pset_atom_Member_D:
+  includes Set_member_no_ascii_notation
   assumes "v \<turnstile> s \<in>\<^sub>s f t1 t2" "f \<in> {(\<squnion>\<^sub>s), (\<sqinter>\<^sub>s), (-\<^sub>s)}"
   shows "v \<turnstile> s \<in>\<^sub>s t1" "v \<turnstile> s \<in>\<^sub>s t2"
 proof -
@@ -69,6 +73,7 @@ lemmas types_pset_atom_Member_Union_D = types_pset_atom_Member_D[where ?f="(\<sq
    and types_pset_atom_Member_Diff_D = types_pset_atom_Member_D[where ?f="(-\<^sub>s)", simplified]
 
 lemma types_term_if_mem_subterms:
+  includes Set_member_no_ascii_notation
   fixes \<phi> :: "'a pset_fm"
   assumes "v \<turnstile> \<phi>"
   assumes "f t1 t2 \<in> subterms \<phi>" "f \<in> {(\<squnion>\<^sub>s), (\<sqinter>\<^sub>s), (-\<^sub>s)}"
@@ -103,6 +108,7 @@ proof -
 qed
 
 lemma types_subst_tlvl:
+  includes Set_member_no_ascii_notation
   fixes l :: "'a pset_atom"
   assumes "v \<turnstile> AT (t1 =\<^sub>s t2)" "v \<turnstile> l"
   shows "v \<turnstile> subst_tlvl t1 t2 l"
@@ -489,5 +495,7 @@ proof -
   then show "\<not> urelem \<phi> t1" "\<not> urelem \<phi> t2"
     unfolding urelem_def by blast+
 qed
+
+end
 
 end

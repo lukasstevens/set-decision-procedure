@@ -1,17 +1,17 @@
-theory Set_Proc                
-  imports Realisation HF_Extras Set_Semantics Typing
+theory MLSS_Proc                
+  imports MLSS_Realisation MLSS_HF_Extras MLSS_Semantics MLSS_Typing
 begin
 
-chapter \<open>A Decision Procedure for MLSS\<close>
+section \<open>A Decision Procedure for MLSS\<close>
 text \<open>
   This theory proves the soundness and completeness of the
-  tableau calculus defined in \<^file>\<open>./Set_Calculus.thy\<close>
+  tableau calculus defined in \<^file>\<open>./MLSS_Calculus.thy\<close>
   It then lifts those properties to a recursive procedure
   that applies the rules of the calculus exhaustively.
   To obtain a decision procedure, we also prove termination.
 \<close>
 
-section \<open>Basic Definitions\<close>
+subsection \<open>Basic Definitions\<close>
 
 definition "lin_sat b \<equiv> \<forall>b'. lexpands b' b \<longrightarrow> set b' \<subseteq> set b"
 
@@ -184,7 +184,7 @@ lemma lexpands_pwits_subs:
   using assms lexpands_wits_eq[OF assms]
   by (induction rule: lexpands_induct) (auto simp: pwits_def)
 
-subsection \<open>\<open>no_new_subterms\<close>\<close>
+subsubsection \<open>\<open>no_new_subterms\<close>\<close>
 
 definition "no_new_subterms b \<equiv>
    \<forall>t \<in> subterms b. t \<notin> Var ` wits b \<longrightarrow> t \<in> subterms (last b)"
@@ -294,7 +294,7 @@ lemmas subterms_branch_subterms_fm_lastI =
   subterms_branch_subterms_subterms_fm_trans[OF _ subterms_refl]
 
 
-subsection \<open>\<open>wits_subterms\<close>\<close>
+subsubsection \<open>\<open>wits_subterms\<close>\<close>
 
 definition wits_subterms :: "'a branch \<Rightarrow> 'a pset_term set" where
   "wits_subterms b \<equiv> Var ` wits b \<union> subterms (last b)"
@@ -315,9 +315,9 @@ qed
 lemma wits_subterms_last_disjnt: "Var ` wits b \<inter> subterms (last b) = {}"
   by (auto simp: wits_def intro!: mem_vars_fm_if_mem_subterms_fm)
 
-section \<open>Completeness of the Calculus\<close>
+subsection \<open>Completeness of the Calculus\<close>
 
-subsection \<open>Proof of Lemma 2\<close>
+subsubsection \<open>Proof of Lemma 2\<close>
 
 fun is_literal :: "'a fm \<Rightarrow> bool" where
   "is_literal (Atom _) = True"
@@ -762,7 +762,7 @@ proof -
     by safe
 qed
 
-subsection \<open>Urelements\<close>
+subsubsection \<open>Urelements\<close>
   
 definition "urelems b \<equiv> {x \<in> subterms b. \<exists>v. \<forall>\<phi> \<in> set b. urelem' v \<phi> x}"
 
@@ -797,6 +797,7 @@ proof
 qed
 
 lemma types_term_inf:
+  includes Set_member_no_ascii_notation
   assumes "v1 \<turnstile> t : l1" "v2 \<turnstile> t : l2"
   shows "inf v1 v2 \<turnstile> t : inf l1 l2"
   using assms
@@ -820,6 +821,7 @@ lemma types_pset_fm_inf:
   unfolding types_pset_fm_def by blast
 
 lemma types_urelems:
+  includes Set_member_no_ascii_notation
   fixes b :: "'a branch"
   assumes "wf_branch b" "v \<turnstile> last b"
   obtains v' where "\<forall>\<phi> \<in> set b. v' \<turnstile> \<phi>" "\<forall>u \<in> urelems b. v' \<turnstile> u : 0"
@@ -934,7 +936,7 @@ proof -
     unfolding urelems_def urelem_def by auto
 qed
 
-subsection \<open>Realization of an Open Branch\<close>
+subsubsection \<open>Realization of an Open Branch\<close>
 
 definition "base_vars b \<equiv> Var ` pwits b \<union> urelems b"
 
@@ -1398,6 +1400,7 @@ proof -
 qed
 
 lemma AT_eq_urelems_subterms'_cases:
+  includes Set_member_no_ascii_notation
   assumes "AT (s =\<^sub>s t) \<in> set b"
   obtains (urelems) "s \<in> urelems b" "t \<in> urelems b" |
           (subterms') "s \<in> subterms' b" "t \<in> subterms' b"
@@ -2038,7 +2041,7 @@ lemmas realisation_simps =
 
 end
 
-subsection \<open>Coherence\<close>
+subsubsection \<open>Coherence\<close>
 
 lemma (in open_branch) I\<^sub>s\<^sub>t_realisation_eq_realisation:
   assumes "sat b" "t \<in> subterms b"
@@ -2128,9 +2131,9 @@ proof(induction "size \<phi>" arbitrary: \<phi> rule: less_induct)
 qed
 
 
-section \<open>Soundness of the Calculus\<close>
+subsection \<open>Soundness of the Calculus\<close>
 
-subsection \<open>Soundness of Closedness\<close>
+subsubsection \<open>Soundness of Closedness\<close>
 
 lemmas wf_trancl_hmem_rel = wf_trancl[OF wf_hmem_rel]
 
@@ -2184,6 +2187,7 @@ proof -
 qed
 
 lemma types_term_lt_if_member_seq:
+  includes Set_member_no_ascii_notation
   fixes cs :: "'a pset_atom list"
   assumes "\<forall>a \<in> set cs. v \<turnstile> a"
   assumes "member_seq s cs t" "cs \<noteq> []"
@@ -2220,7 +2224,7 @@ proof
     using types_term_lt_if_member_seq types_term_unique by blast
 qed simp_all
 
-subsection \<open>Soundness of the Expansion Rules\<close>
+subsubsection \<open>Soundness of the Expansion Rules\<close>
 
 lemma lexpands_sound:
   assumes "lexpands b' b"
@@ -2353,7 +2357,7 @@ next
 qed
 
 
-section \<open>Upper Bounding the Cardinality of a Branch\<close>
+subsection \<open>Upper Bounding the Cardinality of a Branch\<close>
 
 lemma Ex_bexpands_wits_if_in_wits:
   assumes "wf_branch b"
@@ -2651,7 +2655,7 @@ proof -
 qed
 
 
-section \<open>The Decision Procedure\<close>
+subsection \<open>The Decision Procedure\<close>
 
 locale mlss_proc =
   fixes lexpand :: "'a branch \<Rightarrow> 'a branch"

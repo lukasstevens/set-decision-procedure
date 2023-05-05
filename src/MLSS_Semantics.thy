@@ -1,8 +1,8 @@
-theory Set_Semantics
-  imports Logic HereditarilyFinite.Finitary "HOL-Library.Adhoc_Overloading" "HOL-Library.Monad_Syntax"
+theory MLSS_Semantics
+  imports MLSS_Logic HereditarilyFinite.Finitary "HOL-Library.Adhoc_Overloading"
 begin
 
-chapter \<open>Definition of MLSS\<close>
+section \<open>Definition of MLSS\<close>
 text \<open>
   Here, we define the syntax and semantics of multi-level syllogistic
   with singleton (MLSS). Additionally, we define a number of functions
@@ -10,18 +10,47 @@ text \<open>
   of a term.
 \<close>
 
-section \<open>Syntax and Semantics\<close>
+subsection \<open>Syntax and Semantics\<close>
 
 datatype (vars_term: 'a) pset_term = 
-  Empty nat (\<open>\<emptyset> _\<close>) | is_Var: Var 'a |
-  Union "'a pset_term" "'a pset_term" (infixr \<open>\<squnion>\<^sub>s\<close> 60) |
-  Inter "'a pset_term" "'a pset_term" (infixr \<open>\<sqinter>\<^sub>s\<close> 70) |
-  Diff "'a pset_term" "'a pset_term"  (infixl \<open>-\<^sub>s\<close> 80) |
+  Empty nat | is_Var: Var 'a |
+  Union "'a pset_term" "'a pset_term" |
+  Inter "'a pset_term" "'a pset_term" |
+  Diff "'a pset_term" "'a pset_term" |
   Single "'a pset_term"
 
 datatype (vars_atom: 'a) pset_atom =
-  Elem "'a pset_term" "'a pset_term" (infix \<open>\<in>\<^sub>s\<close> 55) | 
-  Equal "'a pset_term" "'a pset_term" (infix \<open>=\<^sub>s\<close> 55)
+  Elem "'a pset_term" "'a pset_term" | 
+  Equal "'a pset_term" "'a pset_term"
+
+bundle mlss_notation
+begin
+
+notation Empty (\<open>\<emptyset> _\<close>)
+notation Union (infixr \<open>\<squnion>\<^sub>s\<close> 165)
+notation Inter (infixr \<open>\<sqinter>\<^sub>s\<close> 170)
+notation Diff (infixl \<open>-\<^sub>s\<close> 180)
+
+notation Elem (infix \<open>\<in>\<^sub>s\<close> 150)
+notation Equal (infix \<open>=\<^sub>s\<close> 150)
+
+end
+
+bundle mlss_no_notation
+begin
+
+no_notation Empty (\<open>\<emptyset> _\<close>)
+no_notation Union (infixr \<open>\<squnion>\<^sub>s\<close> 165)
+no_notation Inter (infixr \<open>\<sqinter>\<^sub>s\<close> 170)
+no_notation Diff (infixl \<open>-\<^sub>s\<close> 180)
+
+no_notation Elem (infix \<open>\<in>\<^sub>s\<close> 150)
+no_notation Equal (infix \<open>=\<^sub>s\<close> 150)
+
+end
+
+unbundle mlss_notation
+
 
 abbreviation "AT a \<equiv> Atom a"
 abbreviation "AF a \<equiv> Neg (Atom a)"
@@ -42,7 +71,7 @@ fun I\<^sub>s\<^sub>a :: "('a \<Rightarrow> hf) \<Rightarrow> 'a pset_atom \<Rig
 | "I\<^sub>s\<^sub>a v (t1 =\<^sub>s t2) \<longleftrightarrow> I\<^sub>s\<^sub>t v t1 = I\<^sub>s\<^sub>t v t2"
 
 
-section \<open>Variables\<close>
+subsection \<open>Variables\<close>
 
 definition vars_fm :: "'a pset_fm \<Rightarrow> 'a set" where
   "vars_fm \<phi> \<equiv> \<Union>(vars_atom ` atoms \<phi>)"
@@ -88,9 +117,9 @@ lemma vars_fm_vars_branchI:
   unfolding vars_branch_def by blast
 
 
-section \<open>Subformulae and Subterms\<close>
+subsection \<open>Subformulae and Subterms\<close>
 
-subsection \<open>Subformulae\<close>
+subsubsection \<open>Subformulae\<close>
 
 fun subfms :: "'a fm \<Rightarrow> 'a fm set"  where
   "subfms (Atom a) = {Atom a}"
@@ -129,7 +158,7 @@ lemma subfmsD:
   using subfmsI subfms_refl subfms_trans by metis+
 
 
-subsection \<open>Subterms\<close>
+subsubsection \<open>Subterms\<close>
 
 fun subterms_term :: "'a pset_term \<Rightarrow> 'a pset_term set"  where
   "subterms_term (\<emptyset> n) = {\<emptyset> n}"
@@ -234,7 +263,7 @@ lemma AF_eq_subterms_branchD:
   using assms unfolding subterms_branch_def by force+
 
 
-subsection \<open>Interactions between Subterms and Subformulae\<close>
+subsubsection \<open>Interactions between Subterms and Subformulae\<close>
 
 lemma Un_vars_term_subterms_term_eq_vars_term:
   "\<Union>(vars_term ` subterms t) = vars_term t"
@@ -312,7 +341,7 @@ lemma subterms_branch_subterms_subterms_fm_trans:
   using subterms_branch_def subterms_term_subterms_fm_trans by fastforce
 
 
-subsection \<open>Set Atoms in a Branch\<close>
+subsubsection \<open>Set Atoms in a Branch\<close>
 
 abbreviation pset_atoms_branch :: "'a fm list \<Rightarrow> 'a set" where
   "pset_atoms_branch b \<equiv> \<Union>(atoms ` set b)"
@@ -373,7 +402,7 @@ lemma finite_atoms: "finite (atoms \<phi>)"
 lemma finite_pset_atoms_branch: "finite (pset_atoms_branch b)"
   by (auto simp: finite_atoms)
 
-section \<open>Non-Emptiness\<close>
+subsection \<open>Non-Emptiness\<close>
 
 lemma subterms_term_nonempty[simp]: "subterms_term t \<noteq> {}"
   by (induction t) auto

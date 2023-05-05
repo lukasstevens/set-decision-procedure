@@ -1,8 +1,8 @@
-theory Suc_Theory
+theory MLSS_Suc_Theory
   imports Main "HOL-Library.Adhoc_Overloading" Fresh_Identifiers.Fresh
 begin
 
-chapter \<open>Solver for the Theory of the Successor Function\<close>
+section \<open>Solver for the Theory of the Successor Function\<close>
 text \<open>
   This theory implements a solver for the theory consisting of
   variables, 0, and the successor function.

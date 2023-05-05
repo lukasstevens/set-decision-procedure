@@ -1,13 +1,13 @@
-theory Set_Calculus
-  imports "HOL-Library.Sublist" Set_Semantics Typing_Defs
+theory MLSS_Calculus
+  imports "HOL-Library.Sublist" MLSS_Semantics MLSS_Typing_Defs
 begin
 
-chapter \<open>A Tableau Calculus for MLSS\<close>
+section \<open>A Tableau Calculus for MLSS\<close>
 text \<open>
   In this theory, we define a tableau calculus for MLSS.
 \<close>
 
-section \<open>Closedness\<close>
+subsection \<open>Closedness\<close>
 
 fun member_seq :: "'a pset_term \<Rightarrow> 'a pset_atom list \<Rightarrow> 'a pset_term \<Rightarrow> bool" where
   "member_seq s [] t \<longleftrightarrow> s = t"
@@ -24,9 +24,9 @@ inductive bclosed :: "'a branch \<Rightarrow> bool" where
 | neqSelf: "AF (t =\<^sub>s t) \<in> set b \<Longrightarrow> bclosed b"
 | memberCycle: "\<lbrakk> member_cycle cs; set cs \<subseteq> Atoms (set b) \<rbrakk> \<Longrightarrow> bclosed b"
 
-abbreviation "bopen branch \<equiv> \<not> bclosed branch"
+abbreviation "bopen b \<equiv> \<not> bclosed b"
 
-section \<open>Linear Expansion Rules\<close>
+subsection \<open>Linear Expansion Rules\<close>
 
 fun tlvl_terms :: "'a pset_atom \<Rightarrow> 'a pset_term set" where
   "tlvl_terms (t1 \<in>\<^sub>s t2) = {t1, t2}"
@@ -181,7 +181,7 @@ lemma lexpands_induct[consumes 1]:
   done
 
 
-section \<open>Fulfilling Expansion Rules\<close>
+subsection \<open>Fulfilling Expansion Rules\<close>
 
 inductive bexpands_nowit :: "'a branch set \<Rightarrow> 'a branch \<Rightarrow> bool" where
   "\<lbrakk> Or p q \<in> set b;
@@ -279,7 +279,7 @@ lemma bexpands_strict_mono:
 inductive_cases bexpands_cases[consumes 1, case_names no_param param]: "bexpands bs b"
 
 
-section \<open>Expansion Closure\<close>
+subsection \<open>Expansion Closure\<close>
 
 inductive expandss :: "'a branch \<Rightarrow> 'a branch \<Rightarrow> bool" where
   "expandss b b"
@@ -306,7 +306,7 @@ lemma expandss_not_Nil:
   using expandss_suffix suffix_bot.extremum_uniqueI by blast
 
 
-section \<open>Well-Formed Branch\<close>
+subsection \<open>Well-Formed Branch\<close>
 
 definition "wf_branch b \<equiv> \<exists>\<phi>. expandss b [\<phi>]"
 

@@ -10,8 +10,6 @@
 \usepackage[numbers]{natbib}
 \bibliographystyle{splncs04nat}
 
-\usepackage{appendix}
-
 \usepackage{amsmath}
 \usepackage{amssymb}
 
@@ -154,9 +152,9 @@
 \begin{abstract}
   Using Isabelle/HOL, we verify the state-of-the-art decision procedure for multi-level syllogistic with singleton (\MLSS{} for short), which is a quantifier-free fragment of set theory.
   We formalise its syntax and semantics as well as a sound and complete tableau calculus for it.
-  We also provide an executable specification of a decision procedure that applies the rules of the calculus exhaustively and prove its termination.
+  We also provide an executable specification of a decision procedure that exhaustively applies the rules of the calculus and prove its termination.
   Furthermore, we extend the calculus with a lightweight type system that paves the way for an integration of the procedure into Isabelle/HOL.
-  \keywords{Decision procedures \and Tableau \and Proof assistants \and Set theory}
+  \keywords{Decision procedures \and Semantic tableaux \and Interactive theorem proving \and Set theory}
 \end{abstract}
 
 \section{Introduction}
@@ -176,10 +174,10 @@ Like with the aforementioned order solver, this paves the way towards an integra
 
 \subsection{Contributions}
 We present a formalisation in Isabelle/HOL of a tableau calculus for \MLSS{} due to \citeauthor{new_fast_tableau}~\cite{new_fast_tableau}\cite[Chapter 14]{set_theory}.
-We prove soundness and completeness of the calculus and give an abstract specification of a decision procedure that applies the rules of the calculus exhaustively.
+We prove soundness and completeness of the calculus and give an abstract specification of a decision procedure that exhaustively applies the rules of the calculus.
 To obtain total correctness of the procedure, we prove its termination.
-In order to obtain an executable procedure, we also give a naive refinement to a more concrete specification from which code can be generated.
-The formalisation initially follows the paper but gives a more thorough account of some important details:
+Additionally, we naively refine the abstract to an executable specification from which we can generate code.
+The formalisation initially follows the paper but offers a more thorough account of some important details:
 \begin{itemize}
   \item We deliver the omitted proof of Lemma~2 in the paper~\cite{new_fast_tableau}, which is a key building block for the completeness proof of the calculus.
   \item The formal proof of completeness leads to the discovery that the calculus was missing a rule for eliminating double negation. 
@@ -197,7 +195,8 @@ Here, the formalisation was instrumental because Isabelle immediately revealed w
 This illustrates the usefulness of ITPs for developing logic calculi: they allow us to confidently make modifications without compromising correctness. 
 
 All in all, the formalisation amounts to over 6000 lines of theory.
-It is available online~\cite{formalisation}.
+It is part of the \emph{Archive of Formal Proofs} (AFP)~\cite{formalisation}.
+The entry provides an overview theory \href{https://www.isa-afp.org/theories/mlss_decision_proc/#MLSS_Proc_All}{\texttt{MLSS\_Proc\_All.thy}} that highlights the (mostly syntactic) differences between paper and formalisation and references the constants and theorems that are introduced in this paper. 
 
 \subsection{Related Work}
 Since the literature on decidable fragments of set theory is vast, we only focus on \MLSS{} here.
@@ -248,21 +247,26 @@ Isabelle/HOL's data type package automatically defines a function that gives us 
 In what follows, we will overload the function \lstinline!vars! to also work on set atoms, formulas, and branches.
 \begin{lstlisting}
 datatype (vars: 'a) pset_term =
-  $\emptyset$ | Var 'a | Single ('a pset_term)
-| 'a pset_term $\unionS$ 'a pset_term | 'a pset_term $\interS$ 'a pset_term
-| 'a pset_term $\diffS$ 'a pset_term
+    $\emptyset$ | Var 'a | Single ('a pset_term)
+  | 'a pset_term $\unionS$ 'a pset_term
+  | 'a pset_term $\interS$ 'a pset_term
+  | 'a pset_term $\diffS$ 'a pset_term
 \end{lstlisting}
 We can combine two set terms to form a set atom by using the membership or the equality operator.
 \begin{lstlisting}
 datatype (vars: 'a) pset_atom =
-  'a pset_term $\inS$ 'a pset_term | 'a pset_term $\eqS$ 'a pset_term
+    'a pset_term $\inS$ 'a pset_term
+  | 'a pset_term $\eqS$ 'a pset_term
 \end{lstlisting}
 With the above operators we can also represent the subset operator \lstinline!$\subseteqS$! and enumerate finite sets: \lstinline!s $\subseteqS$ t! is equivalent to \lstinline!s $\unionS$ t $\eqS$ t! and a finite set of elements \lstinline!{t$_\text{1}$,$\ldots$,t$_\text{k}$}! can be expressed by \lstinline!Single t$_1$ $\unionS$ $\ldots$ $\unionS$ Single t$_k$!.
 
 We use the propositional fragment of formulas due to \citeauthor{lqe}~\cite{lqe} with set atoms as propositional atoms to form the quantifier-free fragment \MLSS{} of set theory.
 \begin{lstlisting}
 datatype (atoms: 'a) fm =
-  &\fmAtom& 'a | &\fmNeg{('a fm)}& | &\fmAnd{'a fm}{'a fm}& | &\fmOr{'a fm}{'a fm}&
+    &\fmAtom& 'a
+  | &\fmNeg{('a fm)}&
+  | &\fmAnd{'a fm}{'a fm}&
+  | &\fmOr{'a fm}{'a fm}&
 
 type_synonym 'a pset_fm = 'a pset_atom fm
 \end{lstlisting}
@@ -275,16 +279,16 @@ We combine these functions to extract all the variables occurring in a set formu
 definition vars $\phi$ $\equiv$ $\bigcup$(vars ` atoms $\phi$)
 \end{lstlisting}
 
-Likewise, we fix the constant \lstinline!subterms :: 'b $\Rightarrow$ 'a pset_term set!.\todo{Explain b'}
-We overload this constant to return the set terms that are subterms of a set term, set atom, or formula, respectively. Lastly, we compute the subformulas of a formula with the function \lstinline!subfms :: 'a fm $\Rightarrow$ 'a fm set!.
-The functions \lstinline!subterms! and \lstinline!subfms! are defined in the expected way (cf.\ \appendixname~\ref{appendix:subterms}).
+Likewise, we fix the constant \lstinline!subterms :: 'b $\Rightarrow$ 'a pset_term set! that is polymorphic in its argument type \lstinline!'b!.
+We overload this constant to return the set terms that are subterms of a set term, set atom, or formula, respectively.
+Lastly, we introduce the function \lstinline!subfms :: 'a fm $\Rightarrow$ 'a fm set! that computes the subformulas of a formula.
+The functions \lstinline!subterms! and \lstinline!subfms! are implemented in the expected way.
 
 \subsection{Semantics}
 The original paper~\cite{new_fast_tableau} bases the semantics of \MLSS{} on the von Neumann hierarchy of sets $\mathcal{V}$.
-While there is an entry~\cite{zfc_in_hol_afp} in the \emph{Archive of Formal Proofs} (AFP) that axiomatises this hierarchy,
-we instead use the hierarchy of \emph{hereditarily finite sets} (HF sets) which fulfil all the same axioms as $\mathcal{V}$ -- that is, the axioms of ZF -- except for the axiom of infinity.
+We instead use the hierarchy of \emph{hereditarily finite sets} (HF sets) which fulfil all the same axioms as $\mathcal{V}$ -- that is, the axioms of ZF -- except for the axiom of infinity.
 In particular, the membership relation is well-founded.
-The HF sets are sufficient for our purposes as \MLSS{} is not powerful enough to force infinite models~\cite[Chapter~14.2]{set_theory}.\cite{Argue power: self-evident}
+The HF sets, as we will see, are sufficient to construct a model for any satisfiable \MLSS{} formula.
 In contrast to $\mathcal{V}$, the HF sets are directly representable in Isabelle/HOL, and indeed, there is an AFP entry~\cite{hf_AFP} that formalises them.
 The entry defines a type \lstinline!hf! that comes with the following functionality:
 \begin{itemize}
@@ -299,7 +303,7 @@ Equipped with the above, we define the interpretation functions
   \item \lstinline!&\Isa& :: ('a $\Rightarrow$ hf) $\Rightarrow$ 'a pset_atom $\Rightarrow$ hf!
 \end{itemize}
 in the standard way, i.e.\ by mapping each syntactic construct to the corresponding operation on HF sets and interpreting variables with respect to a given valuation function \lstinline!M :: 'a $\Rightarrow$ hf!.
-For the concrete definition we refer to formalisation (cf.\ \appendixname~\ref{appendix:semantics}).
+For the concrete definition we refer to formalisation.
 
 We write \lstinline!M $\models$ $\phi$! for the judgement that the formula $\phi$ holds under the valuation function \lstinline!M!.
 The implementation of $\models$ coincides with the interpretation function of \citeauthor{lqe}~\cite{lqe}.
@@ -308,7 +312,7 @@ Otherwise, \lstinline!$\phi$! is called \emph{unsatisfiable}.
 
 \section{A Tableau Calculus for MLSS}
 We formalise the tableau calculus for \MLSS{} as described by \citeauthor{new_fast_tableau}~\cite{new_fast_tableau}.
-Inspired by the formalisation of a tableau calculus for hybrid logic by \citeauthor{hybrid_logic_afp}~\cite{hybrid_logic_afp}, we simply use a list to represent a branch of the tableau tree.
+Inspired by the formalisation of a tableau calculus for hybrid logic by \citeauthor{hybrid_logic_afp}~\cite{hybrid_logic_afp}, we simply use lists to represent the branches of the tableau tree.
 Note that formulas are added to the front of the list during branch expansion, so \lstinline!last b! for a branch \lstinline!b! is always the formula that we are trying to disprove with the tableau.
 We sometimes call this formula the \emph{initial formula}.
 \begin{lstlisting}
@@ -331,7 +335,7 @@ inductive bclosed :: 'a branch $\Rightarrow$ bool where
 
 abbreviation bopen b $\equiv$ $\neg$ bclosed b
 \end{lstlisting}
-A tableau is called \emph{closed} if all of its branches are closed.\todo{What is a tableau?}
+A tableau is called \emph{closed} if all of its branches are closed.
 
 \subsection{Linear Expansion Rules}
 \begin{table*}[t]
@@ -341,7 +345,7 @@ A tableau is called \emph{closed} if all of its branches are closed.\todo{What i
   }
   \newcommand{\ton}{\text{t}_\text{1}}
   \newcommand{\ttw}{\text{t}_\text{2}}
-  \caption{Linear expansion rules.\label[table]{tab:lexpands} We omit the rules for $\interS$ and $\diffS$ as they coincide with the original paper~\cite{new_fast_tableau} (cf.\ \appendixname~\ref{appendix:linear_rules}).}
+  \caption{Linear expansion rules.\label[table]{tab:lexpands} All rules except the double negation rule coincide with the original paper~\cite{new_fast_tableau}. For brevity, we omit the rules for $\interS$ and $\diffS$.}
   \begin{tabular}{ccc}
     \toprule
     Propositional Rules & {\hskip 6pt} & Rules for \lstinline!$\unionS$! \\
@@ -399,17 +403,26 @@ The calculus considers two kinds of branch expansion rules: \emph{linear} and \e
 As the name suggests, branching rules lead to the creation of new branches in the tableau while linear rules only extend a branch \lstinline!b! with new formulas \lstinline!b' = [$\psi_1$,$\ldots$,$\psi_n$]!, which we denote by \lstinline!&\lexpands{b'}{b}&!.
 \cref{tab:lexpands} shows the linear expansion rules.
 Note that in the first two rules for \lstinline!$\eqS$!, \lstinline!l! is a literal occurring in the branch.
-Furthermore, the term-for-term substitution \lstinline!l{s/t}! is restricted to replace \lstinline!t! only if it occurs as a top-level set term of \lstinline!l!.
-As an example, \lstinline!u! and \lstinline!s $\interS$ t! are top-level terms of \lstinline!u $\inS$ s $\interS$ t! but \lstinline!s! and \lstinline!t! are not.
-
+Furthermore, the term-for-term substitution \lstinline!l{s/t}! is restricted to the top-level set terms of \lstinline!l!, i.e.\ the set terms that occur directly under one of the atom constructors \lstinline!$\inS$! or \lstinline!$\eqS$!;
+for example, given the literal
+\begin{lstlisting}
+  l = &\fmNeg{((s $\unionS$ u) $\diffS$ s $\eqS$ s $\unionS$ u)}&
+\end{lstlisting}
+we have
+\begin{lstlisting}
+  &\phantom{=}& (&\fmNeg{((s $\unionS$ u) $\diffS$ s $\eqS$ s $\unionS$ u)}&){t/s $\unionS$ u}
+  = &\fmNeg{((s $\unionS$ u) $\diffS$ s $\eqS$ t)}&.
+\end{lstlisting}
 A more crucial restriction of the linear rules is that no new subterm may be created by their application;
 for instance, the second rule for \lstinline!$\unionS$! is
-\lstinline!s $\inS$ t$_\text{1}$ $\Longrightarrow$ s $\inS$ t$_\text{1}$ $\unionS$ t$_\text{2}$!,
+\begin{lstlisting}
+  s $\inS$ t$_\text{1}$ $\Longrightarrow$ s $\inS$ t$_\text{1}$ $\unionS$ t$_\text{2}$,
+\end{lstlisting}
 which formally represents 
 \begin{lstlisting}
   (s $\inS$ t$_\text{1}$) $\in$ set b $\Longrightarrow$ &\lexpands{[s $\inS$ t$_\text{1}$ $\unionS$ t$_\text{2}$]}{b}&,
 \end{lstlisting}
-may only be used under the condition
+and may only be used under the condition
 \lstinline[breaklines]!t$_\text{1}$ $\unionS$ t$_\text{2}$ $\in$ subterms (last b)!.
 The purpose of this restriction is to prevent unbounded expansion of the branch.
 In fact, we give an explicit upper bound for the number of formulas in a branch in \cref{sec:correct}.
@@ -422,7 +435,7 @@ definition lin_sat b $\equiv$ $\forall$b'. &\lexpands{b'}{b}& $\longrightarrow$ 
 Finally, we remark that the original paper~\cite{new_fast_tableau} is missing the last propositional rule dealing with double negation.
 This rule is required for completeness, though, considering that the branch
 \lstinline![&\fmNeg{\fmNeg{\fmNeg{p}}}&, p, &\fmAnd{\fmNeg{\fmNeg{\fmNeg{p}}}}{p}&]!
-is saturated --- neither linear nor branching rules apply --- and open, but there clearly is no model for the initial formula \lstinline!&\fmAnd{\fmNeg{\fmNeg{\fmNeg{p}}}}{p}&!.\todo{Split into multiple sentences}
+is saturated --- neither linear nor branching rules apply --- and open, but there clearly is no model for the initial formula \lstinline!&\fmAnd{\fmNeg{\fmNeg{\fmNeg{p}}}}{p}&!.
 
 \subsection{Branching Rules\label[section]{sec:branching}}
 \begin{table*}[t]
@@ -433,7 +446,7 @@ is saturated --- neither linear nor branching rules apply --- and open, but ther
   \newcommand{\ton}{\text{t}_\text{1}}
   \newcommand{\ttw}{\text{t}_\text{2}}
   \newcommand{\lpipe}{\rule[-0.4ex]{0.6pt}{2.3ex}}
-  \caption{Branching expansion rules.\label[table]{tab:bexpands} We write \lstinline!$\phi$! for \lstinline!last b! here. The elided rules coincide with the original paper~\cite{new_fast_tableau} (cf.\ \appendixname~\ref{appendix:branching_rules}).}
+  \caption{Branching expansion rules.\label[table]{tab:bexpands} We write \lstinline!$\phi$! for \lstinline!last b! here. All rules coincide with the original paper~\cite{new_fast_tableau} so we only show an illustrative subset.}
   \begin{tabular}{>{\centering\arraybackslash}p{0.34\textwidth} >{\centering\arraybackslash}p{0.32\textwidth} >{\centering\arraybackslash}p{0.3\textwidth}}
     \toprule
     Rule & Precondition & Subsumption condition \\
@@ -545,7 +558,7 @@ definition mlss_proc :: 'a pset_fm $\Rightarrow$ bool where
 The purpose of the function is to determine whether a given branch can be expanded to a closed tableau.
 As stated before, we first use linear expansion rules in order to prevent premature branching;
 to this end, we recursively expand the branch with linear rules until the branch is linearly saturated.
-Note that we use Hilbert's $\varepsilon$-operator in the form of \lstinline!SOME! to choose some rule that actually adds new formulas to the branch. 
+Note that we use Hilbert's $\varepsilon$-operator in the form of \lstinline!SOME!\footnote{In the formalisation, the function \lstinline!mlss_proc_branch! is actually parametrised by choice functions to allow for refinement.} to choose some rule that actually adds new formulas to the branch. 
 As soon as the branch is linearly saturated, we terminate if the branch is closed as shown in the second equation.
 Otherwise, we choose an applicable branching rule and recursively check whether all newly created branches can be closed.
 The final equation applies once no further branch expansion is possible, in which case we just test for closedness of the branch.
@@ -697,7 +710,7 @@ The coherence property finishes the proof of completeness of the calculus as it 
 A tableau calculus is sound if for any closed tableau, the corresponding formula is unsatisfiable. 
 We prove the following two properties to establish soundness:
 \begin{enumerate*}[label={(\arabic*)}]
-  \item A closed branch contains an unsatisfiable formula.
+  \item It is not possible to satisfy all formulas in a closed branch at once. 
   \item The expansion rules maintain satisfiability.
 \end{enumerate*}
 
@@ -744,7 +757,7 @@ lemma bexpands_sound:
 
 \section{Total Correctness of the Decision Procedure\label[section]{sec:correct}}
 We first demonstrate the termination of the procedure for well-formed branches, i.e.\ every well-formed branch is in the domain of \lstinline!mlss_proc_branch!.
-To this end, we derive an upper bound for the number of distinct formulas in a branch whose proof we omit here for brevity (cf.\ \appendixname~\ref{appendix:bound}).
+To this end, we derive an upper bound for the number of distinct formulas in a branch whose proof we omit here for brevity.
 We should point out that this bound is not to be construed as the complexity of the procedure as it may create exponentially many branches in general.
 \begin{lstlisting}[label={lst:card_branch}]
 lemma card_wf_branch_ub:
@@ -893,329 +906,11 @@ This specification should also generate certificates that can be replayed throug
 %Additional constructs such as finiteness and pairs.
 %Optimisations for the algorithm.
 
-%\subsubsection{Acknowledgements}
-%The author thanks Kevin Kappelmann for his comments on a draft version of the paper.
+\subsubsection{Acknowledgements}
+The author thanks Kevin Kappelmann, Tobias Nipkow, and the anonymous referees for their comments on a draft version of this paper.
 
 \bibliography{sources}
 
-%\clearpage\listoftodos
-\appendix
-
-\clearpage\chapter*{Appendix}
-\todo[inline]{Remove appendix}
-\section{Subterms and Subformulas\label{appendix:subterms}}
-
-We introduce the function \lstinline!subterms :: 'b $\Rightarrow$ 'a pset_term! that is overloaded in its argument.
-We first overload the function for set terms.
-\begin{lstlisting}
-fun subterms :: 'a pset_term $\Rightarrow$ 'a pset_term set where
-  subterms $\emptyset$ = {$\emptyset$}
-| subterms (Var x) = {Var x}
-| subterms (s $\unionS$ t) = {s $\unionS$ t} $\cup$ subterms s $\cup$ subterms t
-| subterms (s $\interS$ t) = {s $\interS$ t} $\cup$ subterms s $\cup$ subterms t
-| subterms (s $\diffS$ t) = {s $\diffS$ t} $\cup$ subterms s $\cup$ subterms t
-| subterms (Single t) = {Single t} $\cup$ subterms t
-\end{lstlisting}
-The subterms of an atom are then the subterms of its arguments.
-\begin{lstlisting}
-fun subterms :: 'a pset_atom $\Rightarrow$ 'a pset_term set where
-  subterms (s $\inS$ t) = subterms s $\cup$ subterms t
-| subterms (s $\eqS$ t) = subterms s $\cup$ subterms t
-\end{lstlisting}
-Finally, we lift this to formulas by using \lstinline!atoms! again.
-\begin{lstlisting}
-definition subterms :: 'a pset_fm $\Rightarrow$ 'a pset_term set where
-  subterms $\phi$ $\equiv$ $\bigcup$(subterms ` atoms $\phi$)
-\end{lstlisting}
-
-We also consider the subformulas of a formula and define a function that computes them.
-\begin{lstlisting}
-fun subfms :: 'a fm $\Rightarrow$ 'a fm set where
-  subfms (&\fmAtom& a) = {&\fmAtom& a}
-| subfms (&\fmAnd{p}{q}&) = {&\fmAnd{p}{q}&} $\cup$ subfms p $\cup$ subfms q
-| subfms (&\fmOr{p}{q}&) = {&\fmOr{p}{q}&} $\cup$ subfms p $\cup$ subfms q
-| subfms (&\fmNeg{q}&) = {&\fmNeg{q}&} $\cup$ subfms q
-\end{lstlisting}
-
-Finally, we lift the functions \lstinline!vars! and \lstinline!subterms! to branches.
-\begin{lstlisting}
-definition vars :: 'a branch $\Rightarrow$ 'a set 
-  vars b $\equiv$ $\bigcup$(vars ` set b)
-
-definition subterms :: 'a branch $\Rightarrow$ 'a pset_term set where
-  subterms b $\equiv$ $\bigcup$(subterms ` set b)
-\end{lstlisting}
-
-\clearpage
-
-\section{Definition of the Interpretation Functions\label{appendix:semantics}}
-
-We define the interpretation function \lstinline!&\Ist&! for set atoms.
-\begin{lstlisting}
-fun &\Ist& :: ('a $\Rightarrow$ hf) $\Rightarrow$ 'a pset_term $\Rightarrow$ hf where
-  &\Ist& M $\emptyset$ = 0
-| &\Ist& M (Var x) = M x
-| &\Ist& M (Single s) = HF {&\Ist& M s}
-| &\Ist& M (s $\unionS$ t) = &\Ist& M s $\sqcup$ &\Ist& M t 
-| &\Ist& M (s $\interS$ t) = &\Ist& M s $\sqcap$ &\Ist& M t 
-| &\Ist& M (s $\diffS$ t) = &\Ist& M s $-$ &\Ist& M t 
-\end{lstlisting}
-The interpretation function \lstinline!I$_\text{sa}$! for set atoms is straightforward as well.
-\begin{lstlisting}
-fun &\Isa& :: ('a $\Rightarrow$ hf) $\Rightarrow$ 'a pset_atom $\Rightarrow$ bool where
-  &\Isa& M (s $\inS$ t) $\longleftrightarrow$ &\Ist& M s $\hfmem$ &\Ist& M t
-| &\Isa& M (s $\eqS$ t) $\longleftrightarrow$ &\Ist& M s = &\Ist& M t
-\end{lstlisting}
-
-\section{Upper-Bounding the Cardinality of a Branch\label{appendix:bound}}
-The argument below argues about the \emph{literals} of a branch, which are defined as follows.
-\begin{lstlisting}
-fun is_literal :: 'a fm $\Rightarrow$ bool where
-  is_literal (&\fmAtom& _) = True | is_literal (&\fmNeg{(\fmAtom{} \_)}&) = True
-| is_literal _ = False
-\end{lstlisting}
-
-We still need to give a termination proof to ascertain total correctness.
-The core of our argument is that the number of distinct formulas that can be derived with the expansion rules is finite.
-In particular, we claim that the following upper bound holds.
-\begin{lstlisting}
-  &\phantom{$\leq$}& |set b|
-  &\textover{$=$}{$\leq$}& |{$\psi$ $\in$ set b. $\neg$ is_literal $\psi$}| +
-  &\phantom{$\leq$}& |{$\psi$ $\in$ set b. is_literal $\psi$}|
-  $\leq$ 2 * |subfms (last b)| + |{$\psi$ $\in$ set b. is_literal $\psi$}|
-  $\leq$ 2 * |subfms (last b)| + 16 * |subterms (last b)|$^4$
-\end{lstlisting}
-We treat both inequalities separately, starting with the first one whose justification hinges on an invariant: 
-every new composite subformula that is introduced by an expansion rule is the negation of a subformula that already occurs in \lstinline!last b!.
-Written as a formula, we have
-\begin{lstlisting}
-  &\phantom{$\subseteq$}& {$\psi$ $\in$ set b. $\neg$ is_literal $\psi$}
-  $\subseteq$ subfms (last b) $\cup$ $\fmNegSymbol$ ` subfms (last b).
-\end{lstlisting}
-Confirming that this is an invariant is an easy exercise of going through each of the propositional rules in \cref{tab:lexpands} and the first two branching rules in \cref{tab:bexpands}.
-Thus, we have
-\begin{lstlisting}
-  &\phantom{$\leq$}& |{$\psi$ $\in$ set b. $\neg$ is_literal $\psi$}|
-  $\leq$ |subfms (last b)| + |$\fmNegSymbol$ ` subfms (last b)|
-  $\leq$ 2 * |subfms (last b)|
-\end{lstlisting}
-which is the first inequality we asserted. 
-
-Concerning the second inequality, first observe that each literal contains an atom, implying that the set of literals is at most twice as large as the set of atoms in a branch. 
-In addition, an atom is formed by combining two subterms occurring in the branch with either \lstinline!$\inS$! or \lstinline!$\eqS$!;
-hence, we have
-\begin{lstlisting}
-  &\phantom{$\leq$}& |{$\psi$ $\in$ set b. is_literal $\psi$}|
-  $\leq$ 2 * |$\bigcup$(atoms ` set b)| $\leq$ 2 * 2 * |subterms b|$^\text{2}$.
-\end{lstlisting}
-Since no expansion rule introduces new subterms, we know the cardinality of the subterms in a branch \lstinline!b! is limited by the subterms of \lstinline!last b! plus the number of witnesses added to the branch.
-Note that the last branching rule requires \lstinline!s $\neqS$ t! to be in \lstinline!b! for some \lstinline!s,t $\in$ subterms (last b)!.
-The subsumption condition then prohibits that the rule can be applied again for the combination of \lstinline!s! and \lstinline!t!, thus yielding an upper bound of \lstinline!|subterms (last b)|$^\text{2}$! for the witnesses.
-This allows us to finish the calculation that justifies the second inequality:
-\begin{lstlisting}
-  &\phantom{$\leq$}& 4 * |subterms b|$^\text{2}$
-  $\leq$ 4 * |subterms (last b)| + |wits b|$^\text{2}$
-  $\leq$ 4 * |subterms (last b)| + (|subterms (last b)|$^\text{2}$)$^\text{2}$
-  $\leq$ 4 * 4 * |subterms (last b)|$^\text{4}$.
-\end{lstlisting}
-All in all, we get the following lemma.
-\begin{lstlisting}
-lemma card_wf_branch_ub:
-  assumes wf_branch b
-  shows |set b|
-      $\leq$ 2 * |subfms (last b)| + 16 * |subterms (last b)|$^\text{4}$
-\end{lstlisting}
-
-\clearpage
-\section{Linear Expansion Rules\label{appendix:linear_rules}}
-
-\begin{table*}[h!]
-  \centering
-  \lstset{
-    escapeinside={@}{@}
-  }
-  \newcommand{\ton}{\text{t}_\text{1}}
-  \newcommand{\ttw}{\text{t}_\text{2}}
-  \caption{Linear expansion rules.}
-  \begin{tabular}{>{\centering\arraybackslash}p{0.48\textwidth}m{0.02\textwidth}>{\centering\arraybackslash}p{0.48\textwidth}}
-    \toprule
-    Propositional Rules & & Rules for \lstinline!$\unionS$! \\
-    \cmidrule{1-1}\cmidrule{3-3}
-    \begin{tabular}{p{0.22\textwidth}m{0.06\textwidth}p{0.2\textwidth}}
-      \lstinline!@\fmAnd{p}{q}@! & $\Longrightarrow$ & \lstinline!p, q! \\
-      \lstinline!@\fmNeg{(\fmOr{p}{q})}@! & $\Longrightarrow$ & \lstinline!@\fmNeg{p}@, @\fmNeg{q}@! \\
-      \lstinline!@\fmOr{p}{q}, \fmNeg{p}@! & $\Longrightarrow$ & \lstinline!q! \\
-      \lstinline!@\fmOr{p}{q}, \fmNeg{q}@! & $\Longrightarrow$ & \lstinline!p! \\
-      \lstinline!@\fmNeg{(\fmAnd{p}{q})}@, p! & $\Longrightarrow$ & \lstinline!@\fmNeg{q}@! \\
-      \lstinline!@\fmNeg{(\fmAnd{p}{q})}@, q! & $\Longrightarrow$ & \lstinline!@\fmNeg{p}@! \\
-      \lstinline!@\fmNeg{(\fmNeg{p})}@! & $\Longrightarrow$ & \lstinline!p!\\[6ex]
-    \end{tabular}
-                        & &
-    \begin{tabular}{p{0.22\textwidth}m{0.06\textwidth}p{0.2\textwidth}}
-    \lstinline!s $\notinS$ $\ton$ $\unionS$ $\ttw$! & $\Longrightarrow$ & \lstinline!s $\notinS$ $\ton$!, \newline \lstinline!s $\notinS$ $\ttw$! \\
-    \lstinline!s $\inS$ $\ton$! & $\Longrightarrow$ & \lstinline!s $\inS$ $\ton$ $\unionS$ $\ttw$! \\
-    \lstinline!s $\in$ $\ttw$! & $\Longrightarrow$ & \lstinline!s $\inS$ $\ton$ $\unionS$ $\ttw$! \\
-    \lstinline!s $\inS$ $\ton$ $\unionS$ $\ttw$!, \newline \lstinline!s $\notinS$ $\ton$! & ~\newline $\Longrightarrow$ & ~\newline \lstinline!s $\inS$ $\ttw$! \\
-    \lstinline!s $\inS$ $\ton$ $\unionS$ $\ttw$!, \newline \lstinline!s $\notinS$ $\ttw$! & $\Longrightarrow$ & \lstinline!s $\inS$ $\ton$! \\
-    \lstinline!s $\notinS$ $\ton$, s $\notinS$ $\ttw$! & $\Longrightarrow$ & \lstinline!s $\notinS$ $\ton$ $\unionS$ $\ttw$! \\
-    \end{tabular}
-    \\
-    \\
-
-    Rules for \lstinline!$\interS$! && Rules for \lstinline!$\diffS$! \\
-    \cmidrule{1-1}\cmidrule{3-3}
-    \begin{tabular}{p{0.22\textwidth}m{0.06\textwidth}p{0.2\textwidth}}
-      \lstinline!s $\inS$ $\ton$ $\interS$ $\ttw$! & $\Longrightarrow$ & \lstinline!s $\inS$ $\ton$!, \newline \lstinline!s $\inS$ $\ttw$! \\
-      \lstinline!s $\notinS$ $\ton$! & $\Longrightarrow$ & \lstinline!s $\notinS$ $\ton$ $\interS$ $\ttw$! \\ 
-      \lstinline!s $\notinS$ $\ttw$! & $\Longrightarrow$ & \lstinline!s $\notinS$ $\ton$ $\interS$ $\ttw$! \\
-      \lstinline!s $\notinS$ $\ton$ $\interS$ $\ttw$!, \newline \lstinline!s $\inS$ $\ton$! & $\Longrightarrow$ & \lstinline!s $\notinS$ $\ttw$! \\ 
-      \lstinline!s $\notinS$ $\ton$ $\interS$ $\ttw$! \newline \lstinline!s $\inS$ $\ttw$! & $\Longrightarrow$ & \lstinline!s $\notinS$ $\ton$! \\ 
-      \lstinline!s $\inS$ $\ton$, s $\inS$ $\ttw$! & $\Longrightarrow$ & \lstinline!s $\inS$ $\ton$ $\interS$ $\ttw$! \\
-    \end{tabular}
-    & &
-    \begin{tabular}{p{0.22\textwidth}m{0.06\textwidth}p{0.2\textwidth}}
-      \lstinline!s $\inS$ $\ton$ $\diffS$ $\ttw$! & $\Longrightarrow$ & \lstinline!s $\inS$ $\ton$!, \newline \lstinline!s $\notinS$ $\ttw$! \\
-      \lstinline!s $\notinS$ $\ton$! & $\Longrightarrow$ & \lstinline!s $\notinS$ $\ton$ $\diffS$ $\ttw$! \\
-      \lstinline!s $\inS$ $\ttw$! & $\Longrightarrow$ & \lstinline!s $\notinS$ $\ton$ $\diffS$ $\ttw$! \\
-      \lstinline!s $\notinS$ $\ton$ $\diffS$ $\ttw$!, \newline \lstinline!s $\inS$ $\ton$! & $\Longrightarrow$ & \lstinline!s $\inS$ $\ttw$! \\
-      \lstinline!s $\notinS$ $\ton$ $\diffS$ $\ttw$!, \newline \lstinline!s $\notinS$ $\ttw$! & $\Longrightarrow$ & \lstinline!s $\notinS$ $\ton$! \\
-      \lstinline!s $\inS$ $\ton$, s $\notinS$ $\ttw$! & $\Longrightarrow$ & \lstinline!s $\inS$ $\ton$ $\diffS$ $\ttw$! \\
-    \end{tabular}
-    \\
-    \\
-
-    Rules for \lstinline!Single! && Rules for \lstinline!$\eqS$! \\
-    \cmidrule{1-1} \cmidrule{3-3}
-    \begin{tabular}{p{0.22\textwidth}m{0.06\textwidth}p{0.2\textwidth}}
-      & $\Longrightarrow$ & \lstinline!s $\inS$ Single s! \\
-      \lstinline!s $\inS$ Single t! & $\Longrightarrow$ & \lstinline!s $\eqS$ t! \\
-      \lstinline!s $\notinS$ Single t! & $\Longrightarrow$ & \lstinline!s $\neqS$ t! \\
-    \end{tabular}
-    & &
-    \begin{tabular}{p{0.22\textwidth}m{0.06\textwidth}p{0.2\textwidth}}
-      \lstinline!$\ton$ $\eqS$ $\ttw$, l! & $\Longrightarrow$ & \lstinline!l{$\ttw$/$\ton$}! \\
-      \lstinline!$\ton$ $\eqS$ $\ttw$, l! & $\Longrightarrow$ & \lstinline!l{$\ton$/$\ttw$}! \\
-      \lstinline!s$_\text{1}$ $\inS$ t, s$_\text{2}$ $\notinS$ t! & $\Longrightarrow$ & \lstinline!s$_\text{1}$ $\neqS$ s$_\text{2}$! \\
-    \end{tabular}
-    \\
-    \bottomrule
-  \end{tabular}
-\end{table*}
-
-\clearpage
-\section{Branching Expansion Rules\label{appendix:branching_rules}}
-
-\begin{table*}[h]
-  \lstset{
-    escapeinside={@}{@}
-  }
-  \centering
-  \newcommand{\ton}{\text{t}_\text{1}}
-  \newcommand{\ttw}{\text{t}_\text{2}}
-  \newcommand{\lpipe}{\rule[-0.4ex]{0.6pt}{2.3ex}}
-  \caption{Branching expansion rules. We write \lstinline!$\phi$! for \lstinline!last b! here.}
-  \begin{tabular}{>{\centering\arraybackslash}p{0.34\textwidth} >{\centering\arraybackslash}p{0.32\textwidth} >{\centering\arraybackslash}p{0.3\textwidth}}
-    \toprule
-    Rule & Precondition & Subsumption condition \\
-    \midrule
-    \begin{tabular}{@{}>{\raggedleft\arraybackslash}p{0.11\textwidth}c>{\raggedright\arraybackslash}p{0.11\textwidth}@{}}
-      \\
-      \midrule
-      \lstinline!p! & \lpipe & \lstinline!@\fmNeg{p}@! \\
-    \end{tabular}
-         & \lstinline!@\fmOr{p}{q}@ $\in$ set b! &
-         \begin{tabular}{rl}
-         & \lstinline!p $\in$ set b $\lor$! \\
-         $\fmNegSymbol$ & \lstinline!p $\in$ set b! \\
-         \end{tabular} \\
-
-    \begin{tabular}{@{}>{\raggedleft\arraybackslash}p{0.11\textwidth}c>{\raggedright\arraybackslash}p{0.11\textwidth}@{}}
-      \\
-      \midrule
-      \lstinline!@\fmNeg{p}@! & \lpipe & \lstinline!p! \\
-    \end{tabular}
-         & \lstinline!@\fmNeg{(\fmAnd{p}{q})}@ $\in$ set b! &
-          \begin{tabular}{rl}
-            & \lstinline!p $\in$ set b $\lor$! \\
-            $\fmNegSymbol$ & \lstinline!p $\in$ set b! \\
-          \end{tabular} \\
-
-    \begin{tabular}{@{}>{\raggedleft\arraybackslash}p{0.11\textwidth}c>{\raggedright\arraybackslash}p{0.11\textwidth}@{}}
-      \\
-      \midrule
-      \lstinline!s $\inS$ $\ton$! & \lpipe & \lstinline!s $\notinS$ $\ton$! \\
-    \end{tabular}
-         &
-         \begin{tabular}{c}
-           \lstinline!(s $\inS$ $\ton$ $\unionS$ $\ttw$) $\in$ set  b! \\
-           \lstinline!$\ton$ $\unionS$ $\ttw$ $\in$ subterms $\phi$! \\
-         \end{tabular}
-         &
-         \begin{tabular}{@{}rl@{}}
-                  & \lstinline!(s $\inS$ $\ton$) $\in$ set b! \\
-           $\lor$ & \lstinline!(s $\notinS$ $\ton$) $\in$ set b!
-         \end{tabular}
-         \\
-
-    \begin{tabular}{@{}>{\raggedleft\arraybackslash}p{0.11\textwidth}c>{\raggedright\arraybackslash}p{0.11\textwidth}@{}}
-      \\
-      \midrule
-      \lstinline!s $\inS$ $\ttw$! & \lpipe & \lstinline!s $\notinS$ $\ttw$! \\
-    \end{tabular}
-         &
-         \begin{tabular}{c}
-           \lstinline!(s $\inS$ $\ton$) $\in$ set  b! \\
-           \lstinline!($\ton$ $\interS$ $\ttw$) $\in$ subterms $\phi$! \\
-         \end{tabular}
-         &
-         \begin{tabular}{@{}rl@{}}
-                  & \lstinline!(s $\inS$ $\ttw$) $\in$ set b! \\
-           $\lor$ & \lstinline!(s $\notinS$ $\ttw$) $\in$ set b! \\
-        \end{tabular}
-        \\
-
-    \begin{tabular}{@{}>{\raggedleft\arraybackslash}p{0.11\textwidth}c>{\raggedright\arraybackslash}p{0.11\textwidth}@{}}
-      \\
-      \midrule
-      \lstinline!s $\inS$ $\ttw$! & \lpipe & \lstinline!s $\notinS$ $\ttw$! \\
-    \end{tabular}
-         &
-         \begin{tabular}{c}
-           \lstinline!(s $\inS$ $\ton$) $\in$ set  b! \\
-           \lstinline!($\ton$ $\diffS$ $\ttw$) $\in$ subterms $\phi$! \\
-         \end{tabular}
-         &
-         \begin{tabular}{@{}rl@{}}
-                  & \lstinline!(s $\inS$ $\ttw$) $\in$ set b! \\
-           $\lor$ & \lstinline!(s $\notinS$ $\ttw$) $\in$ set b! \\
-         \end{tabular} \\
-         \addlinespace[0.6em]
-
-         \begin{tabular}{@{}>{\raggedleft\arraybackslash}p{0.165\textwidth}c>{\raggedright\arraybackslash}p{0.165\textwidth}@{}}
-      \\
-      \midrule
-      \lstinline!Var x $\inS$ $\ton$! \lstinline!Var x $\notinS$ $\ttw$! & \multirow{2}{*}{\rule[-0.4ex]{0.6pt}{4.8ex}} & \lstinline!Var x $\notinS$ $\ton$! \lstinline!Var x $\inS$ $\ttw$! \\
-    \end{tabular}
-         & 
-         \begin{tabular}{c}
-           \lstinline!($\ton$ $\neqS$ $\ttw$) $\in$ set b! \\
-           \lstinline!$\ton$ $\in$ subterms $\phi$! \\
-           \lstinline!$\ttw$ $\in$ subterms $\phi$! \\
-           \lstinline!x $\notin$ vars b! \\
-         \end{tabular}
-         &
-         \begin{tabular}{r@{\hspace{0.5em}}l}
-
-           \lstinline!$\exists$s.! & \lstinline!(s $\inS$ $\ton$) $\in$ set b! \\
-               \lstinline!$\land$! & \lstinline!(s $\notinS$ $\ttw$) $\in$ set b! \\
-           \multicolumn{2}{c}{$\lor$} \\
-           \lstinline!$\exists$s.! & \lstinline!(s $\notinS$ $\ton$) $\in$ set b! \\
-               \lstinline!$\land$! & \lstinline!(s $\inS$ $\ttw$) $\in$ set b! \\
-         \end{tabular}
-         \\
-         \bottomrule
-  \end{tabular}
-\end{table*}
-
+\clearpage\listoftodos
 
 \end{document}

@@ -2812,6 +2812,11 @@ proof
   with bclosed_sound show False by blast
 qed
 
+text \<open>
+  Below are the soundness and completeness theorems.
+  Note that introducing the type system requires us to add the assumption
+  that the initial formula is well-typed to the completeness theorem.
+\<close>
 theorem mlss_proc_complete:
   fixes \<phi> :: "'a pset_fm"
   assumes "\<not> mlss_proc \<phi>"

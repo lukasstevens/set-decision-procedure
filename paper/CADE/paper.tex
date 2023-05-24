@@ -164,13 +164,13 @@ This procedure, though, uses reflection to work on goals in Isabelle/HOL, which,
 More recently, \citeauthor{orders}~\cite{orders} presented a verified decision procedure for orders that produces certificates. 
 This approach offers efficient execution by using generated code as well as soundness because the certificates are replayed through Isabelle's inference kernel.
 
-The focus of this paper is another ubiquitous structure in mathematics, namely sets.
+This paper focuses on another ubiquitous structure in mathematics, namely sets.
 To the best of our knowledge, we present the first formally verified decision procedure for (a fragment of) set theory.
 In particular, we consider a quantifier-free fragment which \citeauthor{new_fast_tableau}~\cite{new_fast_tableau} call multi-level syllogistic with singleton (\MLSS{}).
 The fragment includes the usual set operations of union, intersection, difference, membership, equality and, in addition, it allows the construction of singleton sets.
 
-Since \MLSS{} admits a tableau calculus, the generation of certificates will be straightforward.
-Like with the aforementioned order solver, this paves the way towards an integration of the decision procedure into Isabelle, adding to its growing body of verified decision procedures.
+Since \MLSS{} admits a tableau calculus, generating certificates will be straightforward.
+Like with the aforementioned order solver, this paves the way for an integration of the decision procedure into Isabelle, adding to its growing body of verified decision procedures.
 
 \subsection{Contributions}
 We present a formalisation in Isabelle/HOL of a tableau calculus for \MLSS{} due to \citeauthor{new_fast_tableau}~\cite{new_fast_tableau}\cite[Chapter 14]{set_theory}.
